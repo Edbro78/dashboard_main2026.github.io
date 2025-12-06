@@ -722,7 +722,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
                             onChange={(e) => setTextValue(e.target.value)}
                             onBlur={handleBlur}
                             onFocus={(e) => e.target.select()}
-                        className="bg-white border border-[#DDDDDD] rounded-md pl-3 pr-0 py-1.5 text-[#333333] text-right w-32 absolute right-2"
+                        className="bg-white border border-[#DDDDDD] rounded-md pl-3 pr-0 py-1.5 text-[#333333] text-right w-32 absolute right-2 shadow-md"
                         />
                     ) : (
                     <span className="typo-paragraph text-[#333333] w-32 text-right pr-1 absolute right-2">
@@ -753,7 +753,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
                                 onChange={(e) => setTextValue(e.target.value)}
                                 onBlur={handleBlur}
                                 onFocus={(e) => e.target.select()}
-                                className="bg-white border border-[#DDDDDD] rounded-md px-3 py-1.5 text-[#333333] text-right w-32"
+                                className="bg-white border border-[#DDDDDD] rounded-md px-3 py-1.5 text-[#333333] text-right w-32 shadow-md"
                             />
                         ) : (
                         <span className="typo-paragraph text-[#333333] w-32 text-right pr-1">
@@ -2252,23 +2252,55 @@ return () => document.removeEventListener('keydown', onKey);
         <div className="font-sans text-[#333333] bg-white p-4 sm:p-6 pr-8 sm:pr-12 min-h-screen w-full box-border">
             <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ paddingRight: '2rem' }}>
 
-                <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden">
-                    <h1 className="typo-h1 text-center text-[#4A6D8C] mb-4">Mål og behov</h1>
-                    <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
-                        <button
-                            onClick={() => setShowDisclaimer(true)}
-                            className="absolute -top-12 left-2 z-10 text-xs px-2 py-1 rounded-md border border-[#4A6D8C] bg-white text-[#4A6D8C] hover:bg-gray-100"
-                            title="Disclaimer/forutsetninger"
-                        >
-                            Disclaimer/forutsetninger
-                        </button>
-                        <Bar options={chartOptions} data={investmentChartData} />
+                <div className="relative">
+                    <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full">
+                        <h1 className="typo-h1 text-center text-[#4A6D8C] mb-4">Mål og behov</h1>
+                        <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
+                            <button
+                                onClick={() => setShowDisclaimer(true)}
+                                className="absolute -top-12 left-2 z-10 text-xs px-2 py-1 rounded-md border border-[#4A6D8C] bg-white text-[#4A6D8C] hover:bg-gray-100"
+                                title="Disclaimer/forutsetninger"
+                            >
+                                Disclaimer/forutsetninger
+                            </button>
+                            <Bar options={chartOptions} data={investmentChartData} />
+                        </div>
+                        <CustomLegend items={state.taxCalculationEnabled ? LEGEND_DATA : LEGEND_DATA.filter(i => !['Skatt på hendelser','Løpende renteskatt'].includes(i.label))} />
                     </div>
-                    <CustomLegend items={state.taxCalculationEnabled ? LEGEND_DATA : LEGEND_DATA.filter(i => !['Skatt på hendelser','Løpende renteskatt'].includes(i.label))} />
+                    
+                    {/* Tre knapper til høyre - utenfor rammen */}
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 items-center" style={{ transform: 'translateX(calc(100% + 1rem)) translateY(-50%)' }}>
+                        {/* Målsøk sparing */}
+                        <button
+                            type="button"
+                            onClick={goalSeekAnnualSavings}
+                            className="bg-[#999999] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                            <span className="text-sm font-bold">Sp.</span>
+                        </button>
+                        
+                        {/* Målsøk utbetaling */}
+                        <button
+                            type="button"
+                            onClick={goalSeekAnnualPayout}
+                            className="bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                            <span className="text-xs font-bold">Utb.</span>
+                        </button>
+                        
+                        {/* Målsøk Portefølje I */}
+                        <button
+                            type="button"
+                            onClick={goalSeekPortfolio1}
+                            className="bg-[#4A6D8C] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                            <span className="text-xs font-bold">Port.</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Inputfelt for porteføljestørrelse, årlig sparing og aksjeandel */}
-                <div className="relative">
+                <div className="relative w-full">
                     <div className="absolute inset-0 z-0 bg-white border border-[#DDDDDD] rounded-xl pointer-events-none"></div>
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative z-10">
 <div className="p-6 flex flex-col gap-6 relative" style={{ minHeight: '350px' }}>
@@ -2301,7 +2333,7 @@ return () => document.removeEventListener('keydown', onKey);
                                 {/* Rad 1 */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center">
                                     {STOCK_ALLOCATION_OPTIONS.map(opt => (
-                                        <button key={`row1-${opt.value}`} onClick={() => handleStateChange('row1StockAllocation', opt.value)} className={`${state.row1StockAllocation === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
+                                        <button key={`row1-${opt.value}`} onClick={() => handleStateChange('row1StockAllocation', opt.value)} className={`${state.row1StockAllocation === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
                                             {opt.label}
                                         </button>
                                     ))}
@@ -2309,7 +2341,7 @@ return () => document.removeEventListener('keydown', onKey);
                                 {/* Rad 2 */}
                                 <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center">
                                     {STOCK_ALLOCATION_OPTIONS.map(opt => (
-                                        <button key={`row2-${opt.value}`} onClick={() => handleStateChange('row2StockAllocation', opt.value)} className={`${state.row2StockAllocation === opt.value ? 'bg-[#3388CC] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
+                                        <button key={`row2-${opt.value}`} onClick={() => handleStateChange('row2StockAllocation', opt.value)} className={`${state.row2StockAllocation === opt.value ? 'bg-[#3388CC] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
                                             {opt.label}
                                         </button>
                                     ))}
@@ -2343,12 +2375,12 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekAnnualSavings}
-                        className="bg-[#888888] border border-[#DDDDDD] text-white hover:bg-[#777777] h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
-                        style={{ minWidth: '140px', flex: '0 0 auto' }}
+                        className="bg-[#888888] border border-[#DDDDDD] text-white hover:bg-[#777777] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />sparing
                     </button>
-                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center flex-1" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
+                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center shadow-md" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem', width: '25%', flex: '0 0 auto' }}>
                         <div style={{ width: '100%' }}>
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="annualSavings" className="typo-label text-[#333333]/80 whitespace-nowrap normal-case">Årlig sparing</label>
@@ -2375,26 +2407,26 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekAnnualPayout}
-                        className="bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
-                        style={{ minWidth: '140px', flex: '0 0 auto' }}
+                        className="bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />utbetaling
                     </button>
-                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center px-4 flex-shrink-0" style={{ minWidth: '140px' }}>
-                        <span className="typo-paragraph text-[#333333] whitespace-nowrap text-center">
+                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-14 flex items-center justify-center px-4 flex-shrink-0 shadow-md" style={{ minWidth: '98px' }}>
+                        <span className="typo-paragraph text-[#333333] whitespace-nowrap text-center text-sm">
                             {formatCurrency(state.goalSeekPayoutResult || 0)}
                         </span>
                     </div>
                     <button
                         type="button"
                         onClick={goalSeekPortfolio1}
-                        className="bg-[#4A6D8C] border border-[#DDDDDD] text-white hover:bg-[#3A5D7C] h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
-                        style={{ minWidth: '140px', flex: '0 0 auto' }}
+                        className="bg-[#4A6D8C] border border-[#DDDDDD] text-white hover:bg-[#3A5D7C] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />Portefølje I
                     </button>
-                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center px-4 flex-shrink-0" style={{ minWidth: '140px' }}>
-                        <span className="typo-paragraph text-[#333333] whitespace-nowrap text-center">
+                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-14 flex items-center justify-center px-4 flex-shrink-0 shadow-md" style={{ minWidth: '98px' }}>
+                        <span className="typo-paragraph text-[#333333] whitespace-nowrap text-center text-sm">
                             {formatCurrency(state.goalSeekPortfolio1Result || 0)}
                         </span>
                     </div>
@@ -2412,7 +2444,7 @@ return () => document.removeEventListener('keydown', onKey);
                 <div className="relative">
                     <EyeToggle visible={showDistributionGraphic} onToggle={() => setShowDistributionGraphic(v => !v)} />
                     {showDistributionGraphic && (
-                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col">
+                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col w-full">
                             <h2 className="typo-h2 text-center text-[#4A6D8C] mb-4">Fordeling mellom aksjer og renter</h2>
                             <div className={`relative h-[260px]`}>
                                 <Bar options={stackedAllYearsOptions} data={stackedAllYearsData} />
@@ -2424,7 +2456,7 @@ return () => document.removeEventListener('keydown', onKey);
                 <div className="relative">
                     <EyeToggle visible={showStockPortionGraphic} onToggle={() => setShowStockPortionGraphic(v => !v)} />
                     {showStockPortionGraphic && (
-                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-4 flex flex-col">
+                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-4 flex flex-col w-full">
                             <div className="relative h-[280px]">
                                 <Line options={stockPortionChartOptions} data={stockPortionChartData} />
                             </div>
@@ -2698,7 +2730,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                 <div className="relative">
                     <EyeToggle visible={showInvestedCapitalGraphic} onToggle={() => setShowInvestedCapitalGraphic(v => !v)} />
                     {showInvestedCapitalGraphic && (
-                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col">
+                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col w-full">
                             <h2 className="typo-h2 text-center text-[#4A6D8C] mb-4">Innskutt kapital over tid</h2>
                             <div className="relative h-[300px]">
                                 <Bar options={capitalChartOptions} data={investedCapitalChartData} />
