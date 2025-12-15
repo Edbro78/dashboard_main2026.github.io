@@ -1032,6 +1032,7 @@ const [showInputModal, setShowInputModal] = useState(false);
 const [inputText, setInputText] = useState('');
     const [showAssumptionsGraphic, setShowAssumptionsGraphic] = useState(false);
     const [showSimulation, setShowSimulation] = useState(false);
+    const [showAccumulatedReturn, setShowAccumulatedReturn] = useState(false);
     const [simButtonActive, setSimButtonActive] = useState(false);
     const [simulationKey, setSimulationKey] = useState(0); // Brukes for å tvinge regenerering av simulering
     const [savedSimulatedReturns, setSavedSimulatedReturns] = useState({ stockReturns: [], bondReturns: [] }); // Lagrer simulerte verdier
@@ -2118,6 +2119,61 @@ return () => document.removeEventListener('keydown', onKey);
         };
     }, [startValuesAllYears.length, stockPctAllYears, prognosis.data.sparing, prognosis.data.event_total, prognosis.data.nettoUtbetaling, startOfYearStockValues, startOfYearBondValues, state.stockReturnRate, state.bondReturnRate, state.initialPortfolioSize, simButtonActive, activeSimulatedReturns]);
 
+    // Beregn akkumulert avkastning basert på simulerte avkastninger og aksjeandel
+    const accumulatedReturnData = useMemo(() => {
+        if (!savedSimulatedReturns.stockReturns.length || !prognosis.data.annualStockPercentages.length) {
+            return { labels: [], indexValues: [], percentValues: [], krValues: [] };
+        }
+
+        const totalYears = state.investmentYears + state.payoutYears;
+        const labels = ['start', ...Array.from({ length: totalYears }, (_, i) => START_YEAR + i)];
+        const indexValues = [];
+        const percentValues = [];
+        const krValues = [];
+        let accumulatedIndex = 100; // Start med indeks 100
+
+        // Legg til startverdiene
+        indexValues.push(accumulatedIndex);
+        percentValues.push(0); // 0% ved start
+        krValues.push(0); // 0 kr ved start
+
+        for (let i = 0; i < totalYears; i++) {
+            if (i < savedSimulatedReturns.stockReturns.length && i < savedSimulatedReturns.bondReturns.length) {
+                // annualStockPercentages har "start" verdi på indeks 0, så bruk i+1 for årlige verdier
+                const stockPercentageIndex = i + 1;
+                const stockReturn = savedSimulatedReturns.stockReturns[i] / 100; // Konverter fra prosent til desimal
+                const bondReturn = savedSimulatedReturns.bondReturns[i] / 100;
+                const stockPercentage = stockPercentageIndex < prognosis.data.annualStockPercentages.length 
+                    ? (prognosis.data.annualStockPercentages[stockPercentageIndex] || 0) / 100
+                    : (prognosis.data.annualStockPercentages[prognosis.data.annualStockPercentages.length - 1] || 0) / 100;
+                const bondPercentage = 1 - stockPercentage;
+
+                // Vektet avkastning basert på aksjeandel
+                const weightedReturn = (stockReturn * stockPercentage) + (bondReturn * bondPercentage);
+                
+                // Akkumuler: multipliser med (1 + avkastning)
+                accumulatedIndex = accumulatedIndex * (1 + weightedReturn);
+            }
+            
+            // Beregn prosentvis akkumulert avkastning (fra startverdi 100)
+            const percentAccumulated = ((accumulatedIndex / 100) - 1) * 100;
+            
+            // Hent årlig avkastning i kr fra stockReturnSeries og bondReturnSeries
+            // Disse arrays starter med indeks 0 ("start"), så vi bruker i+1 for årene
+            const yearIndex = i + 1;
+            let annualReturnKr = 0;
+            if (yearIndex < stockReturnSeries.length && yearIndex < bondReturnSeries.length) {
+                annualReturnKr = (stockReturnSeries[yearIndex] || 0) + (bondReturnSeries[yearIndex] || 0);
+            }
+            
+            indexValues.push(accumulatedIndex);
+            percentValues.push(percentAccumulated);
+            krValues.push(annualReturnKr);
+        }
+
+        return { labels, indexValues, percentValues, krValues };
+    }, [savedSimulatedReturns, prognosis.data.annualStockPercentages, state.investmentYears, state.payoutYears, stockReturnSeries, bondReturnSeries]);
+
     const stackedAllYearsData = useMemo(() => ({
         labels: labelsAllYears,
         datasets: [
@@ -2479,7 +2535,16 @@ return () => document.removeEventListener('keydown', onKey);
                     <EyeToggle visible={showGoalSeek} onToggle={() => setShowGoalSeek(v => !v)} title="Skjul/vis Målsøk" />
                     {showGoalSeek && (
                         <div className="bg-white border border-[#DDDDDD] rounded-lg" style={{ paddingTop: '1.5rem', paddingRight: '1rem', paddingBottom: '1rem', paddingLeft: '1.5rem' }}>
-                            <h2 className="typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
+                            <div className="hidden xl:flex items-center gap-3 w-full mb-4">
+                                <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px' }}>Målsøk</h2>
+                                <div style={{ width: '25%', flex: '0 0 auto' }}></div>
+                                <div style={{ width: '112px', flex: '0 0 auto' }}></div>
+                                <div style={{ minWidth: '98px', flex: '0 0 auto' }}></div>
+                                <div style={{ width: '112px', flex: '0 0 auto' }}></div>
+                                <div style={{ minWidth: '98px', flex: '0 0 auto' }}></div>
+                                <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px' }}>Simuleringer/grafikk</h2>
+                            </div>
+                            <h2 className="xl:hidden typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
                     <button
                         type="button"
                         onClick={goalSeekAnnualSavings}
@@ -2554,10 +2619,23 @@ return () => document.removeEventListener('keydown', onKey);
                                 setShowSimulation(true);
                             }
                         }}
-                        className="bg-[#999999] border border-[#DDDDDD] text-white hover:bg-[#888888] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
-                        style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
+                        className="bg-[#999999] border border-[#DDDDDD] text-white hover:bg-[#888888] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        style={{ width: '160px', height: '64px', flex: '0 0 auto', marginRight: '16px' }}
                     >
-                        Simulering<br />Avkastning
+                        Simulering<br />år for år
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            // Vis kun modalen hvis det finnes en simulering
+                            if (savedSimulatedReturns.stockReturns.length > 0) {
+                                setShowAccumulatedReturn(true);
+                            }
+                        }}
+                        className="bg-[#3498DB] border border-[#DDDDDD] text-white hover:bg-[#2980B9] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        style={{ width: '160px', height: '64px', flex: '0 0 auto' }}
+                    >
+                        Simulering,<br />akkumulert avkastning
                     </button>
                     </div>
                     {/* Fallback for mindre skjermer: plasser slider under */}
@@ -2934,6 +3012,232 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     ...chartOptions.scales.y.ticks,
                                                     callback: (value) => `${value.toFixed(1)}%`
                                                 }
+                                            }
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Akkumulert avkastning modal */}
+                {showAccumulatedReturn && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+                        onClick={() => setShowAccumulatedReturn(false)}
+                    >
+                        <div
+                            className="bg-white rounded-xl shadow-2xl max-w-[1200px] w-full p-10 relative max-h-[90vh] overflow-auto"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                aria-label="Lukk"
+                                onClick={() => setShowAccumulatedReturn(false)}
+                                className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]"
+                            >
+                                ✕
+                            </button>
+                            <h3 className="typo-h3 text-[#4A6D8C] mb-6 text-[2rem]">Akkumulert avkastning Sim.</h3>
+                            <div className="chart-container">
+                                <Line 
+                                    data={{
+                                        labels: accumulatedReturnData.labels,
+                                        datasets: [
+                                            {
+                                                label: 'Akkumulert avkastning (%)',
+                                                data: accumulatedReturnData.percentValues,
+                                                borderColor: '#4A6D8C',
+                                                backgroundColor: 'rgba(74, 109, 140, 0.15)',
+                                                borderWidth: 4,
+                                                fill: true,
+                                                gradientFill: true,
+                                                tension: 0.5,
+                                                pointRadius: 0,
+                                                pointHoverRadius: 8,
+                                                pointBackgroundColor: '#ffffff',
+                                                pointBorderColor: '#4A6D8C',
+                                                pointBorderWidth: 3,
+                                                pointHoverBackgroundColor: '#ffffff',
+                                                pointHoverBorderColor: '#4A6D8C',
+                                                pointHoverBorderWidth: 4,
+                                                cubicInterpolationMode: 'monotone',
+                                                shadowOffsetX: 0,
+                                                shadowOffsetY: 3,
+                                                shadowBlur: 10,
+                                                shadowColor: 'rgba(74, 109, 140, 0.4)',
+                                                yAxisID: 'y',
+                                            },
+                                            {
+                                                label: 'Årlig avkastning (kr)',
+                                                data: accumulatedReturnData.krValues,
+                                                borderColor: '#66CCDD',
+                                                backgroundColor: 'rgba(102, 204, 221, 0.2)',
+                                                borderWidth: 3,
+                                                borderDash: [5, 5],
+                                                fill: false,
+                                                tension: 0.4,
+                                                pointRadius: 4,
+                                                pointHoverRadius: 7,
+                                                pointBackgroundColor: '#ffffff',
+                                                pointBorderColor: '#66CCDD',
+                                                pointBorderWidth: 2,
+                                                pointHoverBackgroundColor: '#66CCDD',
+                                                pointHoverBorderColor: '#ffffff',
+                                                pointHoverBorderWidth: 3,
+                                                yAxisID: 'y1',
+                                            }
+                                        ]
+                                    }}
+                                    options={{
+                                        ...chartOptions,
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        animation: {
+                                            duration: 2000,
+                                            easing: 'easeInOutQuart',
+                                            delay: (context) => {
+                                                if (context.type === 'data' && context.mode === 'default') {
+                                                    return context.dataIndex * 50;
+                                                }
+                                                return 0;
+                                            },
+                                        },
+                                        interaction: {
+                                            mode: 'index',
+                                            intersect: false,
+                                        },
+                                        plugins: {
+                                            ...chartOptions.plugins,
+                                            legend: {
+                                                display: true,
+                                                labels: {
+                                                    color: '#333333',
+                                                    font: {
+                                                        size: 14,
+                                                        weight: '600'
+                                                    },
+                                                    padding: 12,
+                                                    usePointStyle: true,
+                                                    pointStyle: 'circle',
+                                                    boxWidth: 8,
+                                                    boxHeight: 8,
+                                                }
+                                            },
+                                            tooltip: {
+                                                ...chartOptions.plugins.tooltip,
+                                                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                                                titleColor: '#4A6D8C',
+                                                bodyColor: '#333333',
+                                                borderColor: '#4A6D8C',
+                                                borderWidth: 2,
+                                                padding: 14,
+                                                cornerRadius: 8,
+                                                displayColors: true,
+                                                boxPadding: 6,
+                                                callbacks: {
+                                                    title: (items) => `${items[0].label}`,
+                                                    label: (context) => {
+                                                        const datasetLabel = context.dataset.label || '';
+                                                        const value = context.raw;
+                                                        if (datasetLabel.includes('%')) {
+                                                            return `Akkumulert avkastning: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                                        } else {
+                                                            return `Årlig avkastning: ${formatCurrency(value)}`;
+                                                        }
+                                                    },
+                                                    labelColor: (context) => ({
+                                                        borderColor: context.dataset.borderColor,
+                                                        backgroundColor: context.dataset.borderColor,
+                                                    }),
+                                                }
+                                            }
+                                        },
+                                        scales: {
+                                            ...chartOptions.scales,
+                                            x: {
+                                                ...chartOptions.scales.x,
+                                                title: {
+                                                    display: false
+                                                },
+                                                grid: {
+                                                    ...chartOptions.scales.x.grid,
+                                                    color: 'rgba(221, 221, 221, 0.3)',
+                                                    lineWidth: 1,
+                                                },
+                                                ticks: {
+                                                    ...chartOptions.scales.x.ticks,
+                                                    maxRotation: 0,
+                                                    minRotation: 0,
+                                                    color: '#666666',
+                                                    font: {
+                                                        size: 12,
+                                                        weight: '500'
+                                                    },
+                                                    padding: 8,
+                                                }
+                                            },
+                                            y: {
+                                                position: 'left',
+                                                title: {
+                                                    display: true,
+                                                    text: 'Akkumulert avkastning (%)',
+                                                    color: '#4A6D8C',
+                                                    font: {
+                                                        size: 13,
+                                                        weight: '600'
+                                                    }
+                                                },
+                                                grid: {
+                                                    ...chartOptions.scales.y.grid,
+                                                    color: 'rgba(221, 221, 221, 0.3)',
+                                                    lineWidth: 1,
+                                                    drawBorder: false,
+                                                },
+                                                ticks: {
+                                                    ...chartOptions.scales.y.ticks,
+                                                    callback: (value) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
+                                                    color: '#4A6D8C',
+                                                    font: {
+                                                        size: 12,
+                                                        weight: '500'
+                                                    },
+                                                    padding: 8,
+                                                },
+                                                beginAtZero: false
+                                            },
+                                            y1: {
+                                                type: 'linear',
+                                                position: 'right',
+                                                title: {
+                                                    display: true,
+                                                    text: 'Årlig avkastning (kr)',
+                                                    color: '#66CCDD',
+                                                    font: {
+                                                        size: 13,
+                                                        weight: '600'
+                                                    }
+                                                },
+                                                grid: {
+                                                    drawOnChartArea: false,
+                                                },
+                                                ticks: {
+                                                    callback: (value) => {
+                                                        if (value >= 1000000) {
+                                                            return `${(value / 1000000).toFixed(1)}M`;
+                                                        } else if (value >= 1000) {
+                                                            return `${(value / 1000).toFixed(0)}k`;
+                                                        }
+                                                        return value.toFixed(0);
+                                                    },
+                                                    color: '#66CCDD',
+                                                    font: {
+                                                        size: 12,
+                                                        weight: '500'
+                                                    },
+                                                    padding: 8,
+                                                },
+                                                beginAtZero: true
                                             }
                                         }
                                     }}
