@@ -3903,6 +3903,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     </div>
                 )}
 
+<<<<<<< HEAD
                 {/* Monte Carlo simulering modal */}
                 {showMonteCarlo && (
                     <div
@@ -4357,6 +4358,8 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     </div>
                 )}
 
+=======
+>>>>>>> 111579c84c62949282f53bf5da9eb9b88d42dd86
                 <div className="relative">
                     <EyeToggle visible={showInvestedCapitalGraphic} onToggle={() => setShowInvestedCapitalGraphic(v => !v)} />
                     {showInvestedCapitalGraphic && (
