@@ -3903,7 +3903,6 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     </div>
                 )}
 
-<<<<<<< HEAD
                 {/* Monte Carlo simulering modal */}
                 {showMonteCarlo && (
                     <div
