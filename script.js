@@ -1040,6 +1040,8 @@ const [inputText, setInputText] = useState('');
     const [monteCarloKey, setMonteCarloKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo simulering
     const [showMonteCarloPortfolio, setShowMonteCarloPortfolio] = useState(false);
     const [monteCarloPortfolioKey, setMonteCarloPortfolioKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo Portefølje simulering
+    const [showMonteCarloStockAllocation, setShowMonteCarloStockAllocation] = useState(false);
+    const [monteCarloStockAllocationKey, setMonteCarloStockAllocationKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo fra 0- til 100% aksjer simulering
     const [simButtonActive, setSimButtonActive] = useState(false);
     const [simulationKey, setSimulationKey] = useState(0); // Brukes for å tvinge regenerering av simulering
     const [savedSimulatedReturns, setSavedSimulatedReturns] = useState({ stockReturns: [], bondReturns: [] }); // Lagrer simulerte verdier
@@ -1208,14 +1210,14 @@ const [inputText, setInputText] = useState('');
     // Monte Carlo simulering: Beregn maksimal utbetaling gitt en simulert avkastningsserie
     const calculateMaxPayout = useCallback((stockReturns, bondReturns, state) => {
         const totalYears = state.investmentYears + state.payoutYears;
-        if (totalYears === 0) return 0;
+        if (totalYears === 0 || state.payoutYears === 0) return 0;
         
         const annualStockPercentages = populateAnnualStockPercentages(state);
-        let portfolioValue = state.initialPortfolioSize + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
+        const initialValue = state.initialPortfolioSize + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
         
-        // Simuler porteføljevekst gjennom alle årene
-        const portfolioValues = [portfolioValue];
-        
+        // Først sjekk om porteføljen går negativ selv med 0 utbetaling
+        // Dette kan skje hvis avkastningene er svært negative
+        let testValueZeroPayout = initialValue;
         for (let i = 0; i < totalYears; i++) {
             const isInvestmentYear = i < state.investmentYears;
             const stockPct = annualStockPercentages[i] / 100;
@@ -1223,7 +1225,7 @@ const [inputText, setInputText] = useState('');
             
             // Legg til sparing i investeringsårene
             if (isInvestmentYear && state.annualSavings > 0) {
-                portfolioValue += state.annualSavings;
+                testValueZeroPayout += state.annualSavings;
             }
             
             // Beregn avkastning
@@ -1231,21 +1233,28 @@ const [inputText, setInputText] = useState('');
             const bondReturn = bondReturns[i] / 100;
             const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
             
-            portfolioValue *= (1 + portfolioReturn);
-            portfolioValues.push(portfolioValue);
+            testValueZeroPayout *= (1 + portfolioReturn);
+            
+            // Hvis porteføljen går negativ selv uten utbetaling, kan vi ikke utbetale noe
+            if (testValueZeroPayout <= 0) {
+                return 0;
+            }
         }
         
         // Finn maksimal konstant årlig utbetaling som gjør at porteføljen går i null siste år
         // Bruk binærsøk for å finne maksimal utbetaling
-        const initialValue = state.initialPortfolioSize + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
         let low = 0;
-        let high = initialValue * 2; // Start med høy verdi
+        let high = Math.max(initialValue * 2, testValueZeroPayout); // Start med høy verdi basert på faktisk sluttverdi
         let maxPayout = 0;
         const tolerance = 100; // Toleranse i kroner
+        const maxIterations = 100; // Begrens antall iterasjoner for å unngå uendelig løkke
+        let iterations = 0;
         
-        while (high - low > tolerance) {
+        while (high - low > tolerance && iterations < maxIterations) {
+            iterations++;
             const testPayout = (low + high) / 2;
             let testValue = initialValue;
+            let wentNegative = false;
             
             // Simuler med test utbetaling
             for (let i = 0; i < totalYears; i++) {
@@ -1268,11 +1277,14 @@ const [inputText, setInputText] = useState('');
                 // Trekk fra utbetaling i utbetalingsårene
                 if (!isInvestmentYear) {
                     testValue -= testPayout;
-                    if (testValue < 0) break;
+                    if (testValue < 0) {
+                        wentNegative = true;
+                        break;
+                    }
                 }
             }
             
-            if (testValue < 0) {
+            if (wentNegative || testValue < 0) {
                 // Porteføljen går i null for tidlig, reduser utbetaling
                 high = testPayout;
             } else if (testValue <= tolerance) {
@@ -1286,9 +1298,15 @@ const [inputText, setInputText] = useState('');
             }
         }
         
+        // Sikre at maxPayout aldri er negativ
+        maxPayout = Math.max(0, maxPayout);
+        
         // Beregn total sum av utbetalinger
         const payoutYears = state.payoutYears;
-        return maxPayout * payoutYears;
+        const totalPayout = maxPayout * payoutYears;
+        
+        // Sikre at total utbetaling aldri er negativ
+        return Math.max(0, totalPayout);
     }, []);
     
     // Monte Carlo Portefølje simulering: Beregn porteføljens verdi ved slutten av investeringsperioden
@@ -1336,7 +1354,7 @@ const [inputText, setInputText] = useState('');
         
         const results = [];
         
-        for (let sim = 0; sim < 1000; sim++) {
+        for (let sim = 0; sim < 2000; sim++) {
             // Generer tilfeldig avkastning for alle årene
             const stockReturns = [];
             const bondReturns = [];
@@ -1365,25 +1383,25 @@ const [inputText, setInputText] = useState('');
         const variance = monteCarloResults.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / monteCarloResults.length;
         const stdDev = Math.sqrt(variance);
         
-        // Beregn x-aksen basert på mean ± 2 standardavvik for å alltid vise to standardavvik
-        // Sikre at range er minimum gjennomsnittet ± 2 standardavvik
+        // Beregn x-aksen basert på faktisk min og max fra simuleringene
+        // X-aksen skal gå fra dårligste til beste resultat (som vist i frekvenstabellen)
         const meanPlus2StdDev = mean + (2 * stdDev);
         const meanMinus2StdDev = mean - (2 * stdDev);
         
-        // Finn faktisk min og max fra simuleringene
+        // Finn faktisk min og max fra simuleringene (dette er samme som beste/dårligste i frekvenstabellen)
         const actualMin = Math.min(...monteCarloResults);
         const actualMax = Math.max(...monteCarloResults);
         
-        // Bruk den største av faktisk range eller mean ± 2 stdDev
-        const requiredMin = Math.min(meanMinus2StdDev, actualMin);
-        const requiredMax = Math.max(meanPlus2StdDev, actualMax);
+        // Bruk faktisk min og max (dårligste og beste resultat)
+        const requiredMin = actualMin;
+        const requiredMax = actualMax;
         
-        // Legg til litt padding (10% på hver side) for bedre visuell presentasjon
-        const padding = (requiredMax - requiredMin) * 0.1;
-        const range = (requiredMax - requiredMin) + (2 * padding);
+        // Ingen padding - x-aksen skal gå nøyaktig fra dårligste til beste resultat
+        const padding = 0;
+        const range = requiredMax - requiredMin;
         const numPoints = 200;
         const step = range / numPoints;
-        const startX = requiredMin - padding;
+        const startX = requiredMin;
         
         const labels = [];
         const normalCurve = [];
@@ -1503,24 +1521,25 @@ const [inputText, setInputText] = useState('');
         // Finn maksverdien av normalfordelingskurven
         const maxNormalCurveValue = normalCurve.length > 0 ? Math.max(...normalCurve) : 0;
         
-        // Beregn frekvenstabell: 10 linjer basert på gjennomsnittet ± 2 standardavvik
+        // Beregn frekvenstabell: 10 linjer basert på faktisk min og max (samme som x-aksen)
         let frequencyTable = [];
         
-        if (isNaN(mean) || isNaN(stdDev) || stdDev <= 0 || !isFinite(mean) || !isFinite(stdDev)) {
+        if (isNaN(mean) || isNaN(stdDev) || stdDev <= 0 || !isFinite(mean) || !isFinite(stdDev) || monteCarloResults.length === 0) {
             // Hvis mean eller stdDev ikke er gyldig, returner tom tabell
             frequencyTable = [];
         } else {
             const numBins = 10; // 10 linjer i tabellen
-            const meanMinus2StdDev = mean - (2 * stdDev);
-            const meanPlus2StdDev = mean + (2 * stdDev);
-            const totalRange = meanPlus2StdDev - meanMinus2StdDev;
+            // Bruk samme range som x-aksen: faktisk min til faktisk max
+            const actualMin = Math.min(...monteCarloResults);
+            const actualMax = Math.max(...monteCarloResults);
+            const totalRange = actualMax - actualMin;
             const binWidth = totalRange / numBins;
             
-            // Opprett 10 intervaller
+            // Opprett 10 intervaller fra actualMin til actualMax
             const bins = [];
             for (let i = 0; i < numBins; i++) {
-                const binStart = meanMinus2StdDev + (i * binWidth);
-                const binEnd = meanMinus2StdDev + ((i + 1) * binWidth);
+                const binStart = actualMin + (i * binWidth);
+                const binEnd = actualMin + ((i + 1) * binWidth);
                 const binCenter = binStart + (binWidth / 2);
                 bins.push({
                     start: binStart,
@@ -1558,6 +1577,59 @@ const [inputText, setInputText] = useState('');
             
             // Sorter slik at høyeste er øverst
             frequencyTable.sort((a, b) => b.value - a.value);
+            
+            // Legg til beste resultat øverst og dårligste nederst
+            if (monteCarloResults.length > 0) {
+                const bestResult = Math.max(...monteCarloResults);
+                const worstResult = Math.min(...monteCarloResults);
+                
+                // Finn om beste/dårligste allerede finnes i tabellen
+                const bestIndex = frequencyTable.findIndex(item => Math.abs(item.value - bestResult) < binWidth / 2);
+                const worstIndex = frequencyTable.findIndex(item => Math.abs(item.value - worstResult) < binWidth / 2);
+                
+                // Håndter tilfelle der beste og dårligste er samme verdi
+                if (Math.abs(bestResult - worstResult) < binWidth / 2 && bestIndex !== -1) {
+                    // Hvis de er samme verdi, fjern den én gang og legg til både øverst og nederst
+                    frequencyTable.splice(bestIndex, 1);
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                } else {
+                    // Fjern beste fra sin posisjon hvis den finnes (vi legger den til øverst i stedet)
+                    if (bestIndex !== -1) {
+                        frequencyTable.splice(bestIndex, 1);
+                        // Juster worstIndex hvis den var etter bestIndex
+                        const adjustedWorstIndex = worstIndex !== -1 && worstIndex > bestIndex ? worstIndex - 1 : worstIndex;
+                        // Fjern dårligste fra sin posisjon hvis den finnes (vi legger den til nederst i stedet)
+                        if (adjustedWorstIndex !== -1 && adjustedWorstIndex >= 0) {
+                            frequencyTable.splice(adjustedWorstIndex, 1);
+                        }
+                    } else if (worstIndex !== -1) {
+                        // Hvis bare dårligste finnes, fjern den
+                        frequencyTable.splice(worstIndex, 1);
+                    }
+                    
+                    // Legg til beste resultat øverst
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    
+                    // Legg til dårligste resultat nederst
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                }
+                
+                // Sorter på nytt for å sikre riktig rekkefølge
+                frequencyTable.sort((a, b) => b.value - a.value);
+            }
         }
         
         return {
@@ -1590,7 +1662,7 @@ const [inputText, setInputText] = useState('');
         
         const results = [];
         
-        for (let sim = 0; sim < 1000; sim++) {
+        for (let sim = 0; sim < 2000; sim++) {
             // Generer tilfeldig avkastning for investeringsperioden
             const stockReturns = [];
             const bondReturns = [];
@@ -1611,6 +1683,187 @@ const [inputText, setInputText] = useState('');
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [monteCarloPortfolioKey, calculatePortfolioValue, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears]);
     
+    // Monte Carlo fra 0- til 100% aksjer: Beregn porteføljens verdi med spesifikk aksjeandel
+    const calculatePortfolioValueWithStockAllocation = useCallback((stockReturns, bondReturns, state, stockAllocationPercent) => {
+        if (state.investmentYears === 0) {
+            return state.initialPortfolioSize + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
+        }
+        
+        const stockPct = stockAllocationPercent / 100;
+        const bondPct = 1 - stockPct;
+        let portfolioValue = state.initialPortfolioSize + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
+        
+        // Simuler porteføljevekst gjennom investeringsperioden med fast aksjeandel
+        for (let i = 0; i < state.investmentYears; i++) {
+            // Legg til sparing i investeringsårene
+            if (state.annualSavings > 0) {
+                portfolioValue += state.annualSavings;
+            }
+            
+            // Beregn avkastning med spesifikk aksjeandel
+            const stockReturn = stockReturns[i] / 100;
+            const bondReturn = bondReturns[i] / 100;
+            const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
+            
+            portfolioValue *= (1 + portfolioReturn);
+        }
+        
+        return portfolioValue;
+    }, []);
+    
+    // Monte Carlo fra 0- til 100% aksjer: Kjør simuleringer for 6 forskjellige aksjeandeler
+    const monteCarloStockAllocationResults = useMemo(() => {
+        // Hvis monteCarloStockAllocationKey er 0, returner tom objekt (ingen simulering gjort ennå)
+        if (monteCarloStockAllocationKey === 0) return {};
+        
+        if (state.investmentYears === 0) return {};
+        
+        const stockStdDev = state.stockStdDev; // Standardavvik for aksjer fra slider
+        const bondStdDev = state.bondStdDev; // Standardavvik for renter fra slider
+        const stockMean = state.stockReturnRate || 8.0;
+        const bondMean = state.bondReturnRate || 5.0;
+        
+        const stockAllocations = [0, 20, 45, 55, 65, 85, 100]; // 0%, 20%, 45%, 55%, 65%, 85%, 100%
+        const results = {};
+        
+        // Kjør simuleringer for hver aksjeandel
+        stockAllocations.forEach(stockAllocation => {
+            const allocationResults = [];
+            
+            for (let sim = 0; sim < 1000; sim++) {
+                // Generer tilfeldig avkastning for investeringsperioden
+                const stockReturns = [];
+                const bondReturns = [];
+                
+                for (let i = 0; i < state.investmentYears; i++) {
+                    const simulatedStockReturn = generateNormalRandom(stockMean, stockStdDev);
+                    const simulatedBondReturn = generateNormalRandom(bondMean, bondStdDev);
+                    stockReturns.push(simulatedStockReturn);
+                    bondReturns.push(simulatedBondReturn);
+                }
+                
+                // Beregn porteføljens verdi ved slutten av investeringsperioden med denne aksjeandelen
+                const portfolioValue = calculatePortfolioValueWithStockAllocation(stockReturns, bondReturns, state, stockAllocation);
+                allocationResults.push(portfolioValue);
+            }
+            
+            results[stockAllocation] = allocationResults.sort((a, b) => a - b);
+        });
+        
+        return results;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [monteCarloStockAllocationKey, calculatePortfolioValueWithStockAllocation, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.annualSavings]);
+    
+    // Beregn frekvenstabeller for hver aksjeandel
+    const monteCarloStockAllocationFrequencyTables = useMemo(() => {
+        if (!monteCarloStockAllocationResults || Object.keys(monteCarloStockAllocationResults).length === 0) return {};
+        
+        const stockAllocations = [0, 20, 45, 55, 65, 85, 100];
+        const frequencyTables = {};
+        
+        stockAllocations.forEach(stockAllocation => {
+            const results = monteCarloStockAllocationResults[stockAllocation];
+            if (!results || results.length === 0) {
+                frequencyTables[stockAllocation] = [];
+                return;
+            }
+            
+            const numBins = 10; // 10 linjer i tabellen
+            const actualMin = Math.min(...results);
+            const actualMax = Math.max(...results);
+            const totalRange = actualMax - actualMin;
+            const binWidth = totalRange / numBins;
+            
+            // Opprett 10 intervaller fra actualMin til actualMax
+            const bins = [];
+            for (let i = 0; i < numBins; i++) {
+                const binStart = actualMin + (i * binWidth);
+                const binEnd = actualMin + ((i + 1) * binWidth);
+                const binCenter = binStart + (binWidth / 2);
+                bins.push({
+                    start: binStart,
+                    end: binEnd,
+                    center: binCenter,
+                    count: 0
+                });
+            }
+            
+            // Tell simuleringer i hvert intervall
+            results.forEach(val => {
+                for (let i = 0; i < bins.length; i++) {
+                    const bin = bins[i];
+                    if (i === bins.length - 1) {
+                        if (val >= bin.start && val <= bin.end) {
+                            bin.count++;
+                            break;
+                        }
+                    } else {
+                        if (val >= bin.start && val < bin.end) {
+                            bin.count++;
+                            break;
+                        }
+                    }
+                }
+            });
+            
+            // Konverter til frequencyTable format
+            let frequencyTable = bins.map(bin => ({
+                value: bin.center,
+                count: bin.count
+            }));
+            
+            // Sorter slik at høyeste er øverst
+            frequencyTable.sort((a, b) => b.value - a.value);
+            
+            // Legg til beste resultat øverst og dårligste nederst
+            if (results.length > 0) {
+                const bestResult = Math.max(...results);
+                const worstResult = Math.min(...results);
+                
+                const bestIndex = frequencyTable.findIndex(item => Math.abs(item.value - bestResult) < binWidth / 2);
+                const worstIndex = frequencyTable.findIndex(item => Math.abs(item.value - worstResult) < binWidth / 2);
+                
+                if (Math.abs(bestResult - worstResult) < binWidth / 2 && bestIndex !== -1) {
+                    frequencyTable.splice(bestIndex, 1);
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                } else {
+                    if (bestIndex !== -1) {
+                        frequencyTable.splice(bestIndex, 1);
+                        const adjustedWorstIndex = worstIndex !== -1 && worstIndex > bestIndex ? worstIndex - 1 : worstIndex;
+                        if (adjustedWorstIndex !== -1 && adjustedWorstIndex >= 0) {
+                            frequencyTable.splice(adjustedWorstIndex, 1);
+                        }
+                    } else if (worstIndex !== -1) {
+                        frequencyTable.splice(worstIndex, 1);
+                    }
+                    
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                }
+                
+                frequencyTable.sort((a, b) => b.value - a.value);
+            }
+            
+            frequencyTables[stockAllocation] = frequencyTable;
+        });
+        
+        return frequencyTables;
+    }, [monteCarloStockAllocationResults]);
+    
     // Beregn normalfordelingsdata for Portefølje-grafikken
     const monteCarloPortfolioChartData = useMemo(() => {
         if (monteCarloPortfolioResults.length === 0) return null;
@@ -1619,25 +1872,25 @@ const [inputText, setInputText] = useState('');
         const variance = monteCarloPortfolioResults.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / monteCarloPortfolioResults.length;
         const stdDev = Math.sqrt(variance);
         
-        // Beregn x-aksen basert på mean ± 2 standardavvik for å alltid vise to standardavvik
-        // Sikre at range er minimum gjennomsnittet ± 2 standardavvik
+        // Beregn x-aksen basert på faktisk min og max fra simuleringene
+        // X-aksen skal gå fra dårligste til beste resultat (som vist i frekvenstabellen)
         const meanPlus2StdDev = mean + (2 * stdDev);
         const meanMinus2StdDev = mean - (2 * stdDev);
         
-        // Finn faktisk min og max fra simuleringene
+        // Finn faktisk min og max fra simuleringene (dette er samme som beste/dårligste i frekvenstabellen)
         const actualMin = Math.min(...monteCarloPortfolioResults);
         const actualMax = Math.max(...monteCarloPortfolioResults);
         
-        // Bruk den største av faktisk range eller mean ± 2 stdDev
-        const requiredMin = Math.min(meanMinus2StdDev, actualMin);
-        const requiredMax = Math.max(meanPlus2StdDev, actualMax);
+        // Bruk faktisk min og max (dårligste og beste resultat)
+        const requiredMin = actualMin;
+        const requiredMax = actualMax;
         
-        // Legg til litt padding (10% på hver side) for bedre visuell presentasjon
-        const padding = (requiredMax - requiredMin) * 0.1;
-        const range = (requiredMax - requiredMin) + (2 * padding);
+        // Ingen padding - x-aksen skal gå nøyaktig fra dårligste til beste resultat
+        const padding = 0;
+        const range = requiredMax - requiredMin;
         const numPoints = 200;
         const step = range / numPoints;
-        const startX = requiredMin - padding;
+        const startX = requiredMin;
         
         const labels = [];
         const normalCurve = [];
@@ -1757,24 +2010,25 @@ const [inputText, setInputText] = useState('');
         // Finn maksverdien av normalfordelingskurven
         const maxNormalCurveValue = normalCurve.length > 0 ? Math.max(...normalCurve) : 0;
         
-        // Beregn frekvenstabell: 10 linjer basert på gjennomsnittet ± 2 standardavvik
+        // Beregn frekvenstabell: 10 linjer basert på faktisk min og max (samme som x-aksen)
         let frequencyTable = [];
         
-        if (isNaN(mean) || isNaN(stdDev) || stdDev <= 0 || !isFinite(mean) || !isFinite(stdDev)) {
+        if (isNaN(mean) || isNaN(stdDev) || stdDev <= 0 || !isFinite(mean) || !isFinite(stdDev) || monteCarloPortfolioResults.length === 0) {
             // Hvis mean eller stdDev ikke er gyldig, returner tom tabell
             frequencyTable = [];
         } else {
             const numBins = 10; // 10 linjer i tabellen
-            const meanMinus2StdDev = mean - (2 * stdDev);
-            const meanPlus2StdDev = mean + (2 * stdDev);
-            const totalRange = meanPlus2StdDev - meanMinus2StdDev;
+            // Bruk samme range som x-aksen: faktisk min til faktisk max
+            const actualMin = Math.min(...monteCarloPortfolioResults);
+            const actualMax = Math.max(...monteCarloPortfolioResults);
+            const totalRange = actualMax - actualMin;
             const binWidth = totalRange / numBins;
             
-            // Opprett 10 intervaller
+            // Opprett 10 intervaller fra actualMin til actualMax
             const bins = [];
             for (let i = 0; i < numBins; i++) {
-                const binStart = meanMinus2StdDev + (i * binWidth);
-                const binEnd = meanMinus2StdDev + ((i + 1) * binWidth);
+                const binStart = actualMin + (i * binWidth);
+                const binEnd = actualMin + ((i + 1) * binWidth);
                 const binCenter = binStart + (binWidth / 2);
                 bins.push({
                     start: binStart,
@@ -1812,6 +2066,59 @@ const [inputText, setInputText] = useState('');
             
             // Sorter slik at høyeste er øverst
             frequencyTable.sort((a, b) => b.value - a.value);
+            
+            // Legg til beste resultat øverst og dårligste nederst
+            if (monteCarloPortfolioResults.length > 0) {
+                const bestResult = Math.max(...monteCarloPortfolioResults);
+                const worstResult = Math.min(...monteCarloPortfolioResults);
+                
+                // Finn om beste/dårligste allerede finnes i tabellen
+                const bestIndex = frequencyTable.findIndex(item => Math.abs(item.value - bestResult) < binWidth / 2);
+                const worstIndex = frequencyTable.findIndex(item => Math.abs(item.value - worstResult) < binWidth / 2);
+                
+                // Håndter tilfelle der beste og dårligste er samme verdi
+                if (Math.abs(bestResult - worstResult) < binWidth / 2 && bestIndex !== -1) {
+                    // Hvis de er samme verdi, fjern den én gang og legg til både øverst og nederst
+                    frequencyTable.splice(bestIndex, 1);
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                } else {
+                    // Fjern beste fra sin posisjon hvis den finnes (vi legger den til øverst i stedet)
+                    if (bestIndex !== -1) {
+                        frequencyTable.splice(bestIndex, 1);
+                        // Juster worstIndex hvis den var etter bestIndex
+                        const adjustedWorstIndex = worstIndex !== -1 && worstIndex > bestIndex ? worstIndex - 1 : worstIndex;
+                        // Fjern dårligste fra sin posisjon hvis den finnes (vi legger den til nederst i stedet)
+                        if (adjustedWorstIndex !== -1 && adjustedWorstIndex >= 0) {
+                            frequencyTable.splice(adjustedWorstIndex, 1);
+                        }
+                    } else if (worstIndex !== -1) {
+                        // Hvis bare dårligste finnes, fjern den
+                        frequencyTable.splice(worstIndex, 1);
+                    }
+                    
+                    // Legg til beste resultat øverst
+                    frequencyTable.unshift({
+                        value: bestResult,
+                        count: 1
+                    });
+                    
+                    // Legg til dårligste resultat nederst
+                    frequencyTable.push({
+                        value: worstResult,
+                        count: 1
+                    });
+                }
+                
+                // Sorter på nytt for å sikre riktig rekkefølge
+                frequencyTable.sort((a, b) => b.value - a.value);
+            }
         }
         
         return {
@@ -3193,7 +3500,7 @@ return () => document.removeEventListener('keydown', onKey);
                     >
                         Målsøk<br />sparing
                     </button>
-                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center shadow-md" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem', width: '25%', flex: '0 0 auto' }}>
+                    <div className="bg-white border border-[#DDDDDD] rounded-lg h-20 flex items-center justify-center shadow-md" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem', width: '17.5%', flex: '0 0 auto' }}>
                         <div style={{ width: '100%' }}>
                             <div className="flex flex-col gap-1">
                                 <label htmlFor="annualSavings" className="typo-label text-[#333333]/80 whitespace-nowrap normal-case">Årlig sparing</label>
@@ -3289,9 +3596,21 @@ return () => document.removeEventListener('keydown', onKey);
                             setShowMonteCarloPortfolio(true);
                         }}
                         className="bg-[#2980B9] border border-[#DDDDDD] text-white hover:bg-[#21618C] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
-                        style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%' }}
+                        style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%', marginRight: '10px' }}
                     >
                         Monte Carlo<br />Portefølje
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            // Generer ny Monte Carlo fra 0- til 100% aksjer simulering hver gang knappen klikkes
+                            setMonteCarloStockAllocationKey(k => k + 1);
+                            setShowMonteCarloStockAllocation(true);
+                        }}
+                        className="bg-[#2980B9] border border-[#DDDDDD] text-white hover:bg-[#21618C] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
+                        style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%' }}
+                    >
+                        Monte Carlo<br />fra 0- til 100% aksjer
                     </button>
                     </div>
                     {/* Fallback for mindre skjermer: plasser slider under */}
@@ -3695,6 +4014,15 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                 ✕
                             </button>
                             <h3 className="typo-h3 text-[#4A6D8C] mb-6 text-[2rem]">Akkumulert avkastning Sim.</h3>
+                            {(() => {
+                                // Beregn min/max verdier for skalaene for å gjøre grafene mindre parallelle
+                                const percentValues = accumulatedReturnData.percentValues || [];
+                                const krValues = accumulatedReturnData.krValues || [];
+                                const percentMin = percentValues.length > 0 ? Math.floor(Math.min(...percentValues) / 10) * 10 - 10 : -10;
+                                const percentMax = percentValues.length > 0 ? Math.ceil(Math.max(...percentValues) / 10) * 10 + 10 : 50;
+                                const krMax = krValues.length > 0 ? Math.ceil(Math.max(...krValues) * 1.4 / 5000000) * 5000000 : 30000000;
+                                
+                                return (
                             <div className="chart-container">
                                 <Line 
                                     data={{
@@ -3854,7 +4182,9 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     maxRotation: 0,
                                                     minRotation: 0,
                                                 },
-                                                beginAtZero: false
+                                                beginAtZero: false,
+                                                suggestedMin: percentMin,
+                                                suggestedMax: percentMax
                                             },
                                             y1: {
                                                 type: 'linear',
@@ -3881,12 +4211,16 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     maxRotation: 0,
                                                     minRotation: 0,
                                                 },
-                                                beginAtZero: true
+                                                beginAtZero: true,
+                                                suggestedMin: 0,
+                                                suggestedMax: krMax
                                             }
                                         }
                                     }}
                                 />
                             </div>
+                                );
+                            })()}
                         </div>
                     </div>
                 )}
@@ -4333,6 +4667,95 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                         </p>
                                         <p className="text-xs text-[#666666] mt-2">
                                             Basert på {monteCarloPortfolioResults.length} simuleringer
+                                        </p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center text-[#666666] py-8">
+                                    Ingen simulering tilgjengelig. Sørg for at investeringsperiode er satt til mer enn 0 år.
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Monte Carlo fra 0- til 100% aksjer simulering modal */}
+                {showMonteCarloStockAllocation && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"
+                        onClick={() => setShowMonteCarloStockAllocation(false)}
+                    >
+                        <div
+                            className="bg-white rounded-xl shadow-2xl max-w-[1600px] w-full relative max-h-[95vh] overflow-auto"
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ margin: '2vh auto 6vh auto', padding: '52px 65px 130px 65px' }}
+                        >
+                            <button
+                                aria-label="Lukk"
+                                onClick={() => setShowMonteCarloStockAllocation(false)}
+                                className="absolute top-4 right-4 text-[#333333]/70 hover:text-[#333333]"
+                                style={{ fontSize: '1.3rem' }}
+                            >
+                                ✕
+                            </button>
+                            <h3 className="typo-h3 text-[#4A6D8C] mb-8" style={{ fontSize: '2.6rem' }}>Simulerte verdier siste år med ulik aksjevekting</h3>
+                            {Object.keys(monteCarloStockAllocationFrequencyTables).length > 0 ? (
+                                <div>
+                                    <div className="grid grid-cols-7 gap-4 mt-10" style={{ alignItems: 'stretch' }}>
+                                        {[0, 20, 45, 55, 65, 85, 100].map((stockAllocation) => {
+                                            const frequencyTable = monteCarloStockAllocationFrequencyTables[stockAllocation];
+                                            if (!frequencyTable || frequencyTable.length === 0) return null;
+                                            
+                                            // Beregn gjennomsnittet for denne tabellen
+                                            const results = monteCarloStockAllocationResults[stockAllocation] || [];
+                                            const mean = results.length > 0 
+                                                ? results.reduce((a, b) => a + b, 0) / results.length 
+                                                : 0;
+                                            
+                                            // Finn linjen nærmest gjennomsnittet
+                                            let closestToMean = frequencyTable[0];
+                                            let minDistance = Math.abs(frequencyTable[0].value - mean);
+                                            frequencyTable.forEach(item => {
+                                                const distance = Math.abs(item.value - mean);
+                                                if (distance < minDistance) {
+                                                    minDistance = distance;
+                                                    closestToMean = item;
+                                                }
+                                            });
+                                            
+                                            const totalSum = frequencyTable.reduce((sum, item) => sum + item.count, 0);
+                                            
+                                            return (
+                                                <div key={stockAllocation} className="bg-white border-2 border-[#4A6D8C] rounded-xl shadow-lg flex flex-col" style={{ padding: '13px' }}>
+                                                    <div className="font-bold text-[#4A6D8C] mb-1.3 text-center border-b border-[#4A6D8C] pb-0.65" style={{ fontSize: '0.91rem' }}>
+                                                        {stockAllocation === 0 ? '100% Renter' : stockAllocation === 100 ? '100% Aksjer' : `${stockAllocation}% Aksjer`}
+                                                    </div>
+                                                    <div className="text-[#333333] flex-1 flex flex-col" style={{ fontSize: '0.91rem' }}>
+                                                        <div>
+                                                            {frequencyTable.map((item, idx) => {
+                                                                const valueInM = (item.value / 1000000).toFixed(1).replace('.', ',');
+                                                                const isClosestToMean = Math.abs(item.value - closestToMean.value) < 0.01;
+                                                                return (
+                                                                    <div key={idx} className={`flex justify-between items-center py-0 ${isClosestToMean ? 'bg-[#66CCDD]/30 rounded font-semibold border border-[#66CCDD]' : ''}`} style={{ paddingLeft: '13px', paddingRight: '13px' }}>
+                                                                        <span className={isClosestToMean ? 'font-bold text-[#4A6D8C]' : 'font-medium'}>{valueInM} M</span>
+                                                                        <span className={`${isClosestToMean ? 'font-bold text-[#4A6D8C]' : ''} text-[#666666]`}>{item.count}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <div className="border-t border-[#DDDDDD] flex justify-between items-center font-bold bg-white mt-auto" style={{ paddingTop: '1.3px', paddingBottom: '1.3px', paddingLeft: '13px', paddingRight: '13px', fontSize: '0.91rem' }}>
+                                                            <span>Sum:</span>
+                                                            <span>{totalSum}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="mt-8 p-5 bg-[#f9f9f9] border border-[#DDDDDD] rounded-lg">
+                                        <p className="text-[#333333] leading-relaxed" style={{ fontSize: '1.04rem' }}>
+                                            <span className="inline-block bg-[#66CCDD]/30 border border-[#66CCDD] rounded align-middle" style={{ width: '20px', height: '20px', marginRight: '10px' }}></span>
+                                            Den markerte raden i hver tabell viser gjennomsnittet (mean) for den gitte aksjeandelen. Hver tabell viser også det laveste og høyeste resultatet fra simuleringene.
                                         </p>
                                     </div>
                                 </div>
