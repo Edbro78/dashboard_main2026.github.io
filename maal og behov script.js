@@ -219,6 +219,7 @@ const INITIAL_APP_STATE = {
     manualStockTaxRate: 37.84, // Ny state for manuell aksjebeskatning
     desiredAnnualConsumptionPayout: 0, // Ny state for ønsket årlig uttak til forbruk
     desiredAnnualWealthTaxPayout: 0, // Ny state for ønsket årlig uttak til formuesskatt
+    wealthTaxFromTKonto: false, // Om formuesskatt-uttak hentes fra T-konto
     goalSeekPayoutResult: 0, // Resultat fra målsøk utbetaling
     goalSeekPortfolio1Result: 0, // Resultat fra målsøk Portefølje I
     kpiRate: 0.0, // Ny slider for forventet KPI
@@ -231,6 +232,35 @@ const INITIAL_APP_STATE = {
     // Standardavvik for Monte Carlo simulering
     stockStdDev: 12.0, // Standardavvik aksjer (%)
     bondStdDev: 3.0, // Standardavvik renter (%)
+};
+
+// Global state holder for "Mål og behov"-fanen
+const MaalOgBehovState = {
+    appState: null, // Lagrer hovedstate
+    showDistributionGraphic: false,
+    showStockPortionGraphic: false,
+    showInvestedCapitalGraphic: false,
+    showGoalSeek: true,
+    showDisclaimer: false,
+    showOutputModal: false,
+    outputText: '',
+    copied: false,
+    showInputModal: false,
+    inputText: '',
+    showAssumptionsGraphic: false,
+    showSimulation: false,
+    showAccumulatedReturn: false,
+    showMonteCarlo: false,
+    monteCarloKey: 0,
+    showMonteCarloPortfolio: false,
+    monteCarloPortfolioKey: 0,
+    showMonteCarloStockAllocation: false,
+    monteCarloStockAllocationKey: 0,
+    simButtonActive: false,
+    simulationKey: 0,
+    savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
+    advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
+    waterfallMode: false
 };
 
 const STOCK_ALLOCATION_OPTIONS = [
@@ -1021,32 +1051,425 @@ const EyeToggle = ({ visible, onToggle, className, title }) => (
 );
 
 // --- MAIN APP COMPONENT --- //
+// TKontoDashboard component - wraps the standalone t-konto dashboard
+function TKontoDashboard() {
+    const containerRef = React.useRef(null);
+    const scriptLoadedRef = React.useRef(false);
+
+    React.useEffect(() => {
+        if (!containerRef.current) return;
+
+        const container = containerRef.current;
+        
+        // Check if script is already loaded globally
+        const isScriptAlreadyLoaded = window.initTKontoDashboard !== undefined || 
+                                      document.querySelector('script[src="t-konto script.js"]') !== null;
+        
+        if (!isScriptAlreadyLoaded && !scriptLoadedRef.current) {
+            // Create and append the script
+            const script = document.createElement('script');
+            script.src = 't-konto script.js';
+            script.async = true;
+            
+            script.onload = () => {
+                scriptLoadedRef.current = true;
+                // Initialize immediately after script loads
+                if (typeof window.initTKontoDashboard === 'function') {
+                    window.initTKontoDashboard();
+                }
+            };
+
+            script.onerror = () => {
+                console.error('Failed to load t-konto script');
+            };
+
+            document.body.appendChild(script);
+            scriptLoadedRef.current = true;
+        } else {
+            // Script is already loaded, just re-initialize
+            // Use setTimeout to ensure DOM is ready and React has finished rendering
+            setTimeout(() => {
+                if (typeof window.initTKontoDashboard === 'function') {
+                    window.initTKontoDashboard();
+                }
+            }, 100);
+        }
+
+        // No cleanup needed - we want to keep the script loaded for performance
+    }, []);
+
+    return (
+        <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+            <div className="app" style={{ height: '100%', minHeight: '100%' }}>
+                <aside className="sidebar" aria-label="Hovednavigasjon">
+                    <div className="brand">
+                        <h1 className="brand-title">T‑konto</h1>
+                    </div>
+                    <nav className="nav" role="navigation">
+                        <button className="nav-item is-active" data-section="Forside">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M9 22V12h6v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                            <span className="nav-label">Forside</span>
+                        </button>
+                        <button className="nav-item" data-section="Struktur">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="4" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><rect x="14" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M12 10v4M8 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            </span>
+                            <span className="nav-label">Struktur</span>
+                        </button>
+                        <button className="nav-item" data-section="Eiendeler">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="3" y="4" width="18" height="6" rx="2" stroke="currentColor" strokeWidth="2"/><rect x="3" y="14" width="18" height="6" rx="2" stroke="currentColor" strokeWidth="2"/></svg>
+                            </span>
+                            <span className="nav-label">Eiendeler</span>
+                        </button>
+                        <button className="nav-item" data-section="Gjeld">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="5" width="20" height="14" rx="3" stroke="currentColor" strokeWidth="2"/><path d="M3 10H21" stroke="currentColor" strokeWidth="2"/></svg>
+                            </span>
+                            <span className="nav-label">Gjeld</span>
+                        </button>
+                        <button className="nav-item" data-section="Inntekter">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2"/><path d="M8 13c1.2 1.8 3.2 3 5.5 3 1.9 0 3.5-1 3.5-2.5S15.4 11 13 11 9 9.9 9 8.5 10.6 6 12.5 6c1.8 0 3.3.8 4.3 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            </span>
+                            <span className="nav-label">Inntekter</span>
+                        </button>
+                        <button className="nav-item" data-section="Kontantstrøm">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 7h8M8 12h8M8 17h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            </span>
+                            <span className="nav-label">Kontantstrøm</span>
+                        </button>
+                        <button className="nav-item" data-section="T-Konto">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 19V5" stroke="currentColor" strokeWidth="2"/><path d="M3 19h18" stroke="currentColor" strokeWidth="2"/><path d="M7 15l3-3 3 2 4-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                            <span className="nav-label">T-Konto</span>
+                        </button>
+                        <button className="nav-item" data-section="Treemap">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 19V5" stroke="currentColor" strokeWidth="2"/><path d="M3 19h18" stroke="currentColor" strokeWidth="2"/><path d="M7 15l3-3 3 2 4-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                            <span className="nav-label">Treemap</span>
+                        </button>
+                        <button className="nav-item" data-section="Tapsbærende evne">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l8 3v6c0 4.4-3 8.4-8 9-5-0.6-8-4.6-8-9V6l8-3Z" stroke="currentColor" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                            <span className="nav-label">Tapsbærende evne</span>
+                        </button>
+                        <button className="nav-item" data-section="Analyse">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M10 20V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M16 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M22 20v-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            </span>
+                            <span className="nav-label">Analyse</span>
+                        </button>
+                        <div className="nav-sep" aria-hidden="true"></div>
+                        <button className="nav-item" data-section="Forventet avkastning">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 14l4-4 4 4 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            </span>
+                            <span className="nav-label">Forventet avkastning</span>
+                        </button>
+                        <div className="nav-sep" aria-hidden="true"></div>
+                        <button id="reset-all" className="nav-item">
+                            <span className="nav-icon" aria-hidden="true">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" strokeWidth="2"/><path d="M21 3v6h-6" stroke="currentColor" strokeWidth="2"/></svg>
+                            </span>
+                            <span className="nav-label">Nullstill</span>
+                        </button>
+                    </nav>
+                </aside>
+
+                <main className="content" role="main">
+                    <div className="stepper" aria-label="Fremdrift">
+                        <span id="sectionTitle" hidden>Eiendeler</span>
+                        <ul id="stepper-list" className="stepper-list" role="list">
+                            {/* Populeres av script.js */}
+                        </ul>
+                    </div>
+
+                    <div className="panel panel-empty" aria-hidden="true">
+                        <div className="pe-grid">
+                            <div className="pe-item summary-card summary-assets" id="summary-assets-button" role="button" tabIndex="0">
+                                <div className="summary-title">Eiendeler</div>
+                                <div id="sum-assets" className="summary-value">0 kr</div>
+                            </div>
+                            <div className="pe-item summary-card summary-debts" id="summary-development-button" role="button" tabIndex="0">
+                                <div className="summary-title danger">Gjeld</div>
+                                <div id="sum-debts" className="summary-value">0 kr</div>
+                            </div>
+                            <div className="pe-item summary-card summary-equity" id="summary-financing-button" role="button" tabIndex="0">
+                                <div className="summary-title success">Egenkapital</div>
+                                <div id="sum-equity" className="summary-value">0 kr</div>
+                            </div>
+                            <div className="pe-item summary-card summary-cash" id="summary-equity-return-button" role="button" tabIndex="0">
+                                <div className="summary-title success-dark">Årlig kontantstrøm</div>
+                                <div id="sum-cashflow" className="summary-value">0 kr</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <section className="content-body" aria-live="polite">
+                        <div id="module-root"></div>
+                    </section>
+                </main>
+            </div>
+
+            <button id="input-fab" className="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors" aria-haspopup="dialog" aria-controls="input-modal" aria-label="Åpne Input">Input</button>
+
+            <button id="output-fab" className="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors" aria-haspopup="dialog" aria-controls="output-modal" aria-label="Åpne Output">Output</button>
+
+            <div id="input-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="input-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <h3 id="input-title">Input</h3>
+                    <div className="output-editor">
+                        <textarea id="input-text" className="output-textarea" aria-label="Lim inn input data" spellCheck="false" placeholder="Lim inn listen fra Output her..."></textarea>
+                        <button id="apply-input" className="copy-btn" type="button">
+                            <span className="copy-icon" aria-hidden="true">✓</span>
+                            <span className="copy-label">Bruk</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="output-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="output-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <h3 id="output-title">Output</h3>
+                    <div className="output-editor">
+                        <textarea id="output-text" className="output-textarea" readOnly aria-label="Generert output" spellCheck="false"></textarea>
+                        <button id="copy-output" className="copy-btn" type="button">
+                            <span className="copy-icon" aria-hidden="true">📋</span>
+                            <span className="copy-label">Kopier</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="gi-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="gi-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel gi-wide" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <div id="gi-chart" className="gi-chart" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div id="financing-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="financing-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel gi-wide" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <div id="financing-chart" className="gi-chart" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div id="equity-return-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="equity-return-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel gi-wide" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <div id="equity-return-chart" className="gi-chart" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div id="total-capital-return-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="total-capital-return-title" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel gi-wide" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <h3 id="total-capital-return-title">Totalkapitalavkastning</h3>
+                    <div id="total-capital-return-chart" className="gi-chart" aria-live="polite"></div>
+                </div>
+            </div>
+
+            <div id="cashflow-forecast-modal" className="modal" role="dialog" aria-modal="true" aria-label="Kontantstrøm fremover" hidden>
+                <div className="modal-backdrop" data-close="true"></div>
+                <div className="modal-panel gi-wide" role="document">
+                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
+                    <div id="cashflow-forecast-chart" className="gi-chart" aria-live="polite"></div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// TabBar component for browser-like tabs
+function TabBar({ tabs, activeTab, onTabClick }) {
+    return (
+        <div className="tab-bar">
+            {tabs.map((tab, index) => (
+                <div
+                    key={index}
+                    className={`tab ${activeTab === index ? 'active' : ''}`}
+                    onClick={() => onTabClick(index)}
+                >
+                    <span>{tab.name}</span>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// TabContainer component that manages tabs and content
+function TabContainer() {
+    const [activeTab, setActiveTab] = useState(0);
+    
+    const tabs = [
+        { name: 'Mål og behov', content: <App /> },
+        { name: 'T-konto', content: <TKontoDashboard /> },
+        { name: 'Risikosimulering', content: <div style={{ padding: '20px' }}></div> }
+    ];
+
+    return (
+        <div className="tab-container">
+            <TabBar 
+                tabs={tabs} 
+                activeTab={activeTab} 
+                onTabClick={setActiveTab} 
+            />
+            <div className="tab-content">
+                {tabs[activeTab].content}
+            </div>
+        </div>
+    );
+}
+
 function App() {
-    const [state, setState] = useState(INITIAL_APP_STATE);
-    const [showDistributionGraphic, setShowDistributionGraphic] = useState(false);
-    const [showStockPortionGraphic, setShowStockPortionGraphic] = useState(false);
-    const [showInvestedCapitalGraphic, setShowInvestedCapitalGraphic] = useState(false);
-    const [showGoalSeek, setShowGoalSeek] = useState(true);
-    const [showDisclaimer, setShowDisclaimer] = useState(false);
-const [showOutputModal, setShowOutputModal] = useState(false);
-const [outputText, setOutputText] = useState('');
-const [copied, setCopied] = useState(false);
-const [showInputModal, setShowInputModal] = useState(false);
-const [inputText, setInputText] = useState('');
-    const [showAssumptionsGraphic, setShowAssumptionsGraphic] = useState(false);
-    const [showSimulation, setShowSimulation] = useState(false);
-    const [showAccumulatedReturn, setShowAccumulatedReturn] = useState(false);
-    const [showMonteCarlo, setShowMonteCarlo] = useState(false);
-    const [monteCarloKey, setMonteCarloKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo simulering
-    const [showMonteCarloPortfolio, setShowMonteCarloPortfolio] = useState(false);
-    const [monteCarloPortfolioKey, setMonteCarloPortfolioKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo Portefølje simulering
-    const [showMonteCarloStockAllocation, setShowMonteCarloStockAllocation] = useState(false);
-    const [monteCarloStockAllocationKey, setMonteCarloStockAllocationKey] = useState(0); // Brukes for å tvinge regenerering av Monte Carlo fra 0- til 100% aksjer simulering
-    const [simButtonActive, setSimButtonActive] = useState(false);
-    const [simulationKey, setSimulationKey] = useState(0); // Brukes for å tvinge regenerering av simulering
-    const [savedSimulatedReturns, setSavedSimulatedReturns] = useState({ stockReturns: [], bondReturns: [] }); // Lagrer simulerte verdier
-    const [advisoryInputValue, setAdvisoryInputValue] = useState(INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','));
-    const [waterfallMode, setWaterfallMode] = useState(false);
+    // Bruk lagret state hvis den finnes, ellers bruk initial state
+    const [state, setState] = useState(() => {
+        return MaalOgBehovState.appState ? { ...MaalOgBehovState.appState } : INITIAL_APP_STATE;
+    });
+    const [showDistributionGraphic, setShowDistributionGraphic] = useState(MaalOgBehovState.showDistributionGraphic);
+    const [showStockPortionGraphic, setShowStockPortionGraphic] = useState(MaalOgBehovState.showStockPortionGraphic);
+    const [showInvestedCapitalGraphic, setShowInvestedCapitalGraphic] = useState(MaalOgBehovState.showInvestedCapitalGraphic);
+    const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
+    const [showDisclaimer, setShowDisclaimer] = useState(MaalOgBehovState.showDisclaimer);
+    const [showOutputModal, setShowOutputModal] = useState(MaalOgBehovState.showOutputModal);
+    const [outputText, setOutputText] = useState(MaalOgBehovState.outputText);
+    const [copied, setCopied] = useState(MaalOgBehovState.copied);
+    const [showInputModal, setShowInputModal] = useState(MaalOgBehovState.showInputModal);
+    const [inputText, setInputText] = useState(MaalOgBehovState.inputText);
+    const [showAssumptionsGraphic, setShowAssumptionsGraphic] = useState(MaalOgBehovState.showAssumptionsGraphic);
+    const [showSimulation, setShowSimulation] = useState(MaalOgBehovState.showSimulation);
+    const [showAccumulatedReturn, setShowAccumulatedReturn] = useState(MaalOgBehovState.showAccumulatedReturn);
+    const [showMonteCarlo, setShowMonteCarlo] = useState(MaalOgBehovState.showMonteCarlo);
+    const [monteCarloKey, setMonteCarloKey] = useState(MaalOgBehovState.monteCarloKey);
+    const [showMonteCarloPortfolio, setShowMonteCarloPortfolio] = useState(MaalOgBehovState.showMonteCarloPortfolio);
+    const [monteCarloPortfolioKey, setMonteCarloPortfolioKey] = useState(MaalOgBehovState.monteCarloPortfolioKey);
+    const [showMonteCarloStockAllocation, setShowMonteCarloStockAllocation] = useState(MaalOgBehovState.showMonteCarloStockAllocation);
+    const [monteCarloStockAllocationKey, setMonteCarloStockAllocationKey] = useState(MaalOgBehovState.monteCarloStockAllocationKey);
+    const [simButtonActive, setSimButtonActive] = useState(MaalOgBehovState.simButtonActive);
+    const [simulationKey, setSimulationKey] = useState(MaalOgBehovState.simulationKey);
+    const [savedSimulatedReturns, setSavedSimulatedReturns] = useState(MaalOgBehovState.savedSimulatedReturns);
+    const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
+    const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
+
+    // Lagre state til global state holder når den endres
+    useEffect(() => {
+        MaalOgBehovState.appState = { ...state };
+        // Summen Portefølje I + Portefølje II + Likviditetsfond (2026) – brukes av T-konto Eiendeler «Investeringer Mål og behov»
+        const sum2026 = (state.initialPortfolioSize || 0) + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
+        try { localStorage.setItem('maalOgBehovSum2026', String(Math.round(sum2026))); } catch (e) {}
+    }, [state]);
+
+    useEffect(() => {
+        MaalOgBehovState.showDistributionGraphic = showDistributionGraphic;
+    }, [showDistributionGraphic]);
+
+    useEffect(() => {
+        MaalOgBehovState.showStockPortionGraphic = showStockPortionGraphic;
+    }, [showStockPortionGraphic]);
+
+    useEffect(() => {
+        MaalOgBehovState.showInvestedCapitalGraphic = showInvestedCapitalGraphic;
+    }, [showInvestedCapitalGraphic]);
+
+    useEffect(() => {
+        MaalOgBehovState.showGoalSeek = showGoalSeek;
+    }, [showGoalSeek]);
+
+    useEffect(() => {
+        MaalOgBehovState.showDisclaimer = showDisclaimer;
+    }, [showDisclaimer]);
+
+    useEffect(() => {
+        MaalOgBehovState.showOutputModal = showOutputModal;
+    }, [showOutputModal]);
+
+    useEffect(() => {
+        MaalOgBehovState.outputText = outputText;
+    }, [outputText]);
+
+    useEffect(() => {
+        MaalOgBehovState.copied = copied;
+    }, [copied]);
+
+    useEffect(() => {
+        MaalOgBehovState.showInputModal = showInputModal;
+    }, [showInputModal]);
+
+    useEffect(() => {
+        MaalOgBehovState.inputText = inputText;
+    }, [inputText]);
+
+    useEffect(() => {
+        MaalOgBehovState.showAssumptionsGraphic = showAssumptionsGraphic;
+    }, [showAssumptionsGraphic]);
+
+    useEffect(() => {
+        MaalOgBehovState.showSimulation = showSimulation;
+    }, [showSimulation]);
+
+    useEffect(() => {
+        MaalOgBehovState.showAccumulatedReturn = showAccumulatedReturn;
+    }, [showAccumulatedReturn]);
+
+    useEffect(() => {
+        MaalOgBehovState.showMonteCarlo = showMonteCarlo;
+    }, [showMonteCarlo]);
+
+    useEffect(() => {
+        MaalOgBehovState.monteCarloKey = monteCarloKey;
+    }, [monteCarloKey]);
+
+    useEffect(() => {
+        MaalOgBehovState.showMonteCarloPortfolio = showMonteCarloPortfolio;
+    }, [showMonteCarloPortfolio]);
+
+    useEffect(() => {
+        MaalOgBehovState.monteCarloPortfolioKey = monteCarloPortfolioKey;
+    }, [monteCarloPortfolioKey]);
+
+    useEffect(() => {
+        MaalOgBehovState.showMonteCarloStockAllocation = showMonteCarloStockAllocation;
+    }, [showMonteCarloStockAllocation]);
+
+    useEffect(() => {
+        MaalOgBehovState.monteCarloStockAllocationKey = monteCarloStockAllocationKey;
+    }, [monteCarloStockAllocationKey]);
+
+    useEffect(() => {
+        MaalOgBehovState.simButtonActive = simButtonActive;
+    }, [simButtonActive]);
+
+    useEffect(() => {
+        MaalOgBehovState.simulationKey = simulationKey;
+    }, [simulationKey]);
+
+    useEffect(() => {
+        MaalOgBehovState.savedSimulatedReturns = savedSimulatedReturns;
+    }, [savedSimulatedReturns]);
+
+    useEffect(() => {
+        MaalOgBehovState.advisoryInputValue = advisoryInputValue;
+    }, [advisoryInputValue]);
+
+    useEffect(() => {
+        MaalOgBehovState.waterfallMode = waterfallMode;
+    }, [waterfallMode]);
 
     // Beregn vektet aksjeandel ved start basert på tre porteføljer
     const computeInitialStockPct = useCallback((s) => {
@@ -1117,6 +1540,33 @@ const [inputText, setInputText] = useState('');
             desiredAnnualWealthTaxPayout: 0, // Nullstiller formuesskatt utbetaling
             goalSeekPayoutResult: null, // Nullstiller målsøk resultat
             goalSeekPortfolio1Result: null, // Nullstiller målsøk Portefølje I resultat
+        });
+    }, []);
+
+    // Toggle for "Hent fra T-konto" under formuesskatt-slideren
+    const handleToggleWealthTaxFromTKonto = useCallback(() => {
+        setState(prev => {
+            const nextFlag = !prev.wealthTaxFromTKonto;
+            let nextWealthTax = prev.desiredAnnualWealthTaxPayout;
+
+            if (nextFlag) {
+                // Hent seneste formuesskatt-beløp lagret av T-konto
+                try {
+                    const raw = localStorage.getItem('tKontoFormuesskatt');
+                    const num = raw != null ? Number(raw) : NaN;
+                    if (!isNaN(num)) {
+                        nextWealthTax = num;
+                    }
+                } catch (e) {
+                    // Ignorer hvis localStorage ikke er tilgjengelig
+                }
+            }
+
+            return {
+                ...prev,
+                wealthTaxFromTKonto: nextFlag,
+                desiredAnnualWealthTaxPayout: nextWealthTax,
+            };
         });
     }, []);
 
@@ -4802,16 +5252,30 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                      onChange={handleStateChange}
                                      isCurrency
                                  />
-                                 <SliderInput
-                                     id="desiredAnnualWealthTaxPayout"
-                                     label="Ønsket årlig uttak til formuesskatt (NOK)"
-                                     value={state.desiredAnnualWealthTaxPayout}
-                                     min={0}
-                                     max={7000000}
-                                     step={50000}
-                                     onChange={handleStateChange}
-                                     isCurrency
-                                 />
+                                <SliderInput
+                                    id="desiredAnnualWealthTaxPayout"
+                                    label="Ønsket årlig uttak til formuesskatt (NOK)"
+                                    value={state.desiredAnnualWealthTaxPayout}
+                                    min={0}
+                                    max={7000000}
+                                    step={50000}
+                                    onChange={handleStateChange}
+                                    isCurrency
+                                />
+                                {/* Hent fra T‑konto knapp under formuesskatt-slideren */}
+                                <div className="flex justify-center mt-3">
+                                    <button
+                                        type="button"
+                                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                                            state.wealthTaxFromTKonto
+                                                ? 'bg-[#0C8F4A] border-[#0C8F4A] text-white'
+                                                : 'bg-gray-200 border-gray-300 text-gray-600'
+                                        }`}
+                                        onClick={handleToggleWealthTaxFromTKonto}
+                                    >
+                                        Hent fra T-konto
+                                    </button>
+                                </div>
                                  <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
                                      <div className="typo-label text-[#333333]/70 mb-1">Sum ønsket årlig utbetaling (etter skatt):</div>
                                      <div className="text-lg font-semibold text-[#4A6D8C]">
@@ -5070,6 +5534,6 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
     <React.StrictMode>
-        <App />
+        <TabContainer />
     </React.StrictMode>
 ); 
