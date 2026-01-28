@@ -234,7 +234,7 @@ const INITIAL_APP_STATE = {
     bondStdDev: 3.0, // Standardavvik renter (%)
 };
 
-// Global state holder for "Mål og behov"-fanen
+// Global state holder for "Mål og behov"-fanen (eksponeres på window for Risikosimulering-iframe)
 const MaalOgBehovState = {
     appState: null, // Lagrer hovedstate
     showDistributionGraphic: false,
@@ -260,8 +260,10 @@ const MaalOgBehovState = {
     simulationKey: 0,
     savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
     advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
-    waterfallMode: false
+    waterfallMode: false,
+    henteSparingFraTKontoActive: false
 };
+if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState; }
 
 const STOCK_ALLOCATION_OPTIONS = [
     { label: '100% Renter', value: 0 },
@@ -1320,7 +1322,7 @@ function TabContainer() {
     const tabs = [
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
-        { name: 'Risikosimulering', content: <div style={{ padding: '20px' }}></div> }
+        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="risikosimulering%20index.html" title="Risikosimulering SPWM" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
 
     return (
@@ -1366,14 +1368,19 @@ function App() {
     const [savedSimulatedReturns, setSavedSimulatedReturns] = useState(MaalOgBehovState.savedSimulatedReturns);
     const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
     const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
+    const [henteSparingFraTKontoActive, setHenteSparingFraTKontoActive] = useState(MaalOgBehovState.henteSparingFraTKontoActive ?? false);
 
     // Lagre state til global state holder når den endres
     useEffect(() => {
         MaalOgBehovState.appState = { ...state };
-        // Summen Portefølje I + Portefølje II + Likviditetsfond (2026) – brukes av T-konto Eiendeler «Investeringer Mål og behov»
+        // Summen Portefølje I + Portefølje II + Likviditetsfond (2026) – brukes av T-konto Eiendeler «Investeringer Mål og behov» og Risikosimulering
         const sum2026 = (state.initialPortfolioSize || 0) + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
-        try { localStorage.setItem('maalOgBehovSum2026', String(Math.round(sum2026))); } catch (e) {}
+        try {
+            localStorage.setItem('maalOgBehovSum2026', String(Math.round(sum2026)));
+            localStorage.setItem('maalOgBehovAksjeandelP1', String(state.row1StockAllocation ?? 0));
+        } catch (e) {}
     }, [state]);
+
 
     useEffect(() => {
         MaalOgBehovState.showDistributionGraphic = showDistributionGraphic;
@@ -1471,6 +1478,10 @@ function App() {
         MaalOgBehovState.waterfallMode = waterfallMode;
     }, [waterfallMode]);
 
+    useEffect(() => {
+        MaalOgBehovState.henteSparingFraTKontoActive = henteSparingFraTKontoActive;
+    }, [henteSparingFraTKontoActive]);
+
     // Beregn vektet aksjeandel ved start basert på tre porteføljer
     const computeInitialStockPct = useCallback((s) => {
         const p1 = Math.max(0, s.initialPortfolioSize || 0); // Portefølje I
@@ -1550,15 +1561,16 @@ function App() {
             let nextWealthTax = prev.desiredAnnualWealthTaxPayout;
 
             if (nextFlag) {
-                // Hent seneste formuesskatt-beløp lagret av T-konto
+                // Bruk alltid det konkrete tallet fra T-konto (tallet helt til høyre) – aldri finn på eget tall
                 try {
-                    const raw = localStorage.getItem('tKontoFormuesskatt');
-                    const num = raw != null ? Number(raw) : NaN;
-                    if (!isNaN(num)) {
-                        nextWealthTax = num;
+                    if (typeof window.getTKontoFormuesskatt === 'function') {
+                        nextWealthTax = window.getTKontoFormuesskatt();
+                    } else {
+                        // T-konto ikke lastet: ikke bruk gammel localStorage – bruk 0
+                        nextWealthTax = 0;
                     }
                 } catch (e) {
-                    // Ignorer hvis localStorage ikke er tilgjengelig
+                    nextWealthTax = 0;
                 }
             }
 
@@ -2588,6 +2600,12 @@ function App() {
     }, [monteCarloPortfolioResults]);
     
     const prognosis = useMemo(() => calculatePrognosis(state, simButtonActive, activeSimulatedReturns), [state, simButtonActive, activeSimulatedReturns]);
+
+    // Lagre hovedstol per år (Hovedstolen i mål og behov) til T-konto – brukes for «Investeringer Mål og behov» per år
+    useEffect(() => {
+        const hovedstol = (prognosis && prognosis.data && prognosis.data.hovedstol) ? prognosis.data.hovedstol : [];
+        try { localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(hovedstol)); } catch (e) {}
+    }, [prognosis]);
 
 // --- Output generation & clipboard helpers --- //
 const generateOutputText = useCallback(() => {
@@ -3934,6 +3952,22 @@ return () => document.removeEventListener('keydown', onKey);
                                 <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px', marginLeft: '10px' }}>Simuleringer/grafikk</h2>
                             </div>
                             <h2 className="xl:hidden typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
+                            <div className="hidden xl:flex justify-start w-full mb-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        try {
+                                            const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('tKontoSparingForMaalOgBehov') : null;
+                                            const amount = raw != null ? Math.max(0, Math.min(5000000, Math.round(Number(raw) || 0))) : 0;
+                                            handleStateChange('annualSavings', amount);
+                                            setHenteSparingFraTKontoActive(true);
+                                        } catch (e) {}
+                                    }}
+                                    className={`border border-[#DDDDDD] h-10 rounded-lg flex items-center justify-center text-center px-3 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md whitespace-nowrap ${henteSparingFraTKontoActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A]' : 'bg-[#9CA3AF] text-white hover:bg-[#6B7280]'}`}
+                                >
+                                    hente sparing fra T-konto
+                                </button>
+                            </div>
                     <button
                         type="button"
                         onClick={goalSeekAnnualSavings}
@@ -3960,7 +3994,7 @@ return () => document.removeEventListener('keydown', onKey);
                                         id="annualSavings"
                                         name="annualSavings"
                                         min={0}
-                                        max={1200000}
+                                        max={5000000}
                                         step={10000}
                                         value={state.annualSavings}
                                         onChange={(e) => handleStateChange('annualSavings', parseFloat(e.target.value))}
@@ -4066,7 +4100,7 @@ return () => document.removeEventListener('keydown', onKey);
                     {/* Fallback for mindre skjermer: plasser slider under */}
                     <div className="xl:hidden mt-2">
                         <div className="w-[740px] max-w-full mx-auto">
-                            <SliderInput id="annualSavings" label="Sparing" value={state.annualSavings} min={0} max={1200000} step={10000} onChange={handleStateChange} isCurrency inline />
+                            <SliderInput id="annualSavings" label="Sparing" value={state.annualSavings} min={0} max={5000000} step={10000} onChange={handleStateChange} isCurrency inline />
                         </div>
                     </div>
                         </div>

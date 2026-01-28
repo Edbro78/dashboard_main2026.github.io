@@ -1,0 +1,1019 @@
+        <!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risikosimulering SPWM | Porteføljeanalyse</title>
+    <link rel="stylesheet" href="risikosimulering styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,200..900;1,8..60,200..900&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 3v18h18"/>
+                            <path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/>
+                        </svg>
+                    </div>
+                    <div class="logo-text">
+                        <h1>Risikosimulering SPWM</h1>
+                        <span class="logo-subtitle">Historisk avkastning fra ulike indekser</span>
+                    </div>
+                </div>
+                <div class="header-info">
+                    <button type="button" class="hent-portefolje-btn" id="hent-portefolje-btn" title="Hent portefølje fra Mål og behov">
+                        Hent portefølje fra Mål og behov
+                    </button>
+                    <div class="info-badge">
+                        <span class="badge-label">Startkapital</span>
+                        <span class="badge-value" id="start-capital-display">10 MNOK</span>
+                    </div>
+                    <div class="info-badge">
+                        <span class="badge-label">Periode</span>
+                        <span class="badge-value" id="period-display">1994 - 2015</span>
+                    </div>
+                    <button class="disclaimer-btn" id="disclaimer-btn">Disclaimer</button>
+                    <button class="historical-kpi-btn" id="historical-kpi-btn">Historisk KPI</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="tab-navigation">
+            <button class="tab-btn active" data-tab="input">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M9 9h6M9 13h6M9 17h4"/>
+                </svg>
+                <span>Input & Oversikt</span>
+            </button>
+            <button class="tab-btn" data-tab="portfolio-comparison">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                </svg>
+                <span>Porteføljesammenligning</span>
+            </button>
+            <button class="tab-btn" data-tab="allocation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 3v18h18M7 21V9m5 12V3m5 18v-6"/>
+                </svg>
+                <span>Arealfordeling</span>
+            </button>
+            <button class="tab-btn" data-tab="comparison">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 20V10M12 20V4M6 20v-6"/>
+                </svg>
+                <span>High Water Mark</span>
+            </button>
+            <button class="tab-btn" data-tab="drawdown">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                </svg>
+                <span>Drawdown</span>
+            </button>
+            <button class="tab-btn" data-tab="nurse">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="12" x2="16" y2="12"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="8" y1="20" x2="16" y2="20"/>
+                </svg>
+                <span>Kjøpekraft</span>
+            </button>
+            <button class="tab-btn" data-tab="pyramid">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 22h20L12 2z"/>
+                    <path d="M12 6v4M12 14h.01"/>
+                </svg>
+                <span>Pyramide</span>
+            </button>
+            <button class="tab-btn" data-tab="assets">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/>
+                    <rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/>
+                    <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span>Aktivaklasser</span>
+            </button>
+            <button class="tab-btn" data-tab="money">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M12 6v12M9 9h6M9 15h6"/>
+                </svg>
+                <span>Verdien av penger</span>
+            </button>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Global Period Selector -->
+            <div class="period-selector-container">
+                <span class="period-label">Periode:</span>
+                <div class="period-selector" id="period-selector">
+                    <button class="period-btn" data-period="ytd">YTD</button>
+                    <button class="period-btn" data-period="12m">Siste 12 mnd</button>
+                    <button class="period-btn" data-period="3y">Siste 3 år</button>
+                    <button class="period-btn" data-period="5y">Siste 5 år</button>
+                    <button class="period-btn" data-period="10y">Siste 10 år</button>
+                    <button class="period-btn active" data-period="max">Max</button>
+                    <button class="period-btn" id="year-by-year-btn">År for år</button>
+                </div>
+            </div>
+
+            <!-- Tab 1: Input & Overview -->
+            <section class="tab-content active" id="tab-input">
+                <div class="input-section">
+                    <div class="portfolio-inputs">
+                        <!-- Current Portfolio -->
+                        <div class="input-card">
+                            <div class="input-card-header">
+                                <div class="card-icon current">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3>Dagens Portefølje</h3>
+                                </div>
+                            </div>
+                            <div class="allocation-buttons-row">
+                                <div class="allocation-buttons current-allocation-buttons">
+                                    <button class="allocation-btn" data-allocation="0" data-portfolio="current">0%</button>
+                                    <button class="allocation-btn" data-allocation="20" data-portfolio="current">20%</button>
+                                    <button class="allocation-btn" data-allocation="45" data-portfolio="current">45%</button>
+                                    <button class="allocation-btn" data-allocation="55" data-portfolio="current">55%</button>
+                                    <button class="allocation-btn" data-allocation="65" data-portfolio="current">65%</button>
+                                    <button class="allocation-btn" data-allocation="85" data-portfolio="current">85%</button>
+                                    <button class="allocation-btn" data-allocation="100" data-portfolio="current">100%</button>
+                                </div>
+                            </div>
+                            <div class="slider-container">
+                                <!-- Likviditet/kontanter -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="current-stocks">Likviditet/kontanter</label>
+                                        <span class="slider-value" id="current-stocks-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="current-stocks" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Renter -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="current-riskfree">Renter</label>
+                                        <span class="slider-value" id="current-riskfree-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="current-riskfree" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Aksjer -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="current-highyield">Aksjer</label>
+                                        <span class="slider-value" id="current-highyield-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="current-highyield" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Alternative strategier -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="current-nordic">Alternative strategier</label>
+                                        <span class="slider-value" id="current-nordic-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="current-nordic" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Annet -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="current-emerging">Annet</label>
+                                        <span class="slider-value" id="current-emerging-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="current-emerging" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Total Sum Display -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label>Sum eksponering</label>
+                                        <span class="slider-value" id="current-total">100.0%</span>
+                                    </div>
+                                    <span class="sum-warning" id="current-warning" style="display: none;">Summen overstiger 100%!</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Treemap Chart -->
+                            <div class="treemap-container">
+                                <canvas id="current-treemap-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- New Portfolio -->
+                        <div class="input-card">
+                            <div class="input-card-header">
+                                <div class="card-icon new">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3>Ny Portefølje</h3>
+                                </div>
+                            </div>
+                            <div class="allocation-buttons-row">
+                                <div class="allocation-buttons new-allocation-buttons">
+                                    <button class="allocation-btn" data-allocation="0" data-portfolio="new">0%</button>
+                                    <button class="allocation-btn" data-allocation="20" data-portfolio="new">20%</button>
+                                    <button class="allocation-btn" data-allocation="45" data-portfolio="new">45%</button>
+                                    <button class="allocation-btn" data-allocation="55" data-portfolio="new">55%</button>
+                                    <button class="allocation-btn" data-allocation="65" data-portfolio="new">65%</button>
+                                    <button class="allocation-btn" data-allocation="85" data-portfolio="new">85%</button>
+                                    <button class="allocation-btn" data-allocation="100" data-portfolio="new">100%</button>
+                                </div>
+                            </div>
+                            <div class="slider-container">
+                                <!-- Likviditet/kontanter -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="new-stocks">Likviditet/kontanter</label>
+                                        <span class="slider-value" id="new-stocks-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="new-stocks" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Renter -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="new-riskfree">Renter</label>
+                                        <span class="slider-value" id="new-riskfree-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="new-riskfree" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Aksjer -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="new-highyield">Aksjer</label>
+                                        <span class="slider-value" id="new-highyield-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="new-highyield" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Alternative strategier -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="new-nordic">Alternative strategier</label>
+                                        <span class="slider-value" id="new-nordic-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="new-nordic" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Annet -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label for="new-emerging">Annet</label>
+                                        <span class="slider-value" id="new-emerging-value">20.0%</span>
+                                    </div>
+                                    <input type="range" id="new-emerging" min="0" max="100" value="20" step="0.1" class="slider">
+                                </div>
+                                
+                                <!-- Total Sum Display -->
+                                <div class="slider-item">
+                                    <div class="slider-header">
+                                        <label>Sum eksponering</label>
+                                        <span class="slider-value" id="new-total">100.0%</span>
+                                    </div>
+                                    <span class="sum-warning" id="new-warning" style="display: none;">Summen overstiger 100%!</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Treemap Chart -->
+                            <div class="treemap-container">
+                                <canvas id="new-treemap-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 2: Porteføljesammenligning -->
+            <section class="tab-content" id="tab-portfolio-comparison">
+                <!-- Comparison Chart & Metrics -->
+                <div class="comparison-section">
+                    <div class="comparison-header">
+                        <div class="chart-selector">
+                            <button class="chart-selector-btn active" data-chart-type="overview" id="chart-selector-overview">
+                                <span>Porteføljesammenligning</span>
+                            </button>
+                            <button class="chart-selector-btn" data-chart-type="asset-classes" id="chart-selector-asset-classes">
+                                <span>Aktivaklasser</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper" style="position: relative;">
+                        <button class="fullscreen-btn" id="overview-fullscreen-btn" title="Fullskjerm">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                            </svg>
+                        </button>
+                        <canvas id="overview-chart"></canvas>
+                    </div>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-header">
+                                <span class="metric-icon current">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                    </svg>
+                                </span>
+                                <span>Dagens Portefølje</span>
+                            </div>
+                            <div class="metric-values">
+                                <div class="metric-item">
+                                    <span class="metric-label">Total avkastning</span>
+                                    <span class="metric-value" id="overview-current-return">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Sluttverdi</span>
+                                    <span class="metric-value" id="overview-current-endvalue">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Volatilitet (Std.avvik)</span>
+                                    <span class="metric-value" id="overview-current-volatility">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card highlight">
+                            <div class="metric-header">
+                                <span class="metric-icon new">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                    </svg>
+                                </span>
+                                <span>Ny Portefølje</span>
+                            </div>
+                            <div class="metric-values">
+                                <div class="metric-item">
+                                    <span class="metric-label">Total avkastning</span>
+                                    <span class="metric-value" id="overview-new-return">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Sluttverdi</span>
+                                    <span class="metric-value" id="overview-new-endvalue">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Volatilitet (Std.avvik)</span>
+                                    <span class="metric-value" id="overview-new-volatility">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card difference">
+                            <div class="metric-header">
+                                <span class="metric-icon diff">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M8 3l4 8 5-5 5 15H2L8 3z"/>
+                                    </svg>
+                                </span>
+                                <span>Differanse</span>
+                            </div>
+                            <div class="metric-values">
+                                <div class="metric-item">
+                                    <span class="metric-label">Avkastningsforskjell</span>
+                                    <span class="metric-value" id="overview-diff-return">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Verdiforskjell</span>
+                                    <span class="metric-value" id="overview-diff-endvalue">-</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Volatilitetsforskjell</span>
+                                    <span class="metric-value" id="overview-diff-volatility">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 3: Arealfordeling -->
+            <section class="tab-content" id="tab-allocation">
+                <div class="allocation-controls" style="margin-bottom: var(--space-sm);">
+                    <div class="rebalancing-selector">
+                        <button class="selector-btn active" data-rebalancing="false" id="rebalancing-btn-no">Uten rebalansering</button>
+                        <button class="selector-btn" data-rebalancing="true" id="rebalancing-btn-yes">Med rebalansering</button>
+                        <button class="selector-btn" data-view="bubble" id="bubble-chart-btn">Boblediagram</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper" style="position: relative;">
+                    <canvas id="allocation-chart"></canvas>
+                    <canvas id="bubble-chart" style="display: none;"></canvas>
+                    <div id="bubble-chart-controls" style="display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <button id="bubble-play-pause" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); cursor: pointer;">▶ Play</button>
+                            <button id="bubble-reset" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); cursor: pointer;">Reset</button>
+                            <input type="range" id="bubble-year-slider" min="0" max="24" value="0" style="width: 200px;">
+                            <span id="bubble-year-display" style="min-width: 60px; text-align: center; font-family: 'JetBrains Mono', monospace;">År 0</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 4: Comparison -->
+            <section class="tab-content" id="tab-comparison">
+                <!-- KPI Cards -->
+                <div class="drawdown-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon ath">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">All-Time Highs Siste 3 År</span>
+                            <span class="kpi-value" id="hwm-kpi-3y">0</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon ath">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">All-Time Highs Siste 5 År</span>
+                            <span class="kpi-value" id="hwm-kpi-5y">0</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon ath">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">All-Time Highs Siste 10 År</span>
+                            <span class="kpi-value" id="hwm-kpi-10y">0</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon ath">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">All-Time Highs Max</span>
+                            <span class="kpi-value" id="hwm-kpi-max">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chart-wrapper large" style="position: relative;">
+                    <button class="fullscreen-btn" id="comparison-fullscreen-btn" title="Fullskjerm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                    </button>
+                    <canvas id="comparison-chart"></canvas>
+                </div>
+
+                <!-- High Water Mark Table -->
+                <div class="drawdown-stats">
+                    <h3>Topp 5 lengste perioder under high water mark</h3>
+                    <div class="recovery-table hwm-table">
+                        <div class="table-header">
+                            <span>Rank</span>
+                            <span>Periode</span>
+                            <span>Dager under HWM</span>
+                        </div>
+                        <div class="table-body" id="hwm-list">
+                            <!-- Filled by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 3: Drawdown -->
+            <section class="tab-content" id="tab-drawdown">
+                <!-- KPI Cards -->
+                <div class="drawdown-kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-icon current-dd">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 17l5-5-5-5M6 17l5-5-5-5"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Tap > 500 000 kr</span>
+                            <span class="kpi-value" id="kpi-loss-over-500k">0 ganger</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon max-dd">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Maks Drawdown</span>
+                            <span class="kpi-value negative" id="kpi-max-dd">0.0%</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon recovery">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <polyline points="12,6 12,12 16,14"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Lengste Recovery</span>
+                            <span class="kpi-value" id="kpi-longest-recovery">0 dager</span>
+                        </div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-icon ath">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="kpi-content">
+                            <span class="kpi-label">Fall > 5%</span>
+                            <span class="kpi-value" id="kpi-fall-over-5">0 ganger</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Controls Row -->
+                <div class="drawdown-controls">
+                    <div class="portfolio-selector">
+                        <button class="selector-btn active" data-portfolio="current" data-view="percent">Dagens Portefølje</button>
+                        <button class="selector-btn" data-portfolio="new" data-view="percent">Ny Portefølje</button>
+                        <button class="selector-btn" data-portfolio="current" data-view="kr">Dagens Portefølje kr</button>
+                        <button class="selector-btn" data-portfolio="new" data-view="kr">Ny Portefølje kr</button>
+                    </div>
+                    <button class="reset-zoom-btn hidden" id="reset-zoom-btn">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                            <path d="M3 3v5h5"/>
+                        </svg>
+                        Reset Zoom
+                    </button>
+                </div>
+
+                <!-- Drawdown Chart -->
+                <div class="chart-wrapper drawdown-underwater">
+                    <button class="fullscreen-btn" id="drawdown-fullscreen-btn" title="Fullskjerm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                    </button>
+                    <div class="chart-title">Drawdown (Undervannsanalyse)</div>
+                    <canvas id="drawdown-chart"></canvas>
+                </div>
+
+                <!-- Recovery Table -->
+                <div class="drawdown-stats">
+                    <h3>Topp 5 største fall og gjenopphenting</h3>
+                    <div class="recovery-table">
+                        <div class="table-header">
+                            <span>Rank</span>
+                            <span>Periode</span>
+                            <span>Maks Drawdown</span>
+                            <span>Dager til recovery</span>
+                        </div>
+                        <div class="table-body" id="recovery-list">
+                            <!-- Filled by JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Tab 4: Nurse Index -->
+            <section class="tab-content" id="tab-nurse">
+                <div class="nurse-tab-selector" style="margin-bottom: var(--space-sm);">
+                    <div class="rebalancing-selector">
+                        <button class="selector-btn active" data-nurse-tab="1" id="nurse-tab-1">
+                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <rect x="11" y="3" width="2" height="18"/>
+                                <rect x="3" y="11" width="18" height="2"/>
+                            </svg>
+                            sykepleierindeksen
+                        </button>
+                        <button class="selector-btn" data-nurse-tab="2" id="nurse-tab-2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <circle cx="7" cy="7" r="4.5" fill="currentColor" opacity="0.9"/>
+                                <circle cx="17" cy="7" r="4.5" fill="currentColor" opacity="0.9"/>
+                                <circle cx="7" cy="17" r="4.5" fill="currentColor" opacity="0.9"/>
+                                <circle cx="17" cy="17" r="4.5" fill="currentColor" opacity="0.9"/>
+                                <circle cx="7" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+                                <circle cx="17" cy="7" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+                                <circle cx="7" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+                                <circle cx="17" cy="17" r="2.5" fill="none" stroke="currentColor" stroke-width="1"/>
+                            </svg>
+                            Gullprisen
+                        </button>
+                        <button class="selector-btn" data-nurse-tab="3" id="nurse-tab-3">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <path d="M8 21h8M10 21v-9M14 21v-9M11 12h2M12 12V5M11 4h2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 12l-1-4h6l-1 4" fill="currentColor" opacity="0.2"/>
+                                <circle cx="12" cy="2" r="2.5" fill="currentColor"/>
+                            </svg>
+                            Markedspremie
+                        </button>
+                        <button class="selector-btn" data-nurse-tab="4" id="nurse-tab-4">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <rect x="4" y="7" width="16" height="10" rx="1"/>
+                                <path d="M4 10h16M4 13h16" stroke-width="2.5"/>
+                                <circle cx="8" cy="10" r="0.8" fill="currentColor"/>
+                                <circle cx="16" cy="10" r="0.8" fill="currentColor"/>
+                            </svg>
+                            BigMac-indeksen
+                        </button>
+                        <button class="selector-btn" data-nurse-tab="5" id="nurse-tab-5">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <rect x="4" y="7" width="16" height="10" rx="1"/>
+                                <path d="M4 10h16M4 13h16" stroke-width="2.5"/>
+                                <circle cx="8" cy="10" r="0.8" fill="currentColor"/>
+                                <circle cx="16" cy="10" r="0.8" fill="currentColor"/>
+                            </svg>
+                            Oljepris Brent
+                        </button>
+                        <button class="selector-btn" data-nurse-tab="6" id="nurse-tab-6">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px; margin-right: 6px;">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                            M2 Oslo
+                        </button>
+                    </div>
+                </div>
+                <div class="chart-wrapper large">
+                    <canvas id="nurse-chart-1"></canvas>
+                    <canvas id="nurse-chart-2" style="display: none;"></canvas>
+                    <canvas id="nurse-chart-3" style="display: none;"></canvas>
+                    <canvas id="nurse-chart-4" style="display: none;"></canvas>
+                    <canvas id="nurse-chart-5" style="display: none;"></canvas>
+                    <canvas id="nurse-chart-6" style="display: none;"></canvas>
+                </div>
+                <div class="nurse-info">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label" id="nurse-start-label">Startverdi (1995)</span>
+                            <span class="info-value" id="nurse-start">-</span>
+                            <span class="info-sublabel" id="nurse-start-sublabel">kr</span>
+                        </div>
+                    </div>
+                    <div class="info-card highlight">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label">Sluttverdi (i dag)</span>
+                            <span class="info-value" id="nurse-end">700 000</span>
+                            <span class="info-sublabel" id="nurse-end-sublabel">kr</span>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label">Reell vekst</span>
+                            <span class="info-value" id="nurse-growth">-</span>
+                            <span class="info-sublabel">% per år</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="nurse-info">
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label" id="nurse-index-first-label">Antall sykepleier årslønner første år</span>
+                            <div class="info-value-group">
+                                <span class="info-value" id="nurse-index-first">-</span>
+                                <span class="info-sublabel" id="nurse-index-first-sublabel">årslønner</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label" id="nurse-index-10-years-label">Laveste observasjon</span>
+                            <div class="info-value-group">
+                                <span class="info-value" id="nurse-index-10-years-ago">-</span>
+                                <span class="info-sublabel" id="nurse-index-10-years-sublabel"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="info-card">
+                        <div class="info-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div class="info-content">
+                            <span class="info-label" id="nurse-index-last-label">Antall sykepleier årslønner siste år</span>
+                            <div class="info-value-row">
+                                <div class="info-value-group">
+                                    <span class="info-value" id="nurse-index-last">-</span>
+                                    <span class="info-sublabel" id="nurse-index-last-sublabel">årslønner</span>
+                                </div>
+                                <span class="info-growth" id="nurse-index-growth" style="display: none;">
+                                    <span class="growth-total" id="nurse-growth-total"></span>
+                                    <span class="growth-annual" id="nurse-growth-annual"></span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab: Pyramide -->
+            <section class="tab-content" id="tab-pyramid">
+                <div class="pyramid-controls" style="margin-bottom: var(--space-md); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                    <div class="portfolio-selector">
+                        <button class="selector-btn active" data-pyramid-portfolio="new" id="pyramid-portfolio-new">Ny Portefølje</button>
+                        <button class="selector-btn" data-pyramid-portfolio="current" id="pyramid-portfolio-current">Dagens Portefølje</button>
+                    </div>
+                    <div class="pyramid-period-toggle" style="display: flex; align-items: center; gap: 0;">
+                        <button class="selector-btn active" data-period="full" id="period-toggle-full">Hele kalenderår</button>
+                        <button class="selector-btn" data-period="half" id="period-toggle-half">Halve kalenderår</button>
+                        <button class="selector-btn" data-period="quarter" id="period-toggle-quarter">Avkastning per kvartal</button>
+                        <button class="selector-btn" id="pyramid-stats-btn">Statistikk</button>
+                    </div>
+                </div>
+                <div class="pyramid-chart-container" id="pyramid-chart-container">
+                    <!-- Chart will be rendered here -->
+                </div>
+                
+                <!-- Comparison Table Container -->
+                <div id="quarterly-comparison-container" style="margin-top: var(--space-md); display: none;">
+                    <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-md);">
+                        <h3 style="margin-top: 0; margin-bottom: var(--space-md);">Sammenligning: Kvartalsavkastning</h3>
+                        <div style="overflow-x: auto;">
+                            <table id="quarterly-comparison-table" style="width: 100%; border-collapse: collapse; font-family: 'JetBrains Mono', monospace; font-size: 13px;">
+                                <thead>
+                                    <tr style="border-bottom: 2px solid var(--border);">
+                                        <th style="padding: 8px; text-align: left;">Kvartal</th>
+                                        <th style="padding: 8px; text-align: right;">"År for år" tabell</th>
+                                        <th style="padding: 8px; text-align: right;">Pyramide (3y)</th>
+                                        <th style="padding: 8px; text-align: center;">Match</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="quarterly-comparison-tbody">
+                                    <!-- Filled by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="comparison-summary" style="margin-top: var(--space-md); padding: var(--space-sm); border-radius: var(--radius-sm); font-weight: 500;"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tab 5: Asset Classes -->
+            <section class="tab-content" id="tab-assets">
+                <div class="assets-header">
+                    <div class="legend">
+                        <div class="legend-item">
+                            <span class="legend-color stocks"></span>
+                            <span>Likviditet/kontanter</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color risikofri"></span>
+                            <span>Renter</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color highyield"></span>
+                            <span>Aksjer</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color nordicstocks"></span>
+                            <span>Alternative strategier</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color emergingmarkets"></span>
+                            <span>Annet</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="legend-color kpi"></span>
+                            <span>KPI</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="assets-grid" id="assets-grid">
+                    <!-- Filled by JS -->
+                </div>
+            </section>
+
+            <!-- Tab 6: Verdien av penger -->
+            <section class="tab-content" id="tab-money">
+                <!-- Future KPI Section -->
+                <div class="kpi-section">
+                    <div class="section-label">FREMTIDIG KPI</div>
+                    <div class="kpi-buttons">
+                        <button class="kpi-btn" data-kpi="0">0%</button>
+                        <button class="kpi-btn" data-kpi="2">2%</button>
+                        <button class="kpi-btn" data-kpi="3">3%</button>
+                        <button class="kpi-btn" data-kpi="4">4%</button>
+                        <button class="kpi-btn" data-kpi="5">5%</button>
+                    </div>
+                </div>
+
+                <!-- Horizontal Calculations Container -->
+                <div class="calculations-container">
+                    <!-- Historical Section -->
+                    <section class="historical-section">
+                        <div class="section-label">HISTORISK BEREGNING</div>
+                        <div class="slider-container">
+                            <label for="historical-year-slider">Velg år (2001-2025):</label>
+                            <input type="range" id="historical-year-slider" min="2001" max="2025" value="2025" class="year-slider">
+                            <span id="historical-year-display">2025</span>
+                        </div>
+                        <div class="value-box historical-value">
+                            <div class="value-label">Verdi av pengene i fortiden</div>
+                            <div class="value-amount" id="historical-amount">700 000,-</div>
+                        </div>
+                    </section>
+
+                    <!-- Present Section -->
+                    <section class="present-section">
+                        <div class="section-label">DAGENS BELØP</div>
+                        <div class="slider-container">
+                            <label for="amount-slider">Dagens kronebeløp:</label>
+                            <input type="range" id="amount-slider" min="100000" max="5000000" value="700000" step="100000" class="amount-slider">
+                            <span id="amount-display">2025</span>
+                        </div>
+                        <div class="value-box present-value">
+                            <div class="value-label">Dagens kronebeløp</div>
+                            <div class="value-amount" id="present-amount">700 000,-</div>
+                        </div>
+                    </section>
+
+                    <!-- Future Section -->
+                    <section class="future-section">
+                        <div class="section-label">FREMTIDIG BEREGNING</div>
+                        <div class="slider-container">
+                            <label for="future-year-slider">Velg år (2025-2045):</label>
+                            <input type="range" id="future-year-slider" min="2025" max="2045" value="2025" class="year-slider">
+                            <span id="future-year-display">2025</span>
+                        </div>
+                        <div class="value-box future-value">
+                            <div class="value-label">Fremtidig verdi av pengene</div>
+                            <div class="value-amount" id="future-amount">700 000,-</div>
+                        </div>
+                    </section>
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+    <!-- Historical KPI Modal -->
+    <div class="modal-overlay" id="historical-kpi-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Historisk KPI-utvikling</h2>
+                <button class="close-btn" id="close-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="kpi-table-container">
+                    <table class="kpi-table">
+                        <thead>
+                            <tr>
+                                <th>År</th>
+                                <th>Årlig KPI-vekst (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kpi-table-body">
+                            <!-- Table content will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Disclaimer Modal -->
+    <div class="modal-overlay" id="disclaimer-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Disclaimer</h2>
+                <button class="close-btn" id="close-disclaimer-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="disclaimer-text">
+                    <p>Resultatet av de beregninger som gjøres i kalkulatoren vil variere ut ifra hvilke tall som legges til grunn. Tallene som legges til grunn bestemmes i samtale mellom rådgiver og deltaker i møtet. Resultatet vil dermed kunne variere fra de tallene som fremkommer offisielle dokumenter i tilknytning til ytelse av investeringsrådgivning.</p>
+                    
+                    <p>Beregningene i kalkulatoren må ansees som statiske og er kun ment for illustrasjonsformål. For konkrete fremstillinger, vises det til offisielle dokumenter knyttet til rådgivningen.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Year by Year Modal -->
+    <div class="modal-overlay" id="year-by-year-modal">
+        <div class="modal-content year-by-year-modal">
+            <div class="modal-header">
+                <h2>Årlig avkastning og akkumulert avkastning</h2>
+                <div class="modal-header-actions">
+                    <button class="fullscreen-modal-btn" id="year-by-year-fullscreen-btn" title="Fullskjerm">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                        </svg>
+                    </button>
+                    <button class="close-btn" id="close-year-by-year-modal">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="year-by-year-table-container">
+                    <table class="year-by-year-table">
+                        <thead>
+                            <tr>
+                                <th>År</th>
+                                <th>Avkastning<br>Dagens Portefølje</th>
+                                <th>Akkumulert avkastning<br>Dagens Portefølje</th>
+                                <th>Avkastning<br>Ny Portefølje</th>
+                                <th>Akkumulert avkastning<br>Ny Portefølje</th>
+                                <th>Avkastning<br>første halvår</th>
+                                <th>Avkastning<br>andre halvår</th>
+                                <th>Avkastning<br>Q1</th>
+                                <th>Avkastning<br>Q2</th>
+                                <th>Avkastning<br>Q3</th>
+                                <th>Avkastning<br>Q4</th>
+                            </tr>
+                        </thead>
+                        <tbody id="year-by-year-table-body">
+                            <!-- Filled by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pyramid Statistics Modal -->
+    <div class="modal-overlay" id="pyramid-stats-modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>Statistikk</h2>
+                <button class="close-btn" id="close-pyramid-stats-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="pyramid-stats-container" style="display: flex; flex-direction: column; gap: 16px;">
+                    <div class="stat-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--secondary); border-radius: var(--radius-sm);">
+                        <span class="stat-label" style="font-weight: 500; color: var(--muted-foreground);">Gjennomsnitt:</span>
+                        <span class="stat-value" id="pyramid-mean-modal" style="font-weight: 600; color: var(--foreground); font-family: 'JetBrains Mono', monospace;">-</span>
+                    </div>
+                    <div class="stat-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--secondary); border-radius: var(--radius-sm);">
+                        <span class="stat-label" style="font-weight: 500; color: var(--muted-foreground);">Standardavvik:</span>
+                        <span class="stat-value" id="pyramid-stddev-modal" style="font-weight: 600; color: var(--foreground); font-family: 'JetBrains Mono', monospace;">-</span>
+                    </div>
+                    <div class="stat-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--secondary); border-radius: var(--radius-sm);">
+                        <span class="stat-label" style="font-weight: 500; color: var(--muted-foreground);">Det intervallet vi har flest av:</span>
+                        <span class="stat-value" id="pyramid-most-frequent-modal" style="font-weight: 600; color: var(--foreground); font-family: 'JetBrains Mono', monospace;">-</span>
+                    </div>
+                    <div class="stat-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--secondary); border-radius: var(--radius-sm);">
+                        <span class="stat-label" style="font-weight: 500; color: var(--muted-foreground);">Dårligste år:</span>
+                        <span class="stat-value" id="pyramid-worst-year-modal" style="font-weight: 600; color: var(--destructive); font-family: 'JetBrains Mono', monospace;">-</span>
+                    </div>
+                    <div class="stat-row" style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: var(--secondary); border-radius: var(--radius-sm);">
+                        <span class="stat-label" style="font-weight: 500; color: var(--muted-foreground);">Beste år:</span>
+                        <span class="stat-value" id="pyramid-best-year-modal" style="font-weight: 600; color: var(--primary); font-family: 'JetBrains Mono', monospace;">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="risikosimulering script.js"></script>
+</body>
+</html>

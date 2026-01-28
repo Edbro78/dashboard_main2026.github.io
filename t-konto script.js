@@ -310,6 +310,10 @@ function initTKontoDashboard() {
   // Input UI
   initInputUI();
 
+  // Synkroniser gjeldende formuesskatt til Mål og behov (så «Hent fra T-konto» får riktig verdi, også 0)
+  const wealthTaxItemInit = AppState.incomes.find(i => i.name === "Formuesskatt");
+  if (wealthTaxItemInit) setFormuesskattForMaalOgBehov(wealthTaxItemInit.amount);
+
   // Nullstill-knapp
   const resetBtn = document.getElementById("reset-all");
   if (resetBtn) {
@@ -319,6 +323,7 @@ function initTKontoDashboard() {
       (AppState.debts || []).forEach(d => d.amount = 0);
       (AppState.incomes || []).forEach(i => i.amount = 0);
       AppState.cashflowRouting = { mode: "forbruk", customAmount: 0 };
+      setFormuesskattForMaalOgBehov(0);
       // Re-render gjeldende fane
       const current = document.querySelector(".nav-item.is-active");
       const section = current && (current.getAttribute("data-section") || current.textContent || "");
@@ -630,6 +635,17 @@ function initTKontoDashboard() {
 
 // Expose initTKontoDashboard globally so it can be called from React component
 window.initTKontoDashboard = initTKontoDashboard;
+
+/** Returnerer det konkrete tallet som står til høyre for Formuesskatt i T-konto (aldri finn på eget tall). */
+window.getTKontoFormuesskatt = function () {
+  try {
+    var w = AppState.incomes.find(function (i) { return i.name === "Formuesskatt"; });
+    var amount = w && typeof w.amount === "number" ? w.amount : 0;
+    return Math.max(0, Math.round(amount));
+  } catch (e) {
+    return 0;
+  }
+};
 
 // Call initialization either on DOMContentLoaded or immediately if DOM is already loaded
 if (document.readyState === 'loading') {
@@ -1360,8 +1376,13 @@ function computeAssetProjection(yearVal) {
   return assets.map((a, idx) => {
     const name = String(a.name || `Eiendel ${idx + 1}`);
     const base = a.amount || 0;
-    let rate = rOther;
     const U = name.toUpperCase();
+    const isMaalOgBehov = a.noDelete || /investeringer\s*mål\s*og\s*behov/i.test(name);
+    if (isMaalOgBehov) {
+      const value = getMaalOgBehovHovedstolForYear(yearVal);
+      return { key: name, value, color: getAssetColorByName(name, a.assetType) };
+    }
+    let rate = rOther;
     const isLiquidity = /LIKVID|BANK|KONTANT|CASH/.test(U);
     const isBank = /^BANK$/i.test(name);
     const isInvestment = /INVEST/.test(U);
@@ -4382,6 +4403,7 @@ function renderWaterfallModule(root) {
 
     updateButtonStates();
     syncSliderToNet(currentNet);
+    writeSparingForMaalOgBehov();
 
     if (!options.silent && changed) {
       notifyCashflowRoutingChange("Kontantstrøm");
@@ -4416,7 +4438,7 @@ function renderWaterfallModule(root) {
     },
     {
       key: "investeringer",
-      label: "Investeringer",
+      label: "Årlig sparing",
       className: "is-investeringer",
       icon: `
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -4567,6 +4589,7 @@ function renderWaterfallModule(root) {
     }
     customSlider.value = String(sliderValue);
     customSliderValue.textContent = formatNOK(sliderValue);
+    writeSparingForMaalOgBehov();
   }
 
   function draw() {
@@ -4691,6 +4714,7 @@ function renderWaterfallModule(root) {
     syncStripWidth();
     syncSliderToNet(net);
     updateButtonStates();
+    writeSparingForMaalOgBehov();
     const updatedAllocated = Math.round(state.customAmount || 0);
     if (state.mode !== "forbruk" && updatedAllocated !== previousAllocated) {
       notifyCashflowRoutingChange("Kontantstrøm");
@@ -6455,6 +6479,23 @@ function getMaalOgBehovSum2026() {
   }
 }
 
+/** Hovedstolen for et gitt år fra Mål og behov-fanen (Hovedstolen i mål og behov). Array: [start/2026, start 2026, start 2027, ...]. Hvis året er utenfor prognosen, returneres 0. */
+function getMaalOgBehovHovedstolForYear(yearVal) {
+  try {
+    const raw = localStorage.getItem("maalOgBehovHovedstolPerYear");
+    if (raw == null) return getMaalOgBehovSum2026();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || arr.length === 0) return getMaalOgBehovSum2026();
+    const year = Number(yearVal);
+    const idx = year === 2026 ? 0 : (year - 2026 + 1);
+    if (idx < 0) return arr[0];
+    if (idx >= arr.length) return 0;
+    return Number(arr[idx]) || 0;
+  } catch (e) {
+    return getMaalOgBehovSum2026();
+  }
+}
+
 /** Eksporter årlig formuesskatt (inntekter-fanen) til Mål og behov via localStorage. */
 function setFormuesskattForMaalOgBehov(value) {
   try {
@@ -6463,6 +6504,17 @@ function setFormuesskattForMaalOgBehov(value) {
   } catch (e) {
     // Ignorer lagringsfeil (for eksempel hvis localStorage er deaktivert)
   }
+}
+
+/** Skriv sparing-beløp til Mål og behov: ved «Årlig sparing» = netto kontantstrøm, ved «Alt» = tilpasset beløp. */
+function writeSparingForMaalOgBehov() {
+  try {
+    const routing = ensureCashflowRoutingState();
+    const { net } = computeAnnualCashflowBreakdown();
+    const netPositive = Math.max(0, Math.round(net || 0));
+    const amount = routing.mode === "investeringer" ? netPositive : routing.mode === "custom" ? Math.round(routing.customAmount || 0) : 0;
+    localStorage.setItem("tKontoSparingForMaalOgBehov", String(amount));
+  } catch (e) {}
 }
 
 function createItemRow(collectionName, item) {
@@ -8387,6 +8439,8 @@ function parseInputText(text) {
       name: i.name,
       amount: i.amount
     }));
+    const wealthTaxAfterRestore = AppState.incomes.find(i => i.name === "Formuesskatt");
+    if (wealthTaxAfterRestore) setFormuesskattForMaalOgBehov(wealthTaxAfterRestore.amount);
   }
   
   if (Object.keys(expectations).length > 0) {
