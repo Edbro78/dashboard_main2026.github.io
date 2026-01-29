@@ -5153,12 +5153,13 @@ function closeCashflowForecastModal() {
 }
 
 // --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) ---
+// Farger som i referansebildet for korrekt gjengivelse på skjerm og i eksport
 var TKONTO_CHART_COLORS = {
-  BANK: "#7CA7D0",
-  "FAST EIENDOM": "#9CC0EC",
-  "INVESTERINGER MÅL OG BEHOV": "#C0D8F4",
-  EGENKAPITAL: "#9FF4BE",
-  GJELD: "#F4B8BB"
+  BANK: "#A2C5EE",
+  "FAST EIENDOM": "#7FAFE6",
+  "INVESTERINGER MÅL OG BEHOV": "#DAE8F9",
+  EGENKAPITAL: "#A7EDBD",
+  GJELD: "#F2BFB8"
 };
 
 function getTKontoColorForAsset(name) {
@@ -5166,7 +5167,7 @@ function getTKontoColorForAsset(name) {
   if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
   if (/^FAST\s*EIENDOM$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
   if (/INVESTERINGER|MÅL\s*OG\s*BEHOV/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
-  return "#A0C4E8";
+  return "#DAE8F9";
 }
 
 function getTKontoAssetSegments(yearVal) {
@@ -5233,7 +5234,7 @@ function getTKontoFinancingSegments(yearVal) {
   if (debts.length === 0) {
     segs.push({ key: "GJELD", value: debtVal, color: TKONTO_CHART_COLORS.GJELD });
   } else {
-    var debtScale = ["#F4B8BB", "#F1999C", "#EF4444", "#DC2626", "#B91C1C"];
+    var debtScale = ["#F2BFB8", "#F1999C", "#EF4444", "#DC2626", "#B91C1C"];
     var elapsed = Math.max(0, Number(yearVal) - 2026);
     var totalRem = remDebt || 1;
     debts.forEach(function (debt, idx) {
@@ -5287,6 +5288,7 @@ function buildTKontoBarChart(container, yearVal) {
       var segEl = document.createElement("div");
       segEl.className = "tkonto-bar-segment";
       segEl.style.background = seg.color;
+      segEl.style.backgroundColor = seg.color;
       segEl.setAttribute("aria-label", seg.key + " " + labelRight(seg.value));
       var val = document.createElement("div");
       val.className = "tkonto-value";
@@ -5300,16 +5302,36 @@ function buildTKontoBarChart(container, yearVal) {
 
   var leftCard = document.createElement("div");
   leftCard.className = "tkonto-chart-card";
+  leftCard.style.background = "#FFFFFF";
+  leftCard.style.backgroundColor = "#FFFFFF";
   addCard(assetSegs, leftCard);
 
   var eqBtn = document.createElement("div");
   eqBtn.className = "tkonto-equals";
   eqBtn.setAttribute("aria-hidden", "true");
   eqBtn.textContent = "=";
+  eqBtn.style.background = "#ECECEC";
+  eqBtn.style.backgroundColor = "#ECECEC";
+  eqBtn.style.color = "#666666";
 
   var rightCard = document.createElement("div");
   rightCard.className = "tkonto-chart-card";
+  rightCard.style.position = "relative";
+  rightCard.style.background = "#FFFFFF";
+  rightCard.style.backgroundColor = "#FFFFFF";
   addCard(financingSegs, rightCard);
+
+  var expBtn = document.createElement("button");
+  expBtn.type = "button";
+  expBtn.className = "tkonto-exp-btn";
+  expBtn.textContent = "Exp.";
+  expBtn.setAttribute("aria-label", "Eksporter grafikken");
+  expBtn.style.cssText = "position:absolute;top:6px;right:6px;z-index:5;padding:4px 8px;font-size:11px;font-weight:600;color:#4A6D8C;background:#fff;border:1px solid #DDDDDD;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.06);";
+  expBtn.addEventListener("click", function (e) {
+    e.stopPropagation();
+    document.dispatchEvent(new CustomEvent("tkonto-export-click"));
+  });
+  rightCard.appendChild(expBtn);
 
   wrap.appendChild(leftCard);
   wrap.appendChild(eqBtn);
@@ -5327,6 +5349,155 @@ function refreshTKontoChart() {
   var year = activeBtn ? parseInt(activeBtn.getAttribute("data-year"), 10) : 2026;
   if (!isFinite(year)) year = 2026;
   buildTKontoBarChart(placeholder, year);
+}
+
+/** Tegner T-konto-grafikken til en canvas med eksakte farger – for eksport/kopiering. */
+function renderTKontoChartToCanvas(outWidth, outHeight) {
+  var yearVal = 2026;
+  var activeBtn = document.querySelector(".t-konto-year-btn.is-active");
+  if (activeBtn) {
+    var y = parseInt(activeBtn.getAttribute("data-year"), 10);
+    if (isFinite(y)) yearVal = y;
+  }
+  var assetSegs = getTKontoAssetSegments(yearVal);
+  var fin = getTKontoFinancingSegments(yearVal);
+  var financingSegs = fin.segments;
+  var total = fin.total || 1;
+  function pct(v) { return total ? Math.round((v / total) * 100) : 0; }
+  function valueLabel(v) { return (typeof formatNOK === "function" ? formatNOK(v) : String(v)) + " - " + pct(v) + "%"; }
+  /* Samme linjebrytning som i grafikken (formatTKontoLabel med <br>) */
+  function labelLines(key) {
+    var k = String(key || "").trim(), u = k.toUpperCase();
+    if (/INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(u)) return ["Investeringer", "mål og behov"];
+    if (/^FAST\s*EIENDOM$/i.test(u)) return ["Fast eiendom"];
+    if (/^BANK$/i.test(u)) return ["Bank"];
+    if (/^EGENKAPITAL$/i.test(u)) return ["Egenkapital"];
+    if (/^GJELD$/i.test(u)) return ["Gjeld"];
+    return [k.charAt(0).toUpperCase() + k.slice(1).toLowerCase()];
+  }
+
+  var canvas = document.createElement("canvas");
+  canvas.width = outWidth || 1000;
+  canvas.height = outHeight || 520;
+  var ctx = canvas.getContext("2d");
+  var w = canvas.width, h = canvas.height;
+  var pad = 24, cardW = (w - pad * 2 - 44) / 2, cardH = h - pad * 2;
+  var leftX = pad, rightX = pad + cardW + 44;
+  var cardY = pad;
+  var radius = 12;
+
+  function roundRect(x, y, width, height, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + width - r, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+    ctx.lineTo(x + width, y + height - r);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+    ctx.lineTo(x + r, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
+
+  /* Ingen ytre ramme – kun grafikken (kort + likhetstegn), transparent bakgrunn */
+  ctx.fillStyle = "#FFFFFF";
+  roundRect(leftX, cardY, cardW, cardH, radius);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(0,0,0,0.06)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  roundRect(rightX, cardY, cardW, cardH, radius);
+  ctx.fill();
+  ctx.stroke();
+
+  var eqCenterX = leftX + cardW + 22;
+  var eqCenterY = cardY + cardH / 2;
+  ctx.fillStyle = "#ECECEC";
+  ctx.beginPath();
+  ctx.arc(eqCenterX, eqCenterY, 22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#DDDDDD";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "#666666";
+  ctx.font = "700 18px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("=", eqCenterX, eqCenterY);
+
+  var innerPad = 20;
+  var barLeft = 120;
+  var barWidth = 140;
+  var valueLeft = barLeft + barWidth + 12;
+  var contentH = cardH - innerPad * 2;
+
+  function drawCard(segs, cardX) {
+    var totalVal = segs.reduce(function (s, seg) { return s + (seg.value || 0); }, 0) || 1;
+    var y = cardY + innerPad;
+    ctx.font = "500 14px sans-serif";
+    ctx.fillStyle = "#1C2A3A";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    for (var i = 0; i < segs.length; i++) {
+      var seg = segs[i];
+      var segH = totalVal > 0 ? Math.max(2, (seg.value / totalVal) * contentH) : contentH / segs.length;
+      var segTop = y;
+      y += segH;
+
+      ctx.fillStyle = seg.color || "#E5E7EB";
+      var r = 8;
+      ctx.beginPath();
+      if (segs.length === 1) {
+        roundRect(cardX + innerPad + barLeft, segTop, barWidth, segH, r);
+      } else if (i === 0) {
+        ctx.moveTo(cardX + innerPad + barLeft + r, segTop);
+        ctx.lineTo(cardX + innerPad + barLeft + barWidth - r, segTop);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft + barWidth, segTop, cardX + innerPad + barLeft + barWidth, segTop + r);
+        ctx.lineTo(cardX + innerPad + barLeft + barWidth, segTop + segH);
+        ctx.lineTo(cardX + innerPad + barLeft, segTop + segH);
+        ctx.lineTo(cardX + innerPad + barLeft, segTop + r);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft, segTop, cardX + innerPad + barLeft + r, segTop);
+      } else if (i === segs.length - 1) {
+        ctx.moveTo(cardX + innerPad + barLeft + r, segTop + segH);
+        ctx.lineTo(cardX + innerPad + barLeft + barWidth - r, segTop + segH);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft + barWidth, segTop + segH, cardX + innerPad + barLeft + barWidth, segTop + segH - r);
+        ctx.lineTo(cardX + innerPad + barLeft + barWidth, segTop);
+        ctx.lineTo(cardX + innerPad + barLeft, segTop);
+        ctx.lineTo(cardX + innerPad + barLeft, segTop + segH - r);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft, segTop + segH, cardX + innerPad + barLeft + r, segTop + segH);
+      } else {
+        ctx.rect(cardX + innerPad + barLeft, segTop, barWidth, segH);
+      }
+      ctx.closePath();
+      ctx.fill();
+
+      var cy = segTop + segH / 2;
+      if (segH >= 18) {
+        ctx.fillStyle = "#1C2A3A";
+        ctx.textAlign = "left";
+        var lines = labelLines(seg.key);
+        var lineHeight = 16;
+        var totalLabelH = lines.length * lineHeight;
+        var startY = cy - (totalLabelH - lineHeight) / 2 - lineHeight / 2;
+        for (var L = 0; L < lines.length; L++) {
+          ctx.fillText(lines[L], cardX + innerPad + 4, startY + L * lineHeight + lineHeight / 2);
+        }
+        ctx.textAlign = "right";
+        ctx.fillText(valueLabel(seg.value), cardX + innerPad + valueLeft + barWidth - 4, cy);
+      }
+    }
+  }
+
+  drawCard(assetSegs, leftX);
+  drawCard(financingSegs, rightX);
+
+  return canvas;
+}
+
+if (typeof window !== "undefined") {
+  window.renderTKontoChartToCanvas = renderTKontoChartToCanvas;
 }
 
 // --- Fremtiden modul ---

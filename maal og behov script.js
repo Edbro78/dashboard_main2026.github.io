@@ -1057,6 +1057,52 @@ const EyeToggle = ({ visible, onToggle, className, title }) => (
 function TKontoDashboard() {
     const containerRef = React.useRef(null);
     const scriptLoadedRef = React.useRef(false);
+    const [showTKontoExportModal, setShowTKontoExportModal] = React.useState(false);
+    const [tkontoExportImageUrl, setTKontoExportImageUrl] = React.useState(null);
+    const [tkontoExportCopied, setTKontoExportCopied] = React.useState(false);
+    const tkontoExportCanvasRef = React.useRef(null);
+
+    // Ikke fang i useEffect når modal åpnes – fang i klikk-handler slik at layout er uendret
+
+    const handleTKontoCopyImage = React.useCallback(() => {
+        const canvas = tkontoExportCanvasRef.current;
+        if (!canvas) return;
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => setTKontoExportCopied(true)).catch(() => {});
+        }, 'image/png');
+    }, []);
+
+    React.useEffect(() => {
+        if (!showTKontoExportModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') { setShowTKontoExportModal(false); setTKontoExportCopied(false); setTKontoExportImageUrl(null); } };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [showTKontoExportModal]);
+
+    React.useEffect(() => {
+        const onExport = () => {
+            setTKontoExportCopied(false);
+            setTKontoExportImageUrl(null);
+            // Bruk canvas-tegning med eksakte farger (PNG) – enklest å lime inn andre steder
+            if (typeof window.renderTKontoChartToCanvas !== 'function') {
+                setTKontoExportImageUrl('');
+                setShowTKontoExportModal(true);
+                return;
+            }
+            try {
+                var canvas = window.renderTKontoChartToCanvas(1000, 520);
+                tkontoExportCanvasRef.current = canvas;
+                setTKontoExportImageUrl(canvas.toDataURL('image/png'));
+                setShowTKontoExportModal(true);
+            } catch (e) {
+                setTKontoExportImageUrl('');
+                setShowTKontoExportModal(true);
+            }
+        };
+        document.addEventListener('tkonto-export-click', onExport);
+        return () => document.removeEventListener('tkonto-export-click', onExport);
+    }, []);
 
     React.useEffect(() => {
         if (!containerRef.current) return;
@@ -1260,6 +1306,71 @@ function TKontoDashboard() {
                     <div id="cashflow-forecast-chart" className="gi-chart" aria-live="polite"></div>
                 </div>
             </div>
+
+            {showTKontoExportModal && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+                    onClick={() => { setShowTKontoExportModal(false); setTKontoExportCopied(false); setTKontoExportImageUrl(null); }}
+                    style={{ zIndex: 9999 }}
+                >
+                    <div
+                        className="bg-white rounded-xl shadow-2xl w-full p-6 relative flex flex-col items-center overflow-hidden"
+                        style={{ maxWidth: '95vw', maxHeight: '90vh' }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <button
+                            type="button"
+                            aria-label="Lukk"
+                            onClick={() => { setShowTKontoExportModal(false); setTKontoExportCopied(false); setTKontoExportImageUrl(null); }}
+                            className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333] text-xl"
+                        >
+                            ✕
+                        </button>
+                        <h3 className="typo-h3 text-[#4A6D8C] mb-1">Grafikk for dokument</h3>
+                        {tkontoExportImageUrl === null || tkontoExportImageUrl === undefined ? (
+                            <p className="text-sm text-[#666] mb-4 text-center">Laster bilde…</p>
+                        ) : tkontoExportImageUrl === '' ? (
+                            <p className="text-sm text-[#666] mb-4 text-center">Åpne T-Konto-visningen i menyen til venstre (klikk på «T-Konto») for å eksportere grafikken.</p>
+                        ) : (
+                            <>
+                                <p className="text-sm text-[#666] mb-4 text-center">
+                                    Høyoppløst bilde for A4 Word. Klikk «Kopier bilde» og lim inn i dokumentet (Ctrl+V).
+                                </p>
+                                <div
+                                    className="bg-[#f5f5f5] rounded-lg flex justify-center items-center overflow-hidden shrink-0"
+                                    style={{
+                                        maxHeight: 'min(65vh, calc((100vw - 4rem) * 1450 / 1880))',
+                                        maxWidth: 'min(calc(100vw - 4rem), calc(65vh * 1880 / 1450))',
+                                        aspectRatio: '1880/1450'
+                                    }}
+                                >
+                                    <img
+                                        src={tkontoExportImageUrl}
+                                        alt="T-konto grafikken"
+                                        style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                                    />
+                                </div>
+                                <div className="flex gap-3 mt-4 flex-wrap justify-center">
+                                    <button
+                                        type="button"
+                                        onClick={handleTKontoCopyImage}
+                                        className={tkontoExportCopied ? 'px-4 py-2 rounded-lg font-medium bg-green-600 text-white' : 'px-4 py-2 rounded-lg font-medium bg-[#4A6D8C] hover:opacity-90 text-white'}
+                                    >
+                                        {tkontoExportCopied ? '✓ Kopiert!' : 'Kopier bilde'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowTKontoExportModal(false); setTKontoExportCopied(false); setTKontoExportImageUrl(null); }}
+                                        className="px-4 py-2 rounded-lg font-medium border border-[#DDDDDD] bg-white text-[#333333] hover:bg-gray-50"
+                                    >
+                                        Lukk
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -1300,7 +1411,19 @@ function TabContainer() {
     const buildCombinedOutput = React.useCallback(() => {
         const maal = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
         const tkonto = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
-        const risiko = '(Risikosimulering: åpne fanen og bruk Output der for å hente data)';
+        let risiko = '(Risikosimulering: åpne fanen og bruk Output der for å hente data)';
+        try {
+            const win = iframeRef.current && iframeRef.current.contentWindow;
+            if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
+                const data = win.RisikoSimuleringGetOutputData();
+                risiko = [
+                    `Startkapital: ${data.startkapital}`,
+                    `Periode: ${data.periode}`,
+                    `Aksjekapital i dagens portefølje: ${Number(data.aksjekapitalDagens)} %`,
+                    `Aksjekapital i ny portefølje: ${Number(data.aksjekapitalNy)} %`
+                ].join('\n');
+            }
+        } catch (_) {}
         return [
             '--- Mål og behov ---',
             maal,
@@ -1490,6 +1613,9 @@ function App() {
     const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
     const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
     const [henteSparingFraTKontoActive, setHenteSparingFraTKontoActive] = useState(MaalOgBehovState.henteSparingFraTKontoActive ?? false);
+    const [showChartImageModal, setShowChartImageModal] = useState(false);
+    const [chartImageCopied, setChartImageCopied] = useState(false);
+    const chartExportCanvasRef = React.useRef(null);
 
     // Lagre state til global state holder når den endres
     useEffect(() => {
@@ -3454,6 +3580,64 @@ return () => document.removeEventListener('keydown', onKey);
         ],
     };
 
+    // Høyoppløst eksport (1880×1450, 4:3) for PDF-modal – opprett chart når modal åpnes
+    useEffect(() => {
+        if (!showChartImageModal) return;
+        const canvas = chartExportCanvasRef.current;
+        if (!canvas || typeof Chart === 'undefined') return;
+        let chartInstance = null;
+        const raf = requestAnimationFrame(() => {
+            const exportOptions = {
+                ...chartOptions,
+                responsive: false,
+                maintainAspectRatio: false,
+                interaction: { mode: null, intersect: false },
+                plugins: {
+                    ...chartOptions.plugins,
+                    legend: { display: false },
+                    tooltip: { enabled: false },
+                    title: {
+                        display: true,
+                        text: 'Mål og behov',
+                        font: { size: 48, weight: 'bold' },
+                        color: '#4A6D8C',
+                        padding: { top: 10, bottom: 20 }
+                    }
+                },
+                scales: {
+                    x: {
+                        ...chartOptions.scales.x,
+                        ticks: { ...chartOptions.scales.x.ticks, font: { size: 36 } }
+                    },
+                    y: {
+                        ...chartOptions.scales.y,
+                        ticks: { ...chartOptions.scales.y.ticks, font: { size: 36 } }
+                    }
+                }
+            };
+            chartInstance = new Chart(canvas, { type: 'bar', data: investmentChartData, options: exportOptions });
+        });
+        return () => {
+            cancelAnimationFrame(raf);
+            if (chartInstance) chartInstance.destroy();
+        };
+    }, [showChartImageModal]);
+
+    const handleCopyChartImage = useCallback(() => {
+        const canvas = chartExportCanvasRef.current;
+        if (!canvas) return;
+        canvas.toBlob((blob) => {
+            if (!blob) return;
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]).then(() => setChartImageCopied(true)).catch(() => {});
+        }, 'image/png');
+    }, []);
+
+    useEffect(() => {
+        if (!showChartImageModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') { setShowChartImageModal(false); setChartImageCopied(false); } };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [showChartImageModal]);
 
     const investedCapitalChartData = {
         labels: prognosis.labels,
@@ -4017,6 +4201,15 @@ return () => document.removeEventListener('keydown', onKey);
                         >
                             <span className="text-xs font-bold">Port.</span>
                         </button>
+                        
+                        {/* Exp. – åpner høyoppløst bilde for kopiering */}
+                        <button
+                            type="button"
+                            onClick={() => { setChartImageCopied(false); setShowChartImageModal(true); }}
+                            className="bg-[#6BB6E8] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                        >
+                            <span className="text-xs font-bold">Exp.</span>
+                        </button>
                     </div>
                 </div>
 
@@ -4271,6 +4464,63 @@ return () => document.removeEventListener('keydown', onKey);
                         </div>
                     )}
                 </div>
+
+                {showChartImageModal && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+                        onClick={() => { setShowChartImageModal(false); setChartImageCopied(false); }}
+                    >
+                        <div
+                            className="bg-white rounded-xl shadow-2xl w-full p-6 relative flex flex-col items-center overflow-hidden"
+                            style={{ maxWidth: '95vw', maxHeight: '90vh' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                aria-label="Lukk"
+                                onClick={() => { setShowChartImageModal(false); setChartImageCopied(false); }}
+                                className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333] text-xl"
+                            >
+                                ✕
+                            </button>
+                            <h3 className="typo-h3 text-[#4A6D8C] mb-1">Grafikk for dokument</h3>
+                            <p className="text-sm text-[#666] mb-4 text-center">
+                                Høyoppløst bilde (1880×1450 px, 4:3) for A4 Word. Klikk «Kopier bilde» og lim inn i dokumentet (Ctrl+V).
+                            </p>
+                            <div
+                                className="bg-[#f5f5f5] rounded-lg flex justify-center items-center overflow-hidden shrink-0"
+                                style={{
+                                    maxHeight: 'min(65vh, calc((100vw - 4rem) * 1450 / 1880))',
+                                    maxWidth: 'min(calc(100vw - 4rem), calc(65vh * 1880 / 1450))',
+                                    aspectRatio: '1880/1450'
+                                }}
+                            >
+                                <canvas
+                                    ref={chartExportCanvasRef}
+                                    width={1880}
+                                    height={1450}
+                                    style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
+                                />
+                            </div>
+                            <div className="flex gap-3 mt-4 flex-wrap justify-center">
+                                <button
+                                    type="button"
+                                    onClick={handleCopyChartImage}
+                                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${chartImageCopied ? 'bg-green-600 text-white' : 'bg-[#4A6D8C] hover:opacity-90 text-white'}`}
+                                >
+                                    {chartImageCopied ? '✓ Kopiert!' : 'Kopier bilde'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowChartImageModal(false); setChartImageCopied(false); }}
+                                    className="px-4 py-2 rounded-lg font-medium border border-[#DDDDDD] bg-white text-[#333333] hover:bg-gray-50"
+                                >
+                                    Lukk
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {showDisclaimer && (
                     <div

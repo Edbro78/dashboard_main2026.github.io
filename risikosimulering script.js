@@ -6203,6 +6203,32 @@ function updateStartCapitalDisplay() {
     }
 }
 
+/** Return period label for output (same logic as period-display badge). */
+function getPeriodLabel() {
+    const filteredData = getFilteredData();
+    if (filteredData.length === 0) return '';
+    const startYear = filteredData[0].date.getFullYear();
+    const endYear = filteredData[filteredData.length - 1].date.getFullYear();
+    const startMonth = filteredData[0].date.toLocaleDateString('no-NO', { month: 'short' });
+    const endMonth = filteredData[filteredData.length - 1].date.toLocaleDateString('no-NO', { month: 'short' });
+    if (state.selectedPeriod === 'ytd' || state.selectedPeriod === '12m') {
+        return `${startMonth} ${startYear} - ${endMonth} ${endYear}`;
+    }
+    if (startYear === endYear) return startYear.toString();
+    return `${startYear} - ${endYear}`;
+}
+
+/** Expose for parent (Mål og behov) Output: startkapital, periode, aksjekapital dagens/ny. */
+window.RisikoSimuleringGetOutputData = function () {
+    const capitalInMNOK = state.startCapital / 1000000;
+    return {
+        startkapital: capitalInMNOK + ' MNOK',
+        periode: getPeriodLabel(),
+        aksjekapitalDagens: state.currentPortfolio.highYield,
+        aksjekapitalNy: state.newPortfolio.highYield
+    };
+};
+
 function setupStartCapitalEditor() {
     // Setup double-click to edit start capital
     const startCapitalDisplay = document.getElementById('start-capital-display');
@@ -7255,6 +7281,49 @@ async function init() {
             updateTreemapChart('new');
         });
     }
+
+    // Input fra Mål og behov (Output som ble limt inn og Last inn): oppdater state fra Risikosimulering-seksjonen
+    window.addEventListener('message', function (event) {
+        if (event.data && event.data.type === 'LOAD_INPUT' && typeof event.data.payload === 'string') {
+            const text = event.data.payload.trim();
+            const lines = text.split('\n').map(function (s) { return s.trim(); });
+            let changed = false;
+            lines.forEach(function (line) {
+                const mStart = line.match(/^Startkapital:\s*(.+)$/i);
+                if (mStart) {
+                    const val = parseFloat(String(mStart[1]).replace(/\s*MNOK/i, '').replace(',', '.').trim());
+                    if (!isNaN(val) && val > 0) {
+                        state.startCapital = val * 1000000;
+                        changed = true;
+                    }
+                }
+                const mDagens = line.match(/^Aksjekapital i dagens portefølje:\s*([\d,.-]+)\s*%?$/i);
+                if (mDagens) {
+                    const val = parseFloat(String(mDagens[1]).replace(',', '.'));
+                    if (!isNaN(val) && val >= 0 && val <= 100) {
+                        state.currentPortfolio.highYield = val;
+                        changed = true;
+                    }
+                }
+                const mNy = line.match(/^Aksjekapital i ny portefølje:\s*([\d,.-]+)\s*%?$/i);
+                if (mNy) {
+                    const val = parseFloat(String(mNy[1]).replace(',', '.'));
+                    if (!isNaN(val) && val >= 0 && val <= 100) {
+                        state.newPortfolio.highYield = val;
+                        changed = true;
+                    }
+                }
+            });
+            if (changed) {
+                updateStartCapitalDisplay();
+                updateSliderUI('current');
+                updateSliderUI('new');
+                updateCharts();
+                updateTreemapChart('current');
+                updateTreemapChart('new');
+            }
+        }
+    });
     
     // Initialize first chart
     createOverviewChart();
