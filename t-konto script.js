@@ -1351,26 +1351,26 @@ function renderExpectationsModule(root) {
 // --- Felles hjelpefunksjoner for projeksjon av eiendeler ---
 
 // Felles funksjon for å få standardfarge basert på eiendelsnavn/type
-// Dette sikrer konsistent fargebruk i både T-konto og Treemap
+// Dette sikrer konsistent fargebruk i både T-konto og Treemap (samme som TKONTO_CHART_COLORS)
 function getAssetColorByName(name, assetType) {
   const U = String(name || "").toUpperCase();
   
   // Sjekk først assetType (for eiendeler opprettet via knapper)
-  if (assetType === "eiendom") return "#7FAAF6"; // Medium blå for Fast eiendom
-  if (assetType === "investeringer") return "#A9C6FF"; // Lys cyan-blå for Investeringer
-  if (assetType === "bilbat") return "#00A9E0"; // Vibrant cyan-blå for Bil/Båt
-  if (assetType === "andre") return "#294269"; // Mørk dødset blå for Andre eiendeler
+  if (assetType === "eiendom") return "#85ACED"; // Fast eiendom
+  if (assetType === "investeringer") return "#B4C6F4"; // Investeringer
+  if (assetType === "bilbat") return "#00ACEC"; // Bil/Båt
+  if (assetType === "andre") return "#2C405B"; // Andre eiendeler
   
   // Deretter sjekk navn (for bakoverkompatibilitet)
-  if (/^BANK$/i.test(U)) return "#5A94D0"; // Standard blå for BANK
-  if (/^FAST\s*EIENDOM$/i.test(U)) return "#7FAAF6"; // Medium blå for FAST EIENDOM
-  if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#7FAAF6"; // Medium blå for EIENDOM
-  if (/^INVESTERINGER$/i.test(U)) return "#A9C6FF"; // Lys cyan-blå for INVESTERINGER
-  if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#00A9E0"; // Vibrant cyan-blå for BIL/BÅT
-  if (/^ANDRE\s*EIENDELER$/i.test(U)) return "#294269"; // Mørk dødset blå for ANDRE EIENDELER
+  if (/^BANK$/i.test(U)) return "#5A8BA2"; // Bank
+  if (/^FAST\s*EIENDOM$/i.test(U)) return "#85ACED"; // Fast eiendom
+  if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#85ACED";
+  if (/^INVESTERINGER$/i.test(U) || /MÅL\s*OG\s*BEHOV/i.test(U)) return "#B4C6F4"; // Investeringer
+  if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#00ACEC"; // Bil/Båt
+  if (/^ANDRE\s*EIENDELER$/i.test(U)) return "#2C405B"; // Andre eiendeler
   
   // Fallback
-  return "#7FAAF6";
+  return "#2C405B";
 }
 
 function computeAssetProjection(yearVal) {
@@ -5155,9 +5155,11 @@ function closeCashflowForecastModal() {
 // --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) ---
 // Farger som i referansebildet for korrekt gjengivelse på skjerm og i eksport
 var TKONTO_CHART_COLORS = {
-  BANK: "#A2C5EE",
-  "FAST EIENDOM": "#7FAFE6",
-  "INVESTERINGER MÅL OG BEHOV": "#DAE8F9",
+  BANK: "#5A8BA2",
+  "FAST EIENDOM": "#85ACED",
+  "INVESTERINGER MÅL OG BEHOV": "#B4C6F4",
+  "BIL/BÅT": "#00ACEC",
+  "ANDRE EIENDELER": "#2C405B",
   EGENKAPITAL: "#A7EDBD",
   GJELD: "#F2BFB8"
 };
@@ -5167,7 +5169,9 @@ function getTKontoColorForAsset(name) {
   if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
   if (/^FAST\s*EIENDOM$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
   if (/INVESTERINGER|MÅL\s*OG\s*BEHOV/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
-  return "#DAE8F9";
+  if (/^BIL\/BÅT$/i.test(k) || /^BIL\s*BÅT$/i.test(k)) return TKONTO_CHART_COLORS["BIL/BÅT"];
+  if (/^ANDRE\s*EIENDELER$/i.test(k)) return TKONTO_CHART_COLORS["ANDRE EIENDELER"];
+  return TKONTO_CHART_COLORS["ANDRE EIENDELER"];
 }
 
 function getTKontoAssetSegments(yearVal) {
@@ -5278,7 +5282,7 @@ function buildTKontoBarChart(container, yearVal) {
     return k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
   }
   function addCard(segs, cardEl) {
-    segs.forEach(function (seg) {
+    segs.forEach(function (seg, idx) {
       var row = document.createElement("div");
       row.className = "tkonto-segment-row";
       row.style.flex = String(Math.max(seg.value, 0.001));
@@ -5289,6 +5293,15 @@ function buildTKontoBarChart(container, yearVal) {
       segEl.className = "tkonto-bar-segment";
       segEl.style.background = seg.color;
       segEl.style.backgroundColor = seg.color;
+      if (segs.length === 1) {
+        segEl.style.borderRadius = "12px";
+      } else if (idx === 0) {
+        segEl.style.borderRadius = "12px 12px 0 0";
+      } else if (idx === segs.length - 1) {
+        segEl.style.borderRadius = "0 0 12px 12px";
+      } else {
+        segEl.style.borderRadius = "0";
+      }
       segEl.setAttribute("aria-label", seg.key + " " + labelRight(seg.value));
       var val = document.createElement("div");
       val.className = "tkonto-value";
@@ -5447,10 +5460,11 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
       y += segH;
 
       ctx.fillStyle = seg.color || "#E5E7EB";
-      var r = 8;
+      var r = 12;
+      var segR = segH < r * 2 ? Math.max(0, segH / 2 - 0.5) : r;
       ctx.beginPath();
       if (segs.length === 1) {
-        roundRect(cardX + innerPad + barLeft, segTop, barWidth, segH, r);
+        roundRect(cardX + innerPad + barLeft, segTop, barWidth, segH, segR);
       } else if (i === 0) {
         ctx.moveTo(cardX + innerPad + barLeft + r, segTop);
         ctx.lineTo(cardX + innerPad + barLeft + barWidth - r, segTop);
@@ -5460,13 +5474,13 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
         ctx.lineTo(cardX + innerPad + barLeft, segTop + r);
         ctx.quadraticCurveTo(cardX + innerPad + barLeft, segTop, cardX + innerPad + barLeft + r, segTop);
       } else if (i === segs.length - 1) {
-        ctx.moveTo(cardX + innerPad + barLeft + r, segTop + segH);
-        ctx.lineTo(cardX + innerPad + barLeft + barWidth - r, segTop + segH);
-        ctx.quadraticCurveTo(cardX + innerPad + barLeft + barWidth, segTop + segH, cardX + innerPad + barLeft + barWidth, segTop + segH - r);
+        ctx.moveTo(cardX + innerPad + barLeft + segR, segTop + segH);
+        ctx.lineTo(cardX + innerPad + barLeft + barWidth - segR, segTop + segH);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft + barWidth, segTop + segH, cardX + innerPad + barLeft + barWidth, segTop + segH - segR);
         ctx.lineTo(cardX + innerPad + barLeft + barWidth, segTop);
         ctx.lineTo(cardX + innerPad + barLeft, segTop);
-        ctx.lineTo(cardX + innerPad + barLeft, segTop + segH - r);
-        ctx.quadraticCurveTo(cardX + innerPad + barLeft, segTop + segH, cardX + innerPad + barLeft + r, segTop + segH);
+        ctx.lineTo(cardX + innerPad + barLeft, segTop + segH - segR);
+        ctx.quadraticCurveTo(cardX + innerPad + barLeft, segTop + segH, cardX + innerPad + barLeft + segR, segTop + segH);
       } else {
         ctx.rect(cardX + innerPad + barLeft, segTop, barWidth, segH);
       }
