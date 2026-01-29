@@ -216,7 +216,7 @@ function initTKontoDashboard() {
   if (!moduleRoot || navItems.length === 0) {
     return;
   }
-  
+
   // Check if this is a re-initialization by checking if nav items already have click handlers
   // We'll use a data attribute to track this
   const isReinit = navItems[0] && navItems[0].hasAttribute('data-tkonto-initialized');
@@ -542,27 +542,10 @@ function initTKontoDashboard() {
   // Init stepper med riktig seksjon
   renderStepper(stepperKey);
   
-  // Legg til klikk-handler på kortene (kun i T-Konto-fanen)
+  // Privat-knappen (Eiendeler-kortet) håndteres av event delegation ovenfor – ingen direkte listener her
   const summaryAssetsButton = document.getElementById("summary-assets-button");
   if (summaryAssetsButton) {
-    summaryAssetsButton.addEventListener("click", () => {
-      // Sjekk om vi er i T-Konto-fanen
-      const tKontoNavItem = document.querySelector('.nav-item[data-section="T-Konto"]');
-      if (tKontoNavItem && tKontoNavItem.classList.contains("is-active")) {
-        // Toggle mellom individuelle og grupperte visning
-        AppState.tKontoViewMode = AppState.tKontoViewMode === "grouped" ? "individual" : "grouped";
-        renderFutureModule(moduleRoot);
-        updateCardsForTKonto();
-      }
-    });
-    
-    // Legg til keyboard support
-    summaryAssetsButton.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault();
-        summaryAssetsButton.click();
-      }
-    });
+    summaryAssetsButton.style.cursor = "pointer";
   }
   
   // Legg til klikk-handler på Utvikling eiendeler-knappen (kun i T-Konto-fanen)
@@ -655,6 +638,46 @@ if (document.readyState === 'loading') {
   initTKontoDashboard();
 }
 
+// T-Konto «Privat»-knapp: bytte fordeling privat/AS – settes opp uavhengig av init
+function bindTKontoPrivatButton() {
+  if (window.__tkontoPrivatBound) return;
+  window.__tkontoPrivatBound = true;
+  var handler = function (e) {
+    var el = e.target && e.target.closest ? e.target.closest("#summary-assets-button") : null;
+    if (!el) return;
+    var nav = document.querySelector(".nav-item.is-active");
+    var section = nav && (nav.getAttribute("data-section") || "");
+    if (section !== "T-Konto") return;
+    e.preventDefault();
+    AppState.tKontoViewMode = AppState.tKontoViewMode === "grouped" ? "individual" : "grouped";
+    var root = document.getElementById("module-root");
+    if (root && typeof renderFutureModule === "function") {
+      renderFutureModule(root);
+      if (typeof updateCardsForTKonto === "function") updateCardsForTKonto();
+    }
+  };
+  document.body.addEventListener("click", handler, true);
+  document.body.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    var el = e.target && e.target.closest ? e.target.closest("#summary-assets-button") : null;
+    if (!el) return;
+    var nav = document.querySelector(".nav-item.is-active");
+    var section = nav && (nav.getAttribute("data-section") || "");
+    if (section !== "T-Konto") return;
+    e.preventDefault();
+    AppState.tKontoViewMode = AppState.tKontoViewMode === "grouped" ? "individual" : "grouped";
+    var root = document.getElementById("module-root");
+    if (root && typeof renderFutureModule === "function") {
+      renderFutureModule(root);
+      if (typeof updateCardsForTKonto === "function") updateCardsForTKonto();
+    }
+  }, true);
+}
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindTKontoPrivatButton);
+} else {
+  bindTKontoPrivatButton();
+}
 
 // --- Forside modul (blank panel) ---
 function renderForsideModule(root) {
@@ -1430,6 +1453,17 @@ const GiTriggerIcons = {
 function renderGraphicsModule(root) {
   root.innerHTML = "";
 
+  // T-Konto-fanen: grafikken er fjernet – tom plassholder for at du skal sette inn ny grafik
+  const currentNav = document.querySelector(".nav-item.is-active");
+  const section = currentNav ? (currentNav.getAttribute("data-section") || "") : "";
+  if (section === "T-Konto") {
+    const placeholder = document.createElement("div");
+    placeholder.id = "t-konto-graphic-placeholder";
+    placeholder.className = "t-konto-graphic-placeholder";
+    root.appendChild(placeholder);
+    return;
+  }
+
   // Initialiser struktur hvis den ikke finnes
   if (!AppState.structure) {
     AppState.structure = {
@@ -1485,7 +1519,7 @@ function renderGraphicsModule(root) {
       const group = groupedByEntity[entity];
       if (group.value > 0) {
         let color;
-        if (entity === "privat") {
+        if (isPrivatEntity(entity)) {
           color = "#60A5FA"; // Mild blå for Privat
         } else {
           color = "#93C5FD"; // Mildere blå for AS (samme palett)
@@ -5117,16 +5151,238 @@ function closeCashflowForecastModal() {
   const modal = document.getElementById("cashflow-forecast-modal");
   if (modal) modal.setAttribute("hidden", "");
 }
+
+// --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) ---
+var TKONTO_CHART_COLORS = {
+  BANK: "#7CA7D0",
+  "FAST EIENDOM": "#9CC0EC",
+  "INVESTERINGER MÅL OG BEHOV": "#C0D8F4",
+  EGENKAPITAL: "#9FF4BE",
+  GJELD: "#F4B8BB"
+};
+
+function getTKontoColorForAsset(name) {
+  var k = String(name || "").toUpperCase();
+  if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
+  if (/^FAST\s*EIENDOM$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
+  if (/INVESTERINGER|MÅL\s*OG\s*BEHOV/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
+  return "#A0C4E8";
+}
+
+function getTKontoAssetSegments(yearVal) {
+  var projected = computeAssetProjection(yearVal);
+  var assets = AppState.assets || [];
+
+  // Gruppert visning: eiendeler fordelt på Privat vs AS (fra Eiendeler-fanen)
+  if (AppState.tKontoViewMode === "grouped") {
+    var grouped = {};
+    for (var i = 0; i < projected.length; i++) {
+      var entity = (assets[i] && assets[i].entity) ? assets[i].entity : "privat";
+      var val = projected[i].value || 0;
+      if (val <= 0) continue;
+      if (!grouped[entity]) grouped[entity] = { value: 0, name: "" };
+      grouped[entity].value += val;
+      if (!grouped[entity].name) {
+        if (isPrivatEntity(entity)) {
+          var privatArr = Array.isArray(AppState.structure.privat) ? AppState.structure.privat : [AppState.structure.privat];
+          var idx = getPrivatIndexFromEntity(entity);
+          var pe = privatArr[idx];
+          grouped[entity].name = (pe && pe.name) || (idx === 0 ? "Privat" : "Privat " + (idx + 1));
+        } else if (entity === "holding1") {
+          grouped[entity].name = (AppState.structure.holding1 && AppState.structure.holding1.name) || "Holding AS";
+        } else if (entity === "holding2") {
+          grouped[entity].name = (AppState.structure.holding2 && AppState.structure.holding2.name) || "Holding II AS";
+        } else {
+          grouped[entity].name = entity;
+        }
+      }
+    }
+    var segs = [];
+    Object.keys(grouped).forEach(function (entity) {
+      var g = grouped[entity];
+      if (g.value > 0) {
+        segs.push({
+          key: g.name,
+          value: g.value,
+          color: isPrivatEntity(entity) ? "#60A5FA" : "#93C5FD"
+        });
+      }
+    });
+    return segs.length ? segs : [{ key: "Ingen eiendeler", value: 0.001, color: "#E5E7EB" }];
+  }
+
+  return projected.map(function (item) {
+    return {
+      key: item.key,
+      value: item.value || 0,
+      color: getTKontoColorForAsset(item.key)
+    };
+  });
+}
+
+function getTKontoFinancingSegments(yearVal) {
+  var totalAssets = 0;
+  var projected = computeAssetProjection(yearVal);
+  projected.forEach(function (item) { totalAssets += item.value || 0; });
+  var remDebt = remainingDebtTotalForYear(yearVal);
+  var debtVal = Math.min(remDebt, totalAssets);
+  var equityVal = Math.max(0, totalAssets - debtVal);
+  var debts = AppState.debts || [];
+  var segs = [];
+  segs.push({ key: "EGENKAPITAL", value: equityVal, color: TKONTO_CHART_COLORS.EGENKAPITAL });
+  if (debts.length === 0) {
+    segs.push({ key: "GJELD", value: debtVal, color: TKONTO_CHART_COLORS.GJELD });
+  } else {
+    var debtScale = ["#F4B8BB", "#F1999C", "#EF4444", "#DC2626", "#B91C1C"];
+    var elapsed = Math.max(0, Number(yearVal) - 2026);
+    var totalRem = remDebt || 1;
+    debts.forEach(function (debt, idx) {
+      var remForDebt = remainingBalanceAfterYears(debt, elapsed);
+      var proportion = totalRem > 0 ? remForDebt / totalRem : 0;
+      var amount = Math.round(debtVal * proportion);
+      segs.push({
+        key: String(debt.name || "Gjeld " + (idx + 1)),
+        value: amount,
+        color: debtScale[idx % debtScale.length]
+      });
+    });
+  }
+  return { segments: segs, total: totalAssets || 1 };
+}
+
+function buildTKontoBarChart(container, yearVal) {
+  container.innerHTML = "";
+  container.style.background = "#F8F8F8";
+  var assetSegs = getTKontoAssetSegments(yearVal);
+  var fin = getTKontoFinancingSegments(yearVal);
+  var financingSegs = fin.segments;
+  var total = fin.total || 1;
+  function pct(v) { return total ? Math.round((v / total) * 100) : 0; }
+  function labelRight(v) { return formatNOK(v) + " - " + pct(v) + "%"; }
+
+  var wrap = document.createElement("div");
+  wrap.className = "tkonto-chart-wrap";
+
+  function formatTKontoLabel(key) {
+    var k = String(key || "").trim();
+    var u = k.toUpperCase();
+    if (/INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(u)) return "Investeringer<br>mål og behov";
+    if (/^FAST\s*EIENDOM$/i.test(u)) return "Fast eiendom";
+    if (/^BANK$/i.test(u)) return "Bank";
+    if (/^EGENKAPITAL$/i.test(u)) return "Egenkapital";
+    if (/^GJELD$/i.test(u)) return "Gjeld";
+    if (/^PRIVAT$/i.test(k)) return "Privat";
+    if (/AS$/i.test(k) || /HOLDING/i.test(u)) return k; // Behold AS-navn som i Struktur
+    if (!k) return "";
+    return k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
+  }
+  function addCard(segs, cardEl) {
+    segs.forEach(function (seg) {
+      var row = document.createElement("div");
+      row.className = "tkonto-segment-row";
+      row.style.flex = String(Math.max(seg.value, 0.001));
+      var lab = document.createElement("div");
+      lab.className = "tkonto-label";
+      lab.innerHTML = formatTKontoLabel(seg.key);
+      var segEl = document.createElement("div");
+      segEl.className = "tkonto-bar-segment";
+      segEl.style.background = seg.color;
+      segEl.setAttribute("aria-label", seg.key + " " + labelRight(seg.value));
+      var val = document.createElement("div");
+      val.className = "tkonto-value";
+      val.textContent = labelRight(seg.value);
+      row.appendChild(lab);
+      row.appendChild(segEl);
+      row.appendChild(val);
+      cardEl.appendChild(row);
+    });
+  }
+
+  var leftCard = document.createElement("div");
+  leftCard.className = "tkonto-chart-card";
+  addCard(assetSegs, leftCard);
+
+  var eqBtn = document.createElement("div");
+  eqBtn.className = "tkonto-equals";
+  eqBtn.setAttribute("aria-hidden", "true");
+  eqBtn.textContent = "=";
+
+  var rightCard = document.createElement("div");
+  rightCard.className = "tkonto-chart-card";
+  addCard(financingSegs, rightCard);
+
+  wrap.appendChild(leftCard);
+  wrap.appendChild(eqBtn);
+  wrap.appendChild(rightCard);
+  container.appendChild(wrap);
+}
+
+function refreshTKontoChart() {
+  var currentNav = document.querySelector(".nav-item.is-active");
+  var section = currentNav ? (currentNav.getAttribute("data-section") || "") : "";
+  if (section !== "T-Konto") return;
+  var placeholder = document.getElementById("t-konto-graphic-placeholder");
+  if (!placeholder) return;
+  var activeBtn = document.querySelector(".t-konto-year-btn.is-active");
+  var year = activeBtn ? parseInt(activeBtn.getAttribute("data-year"), 10) : 2026;
+  if (!isFinite(year)) year = 2026;
+  buildTKontoBarChart(placeholder, year);
+}
+
 // --- Fremtiden modul ---
 function renderFutureModule(root) {
   root.innerHTML = "";
+  const currentNav = document.querySelector(".nav-item.is-active");
+  const currentSection = currentNav ? (currentNav.getAttribute("data-section") || currentNav.textContent || "") : "";
+
+  // T-Konto-fanen: søylediagram i plassholder + horisontal år-boks
+  if (currentSection === "T-Konto") {
+    const placeholder = document.createElement("div");
+    placeholder.id = "t-konto-graphic-placeholder";
+    placeholder.className = "t-konto-graphic-placeholder";
+    root.appendChild(placeholder);
+
+    buildTKontoBarChart(placeholder, 2026);
+
+    const yearStrip = document.createElement("div");
+    yearStrip.className = "t-konto-year-strip";
+    yearStrip.setAttribute("aria-label", "Velg år");
+    const yearInner = document.createElement("div");
+    yearInner.className = "t-konto-year-buttons";
+    for (let year = 2026; year <= 2040; year++) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "t-konto-year-btn";
+      btn.textContent = String(year);
+      btn.setAttribute("data-year", String(year));
+      btn.setAttribute("aria-label", "Velg år " + year);
+      if (year === 2026) btn.classList.add("is-active");
+      yearInner.appendChild(btn);
+    }
+    yearStrip.appendChild(yearInner);
+    const scrollHint = document.createElement("span");
+    scrollHint.className = "t-konto-year-strip-scroll-hint";
+    scrollHint.setAttribute("aria-hidden", "true");
+    scrollHint.innerHTML = "&#9660;";
+    yearStrip.appendChild(scrollHint);
+    root.appendChild(yearStrip);
+
+    yearInner.querySelectorAll(".t-konto-year-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        yearInner.querySelectorAll(".t-konto-year-btn").forEach((b) => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        const y = parseInt(btn.getAttribute("data-year"), 10);
+        buildTKontoBarChart(placeholder, y);
+      });
+    });
+    return;
+  }
+
   const assets = AppState.assets || [];
   const debts = AppState.debts || [];
   const blueScale = ["#2A4D80", "#355F9E", "#60A5FA", "#00A9E0", "#294269", "#203554"];
 
   // Sjekk om vi er i Treemap-seksjonen
-  const currentNav = document.querySelector(".nav-item.is-active");
-  const currentSection = currentNav ? (currentNav.getAttribute("data-section") || currentNav.textContent || "") : "";
   const isTreemap = currentSection === "Treemap";
 
   const graphWrap = document.createElement("div");
@@ -5196,7 +5452,7 @@ function renderFutureModule(root) {
         const group = groupedByEntity[entity];
         if (group.value > 0) {
           let color;
-          if (entity === "privat") {
+          if (isPrivatEntity(entity)) {
             color = "#60A5FA"; // Mild blå for Privat
           } else {
             color = "#93C5FD"; // Mildere blå for AS (samme palett)
@@ -7738,6 +7994,8 @@ function updateTopSummaries() {
   if (elC) elC.textContent = formatNOKSummary(snapshot.cashflow);
 
   updateForsideCards(snapshot);
+
+  if (typeof refreshTKontoChart === "function") refreshTKontoChart();
 }
 
 // Oppdater kortene for T-Konto visning
@@ -8154,6 +8412,9 @@ function generateOutputText() {
   return lines.join("\n");
 }
 
+// Eksponer for felles Input/Output på tvers av alle faner (kalles fra TabContainer)
+window.TKontoGenerateOutputText = generateOutputText;
+
 // --- Input modal, parse, and apply ---
 function initInputUI() {
   const fab = document.getElementById("input-fab");
@@ -8513,6 +8774,8 @@ function parseInputText(text) {
   
   return true;
 }
+
+window.TKontoParseInputText = parseInputText;
 
 function parseValue(str) {
   if (!str) return 0;

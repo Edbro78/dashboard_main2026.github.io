@@ -1220,40 +1220,6 @@ function TKontoDashboard() {
                 </main>
             </div>
 
-            <button id="input-fab" className="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors" aria-haspopup="dialog" aria-controls="input-modal" aria-label="Åpne Input">Input</button>
-
-            <button id="output-fab" className="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors" aria-haspopup="dialog" aria-controls="output-modal" aria-label="Åpne Output">Output</button>
-
-            <div id="input-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="input-title" hidden>
-                <div className="modal-backdrop" data-close="true"></div>
-                <div className="modal-panel" role="document">
-                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
-                    <h3 id="input-title">Input</h3>
-                    <div className="output-editor">
-                        <textarea id="input-text" className="output-textarea" aria-label="Lim inn input data" spellCheck="false" placeholder="Lim inn listen fra Output her..."></textarea>
-                        <button id="apply-input" className="copy-btn" type="button">
-                            <span className="copy-icon" aria-hidden="true">✓</span>
-                            <span className="copy-label">Bruk</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="output-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="output-title" hidden>
-                <div className="modal-backdrop" data-close="true"></div>
-                <div className="modal-panel" role="document">
-                    <button className="modal-close" aria-label="Lukk" data-close="true">×</button>
-                    <h3 id="output-title">Output</h3>
-                    <div className="output-editor">
-                        <textarea id="output-text" className="output-textarea" readOnly aria-label="Generert output" spellCheck="false"></textarea>
-                        <button id="copy-output" className="copy-btn" type="button">
-                            <span className="copy-icon" aria-hidden="true">📋</span>
-                            <span className="copy-label">Kopier</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <div id="gi-modal" className="modal" role="dialog" aria-modal="true" aria-labelledby="gi-title" hidden>
                 <div className="modal-backdrop" data-close="true"></div>
                 <div className="modal-panel gi-wide" role="document">
@@ -1315,15 +1281,116 @@ function TabBar({ tabs, activeTab, onTabClick }) {
     );
 }
 
-// TabContainer component that manages tabs and content
+// TabContainer component that manages tabs and content – felles Input/Output for alle tre faner
 function TabContainer() {
     const [activeTab, setActiveTab] = useState(0);
-    
+    const [showOutputModal, setShowOutputModal] = useState(false);
+    const [outputText, setOutputText] = useState('');
+    const [showInputModal, setShowInputModal] = useState(false);
+    const [inputText, setInputText] = useState('');
+    const [copied, setCopied] = useState(false);
+    const iframeRef = React.useRef(null);
+
     const tabs = [
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
-        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="risikosimulering%20index.html" title="Risikosimulering SPWM" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
+        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={iframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
+
+    const buildCombinedOutput = React.useCallback(() => {
+        const maal = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
+        const tkonto = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
+        const risiko = '(Risikosimulering: åpne fanen og bruk Output der for å hente data)';
+        return [
+            '--- Mål og behov ---',
+            maal,
+            '',
+            '--- T-konto ---',
+            tkonto,
+            '',
+            '--- Risikosimulering ---',
+            risiko
+        ].join('\n');
+    }, []);
+
+    const handleOpenOutput = React.useCallback(() => {
+        setOutputText(buildCombinedOutput());
+        setShowOutputModal(true);
+    }, [buildCombinedOutput]);
+
+    const handleCopyOutput = React.useCallback(async () => {
+        try {
+            if (navigator?.clipboard?.writeText) {
+                await navigator.clipboard.writeText(outputText);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = outputText;
+                ta.setAttribute('readonly', '');
+                ta.style.position = 'fixed';
+                ta.style.opacity = '0';
+                document.body.appendChild(ta);
+                ta.select();
+                const ok = document.execCommand('copy');
+                document.body.removeChild(ta);
+                if (ok) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+            }
+        } catch (_) {
+            alert('Kunne ikke kopiere til utklippstavlen.');
+        }
+    }, [outputText]);
+
+    const handleOpenInput = React.useCallback(() => {
+        setInputText('');
+        setShowInputModal(true);
+    }, []);
+
+    const handleLoadInput = React.useCallback(() => {
+        if (!inputText.trim()) {
+            alert('Vennligst lim inn informasjon fra Output.');
+            return;
+        }
+        const full = inputText.trim();
+        const sections = { maal: '', tkonto: '', risiko: '' };
+        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*T-konto\s*---|$)/i;
+        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*Risikosimulering\s*---|$)/i;
+        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*)$/i;
+        const m1 = full.match(reMaal);
+        const m2 = full.match(reTkonto);
+        const m3 = full.match(reRisiko);
+        if (m1) sections.maal = m1[1].trim();
+        if (m2) sections.tkonto = m2[1].trim();
+        if (m3) sections.risiko = m3[1].trim();
+        if (!sections.maal && !sections.tkonto && !sections.risiko) {
+            sections.maal = full;
+        }
+        try {
+            if (sections.maal && MaalOgBehovState.applyInputText) MaalOgBehovState.applyInputText(sections.maal);
+            if (sections.tkonto && typeof window.TKontoParseInputText === 'function') window.TKontoParseInputText(sections.tkonto);
+            if (sections.risiko && iframeRef.current && iframeRef.current.contentWindow) {
+                try { iframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+            }
+            setShowInputModal(false);
+            setInputText('');
+        } catch (e) {
+            alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
+            console.error(e);
+        }
+    }, [inputText]);
+
+    React.useEffect(() => {
+        if (!showOutputModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') setShowOutputModal(false); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [showOutputModal]);
+    React.useEffect(() => {
+        if (!showInputModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') setShowInputModal(false); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [showInputModal]);
 
     return (
         <div className="tab-container">
@@ -1332,9 +1399,63 @@ function TabContainer() {
                 activeTab={activeTab} 
                 onTabClick={setActiveTab} 
             />
-            <div className="tab-content">
-                {tabs[activeTab].content}
+            <div className="tab-content" style={{ position: 'relative' }}>
+                {tabs.map((tab, index) => (
+                    <div key={index} style={{ display: activeTab === index ? 'block' : 'none', width: '100%', height: '100%', minHeight: 0, overflow: 'auto' }}>
+                        {tab.content}
+                    </div>
+                ))}
             </div>
+            {/* Felles Input/Output – synlige på alle tre faner */}
+            <button
+                type="button"
+                className="fixed bottom-4 z-[100] px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
+                style={{ left: '1rem' }}
+                onClick={handleOpenInput}
+                aria-label="Input"
+            >
+                Input
+            </button>
+            <button
+                type="button"
+                className="fixed bottom-4 z-[100] px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
+                style={{ right: '4rem' }}
+                onClick={handleOpenOutput}
+                aria-label="Output"
+            >
+                Output
+            </button>
+            {showInputModal && (
+                <div className="fixed inset-0 z-[101] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowInputModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+                        <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
+                        <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
+                        <p className="text-sm text-[#666] mb-2">Lim inn output fra alle faner (med eller uten seksjonsoverskrifter). Data brukes i Mål og behov, T-konto og Risikosimulering.</p>
+                        <textarea
+                            value={inputText}
+                            onChange={e => setInputText(e.target.value)}
+                            placeholder="Lim inn output-teksten her..."
+                            className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent"
+                        />
+                        <button type="button" onClick={handleLoadInput} className="w-full mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">Last inn</button>
+                    </div>
+                </div>
+            )}
+            {showOutputModal && (
+                <div className="fixed inset-0 z-[101] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowOutputModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
+                        <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
+                        <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
+                        <p className="text-sm text-[#666] mb-2">Komplett liste over input fra Mål og behov, T-konto og Risikosimulering.</p>
+                        <div className="relative">
+                            <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
+                            <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
+                                {copied ? '✓ Kopiert!' : 'Kopier'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -3045,6 +3166,27 @@ alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
 console.error('Parse error:', error);
 }
 }, [inputText, parseInputText]);
+
+// Registrer for felles Input/Output på tvers av alle faner (TabContainer kaller disse)
+useEffect(() => {
+    MaalOgBehovState.getOutputText = () => generateOutputText();
+    MaalOgBehovState.applyInputText = (text) => {
+        try {
+            const updates = parseInputText(text);
+            if (Object.keys(updates).length === 0) return false;
+            setState(prev => {
+                const newState = { ...prev, ...updates };
+                if (updates.advisoryFeeRate !== undefined) setAdvisoryInputValue(newState.advisoryFeeRate.toFixed(2).replace('.', ','));
+                return newState;
+            });
+            return true;
+        } catch (e) { return false; }
+    };
+    return () => {
+        delete MaalOgBehovState.getOutputText;
+        delete MaalOgBehovState.applyInputText;
+    };
+}, [generateOutputText, parseInputText]);
 
 useEffect(() => {
 if (!showOutputModal) return;
@@ -5448,113 +5590,6 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                 </div>
             </div>
 
-{/* Fixed Input button */}
-<button
-onClick={handleOpenInput}
-className="fixed bottom-4 z-50 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
-style={{ left: '1rem' }}
-aria-label="Input"
->
-Input
-</button>
-
-{/* Fixed Output button */}
-<button
-onClick={handleOpenOutput}
-className="fixed bottom-4 z-50 px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
-style={{ right: '4rem' }}
-aria-label="Output"
->
-Output
-</button>
-
-{/* Input Modal */}
-{showInputModal && (
-<div
-className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-onClick={() => setShowInputModal(false)}
->
-<div
-className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto"
-onClick={(e) => e.stopPropagation()}
->
-<button
-aria-label="Lukk"
-onClick={() => setShowInputModal(false)}
-className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]"
->
-✕
-</button>
-<h3 className="typo-h3 text-[#4A6D8C] mb-4">Input</h3>
-<div className="space-y-4">
-<div>
-<label className="typo-label text-[#333333]/80 mb-2 block">Paste inn informasjon fra output</label>
-<textarea
-value={inputText}
-onChange={(e) => setInputText(e.target.value)}
-placeholder="Lim inn output-teksten her..."
-className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent"
-/>
-</div>
-<button
-onClick={handleLoadInput}
-type="button"
-className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
->
-Last inn
-</button>
-</div>
-</div>
-</div>
-)}
-
-{/* Output Modal */}
-{showOutputModal && (
-<div
-className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
-onClick={() => setShowOutputModal(false)}
->
-<div
-className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto"
-onClick={(e) => e.stopPropagation()}
->
-<button
-aria-label="Lukk"
-onClick={() => setShowOutputModal(false)}
-className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]"
->
-✕
-</button>
-<h3 className="typo-h3 text-[#4A6D8C] mb-4">Output</h3>
-<div className="relative">
-<textarea
-readOnly
-value={outputText}
-className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24"
-/>
-<button
-onClick={handleCopyOutput}
-type="button"
-className={`copy-btn absolute bottom-3 right-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm transition-all ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}
->
-{copied ? (
-<>
-{/* Check icon */}
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-<span>Kopiert!</span>
-</>
-) : (
-<>
-{/* Copy icon */}
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-<span>Kopier</span>
-</>
-)}
-</button>
-</div>
-</div>
-</div>
-)}
         </div>
     );
 }

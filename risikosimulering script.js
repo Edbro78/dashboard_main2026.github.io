@@ -4740,9 +4740,9 @@ function createPyramidChart() {
     
     // Calculate optimal box height to fit all possible years within available space
     const boxMargin = 1;
-    const xAxisLabelHeight = 30; // Space for x-axis labels
+    const xAxisLabelHeight = 20; // Space for x-axis labels (reduced to minimize white area below)
     const topPadding = 20;
-    const bottomPadding = -20; // More negative padding to move x-axis even further down
+    const bottomPadding = -50; // Negative to move graphic down and minimize white area below chart
     const containerPadding = 24; // var(--space-lg) typically 24px
     
     // Use container height minus padding and labels
@@ -4773,8 +4773,8 @@ function createPyramidChart() {
     // Render chart with static height, x-axis at bottom
     // Calculate the actual content height (chart height minus x-axis label space)
     // Ensure x-axis is always visible by reserving space at the bottom
-    // Distance between x-axis and boxes should equal one box height
-    const xAxisSpace = boxHeight; // Space between boxes and x-axis equals one box height
+    // Distance between x-axis and boxes (reduced to minimize white area below graphic)
+    const xAxisSpace = boxHeight * 0.5; // Half box height – enough for readability, less empty space
     const contentHeight = staticChartHeight - xAxisSpace - xAxisLabelHeight - bottomPadding;
     
     // Sort bins by start value to ensure correct order
