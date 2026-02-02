@@ -12,18 +12,18 @@ const state = {
     data: [],
     startCapital: 10000000, // 10 MNOK
     currentPortfolio: {
-        stocks: 10, // % - Likviditet/kontanter (20% * 0.5)
-        riskFree: 40, // % - Renter (80% * 0.5)
-        highYield: 40, // % - Aksjer (80% * 0.5)
-        nordicStocks: 4, // % - Alternative strategier (20% * 0.2)
-        emergingMarkets: 6 // % - Annet (20% * 0.3)
+        stocks: 0,    // Likviditet/kontanter – kun ved manuelt valg
+        riskFree: 80, // Renter (20% aksjer → 80% renter)
+        highYield: 20,// Aksjer
+        nordicStocks: 0,    // Alternative strategier – kun ved manuelt valg
+        emergingMarkets: 0 // Annet – kun ved manuelt valg
     },
     newPortfolio: {
-        stocks: 27.5, // % - Likviditet/kontanter (55% * 0.5)
-        riskFree: 22.5, // % - Renter (45% * 0.5)
-        highYield: 22.5, // % - Aksjer (45% * 0.5)
-        nordicStocks: 11, // % - Alternative strategier (55% * 0.2)
-        emergingMarkets: 16.5 // % - Annet (55% * 0.3)
+        stocks: 0,    // Likviditet/kontanter – kun ved manuelt valg
+        riskFree: 45, // Renter (55% aksjer → 45% renter)
+        highYield: 55,// Aksjer
+        nordicStocks: 0,    // Alternative strategier – kun ved manuelt valg
+        emergingMarkets: 0 // Annet – kun ved manuelt valg
     },
     charts: {
         overview: null,
@@ -5813,38 +5813,26 @@ function setupEventListeners() {
     });
     
     // Allocation shortcut buttons for both portfolios
+    // Kun Renter og Aksjer – ingen Likviditet, Alternative strategier eller Annet med mindre bruker velger det manuelt.
     const allocationButtons = document.querySelectorAll('.allocation-btn');
     allocationButtons.forEach(btn => {
         btn.addEventListener('click', () => {
-            const allocationPercent = parseFloat(btn.dataset.allocation);
+            const allocationPercent = parseFloat(btn.dataset.allocation); // % aksjer (0, 20, 45, 55, 65, 85, 100)
             const portfolioType = btn.dataset.portfolio; // 'current' or 'new'
             
-            // Determine which portfolio to update
             const portfolio = portfolioType === 'current' ? state.currentPortfolio : state.newPortfolio;
             
-            // New allocation formula:
-            // 0% = 50% High Yield + 50% Bankinnskudd
-            // 100% = 50% globale aksjer + 30% emerging markets + 20% nordiske aksjer
-            // For mellomverdier, proporsjonal fordeling
+            // Fordeling: kun Renter + Aksjer. 0% aksjer = 100% renter; 100% aksjer = 100% aksjer.
+            portfolio.stocks = 0;           // Likviditet/kontanter – ikke inkludert i preset
+            portfolio.riskFree = 100 - allocationPercent;  // Renter
+            portfolio.highYield = allocationPercent;       // Aksjer
+            portfolio.nordicStocks = 0;     // Alternative strategier – ikke inkludert
+            portfolio.emergingMarkets = 0;  // Annet – ikke inkludert
             
-            const stockAllocation = allocationPercent; // Total aksjeandel
-            const nonStockAllocation = 100 - allocationPercent; // Total ikke-aksjeandel
-            
-            // Aksjer: 50% globale, 30% emerging, 20% nordiske
-            portfolio.stocks = stockAllocation * 0.5; // Globale aksjer
-            portfolio.emergingMarkets = stockAllocation * 0.3; // Emerging Markets
-            portfolio.nordicStocks = stockAllocation * 0.2; // Nordiske aksjer
-            
-            // Ikke-aksjer: 50% High Yield, 50% Bankinnskudd
-            portfolio.highYield = nonStockAllocation * 0.5; // High Yield
-            portfolio.riskFree = nonStockAllocation * 0.5; // Bankinnskudd
-            
-            // Update active state on buttons - only for buttons in the same portfolio group
             const portfolioButtons = document.querySelectorAll(`.allocation-btn[data-portfolio="${portfolioType}"]`);
             portfolioButtons.forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             
-            // Update UI and charts
             updateSliderUI(portfolioType);
             updateCharts();
         });
@@ -7260,14 +7248,13 @@ async function init() {
                 state.startCapital = sum2026;
                 updateStartCapitalDisplay();
             }
-            // Sett Ny portefølje til aksjeandelen fra Portefølje I (samme formel som allokasjonsknappene)
+            // Sett Ny portefølje til aksjeandelen fra Portefølje I (kun Renter + Aksjer, som allokasjonsknappene)
             const stockAllocation = aksjeandelP1;
-            const nonStockAllocation = 100 - stockAllocation;
-            state.newPortfolio.stocks = stockAllocation * 0.5;
-            state.newPortfolio.emergingMarkets = stockAllocation * 0.3;
-            state.newPortfolio.nordicStocks = stockAllocation * 0.2;
-            state.newPortfolio.highYield = nonStockAllocation * 0.5;
-            state.newPortfolio.riskFree = nonStockAllocation * 0.5;
+            state.newPortfolio.stocks = 0;
+            state.newPortfolio.riskFree = 100 - stockAllocation;
+            state.newPortfolio.highYield = stockAllocation;
+            state.newPortfolio.nordicStocks = 0;
+            state.newPortfolio.emergingMarkets = 0;
             updateSliderUI('new');
             // Aktiver den preset-knappen som matcher (0, 20, 45, 55, 65, 85, 100)
             const presets = [0, 20, 45, 55, 65, 85, 100];
