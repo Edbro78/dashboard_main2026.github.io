@@ -359,10 +359,11 @@ function calculatePortfolioValue(data, allocation, startCapital) {
         let portfolioValue;
         
         if (hasAllData) {
-            // Calculate relative returns from base
-            const stockReturn = row.stocks / baseValues.stocks;
-            const riskFreeReturn = row.riskFree / baseValues.riskFree;
-            const highYieldReturn = row.highYield / baseValues.highYield;
+            // Calculate relative returns from base (CSV: Globale aksjer→row.stocks, Risikofri rente→row.riskFree, High Yield→row.highYield)
+            // UI mapping: Likviditet/kontanter→stocksAmount uses Risikofri rente; Renter→riskFreeAmount uses High Yield; Aksjer→highYieldAmount uses Globale aksjer
+            const stockReturn = row.stocks / baseValues.stocks;       // Globale aksjer → for Aksjer-andel
+            const riskFreeReturn = row.riskFree / baseValues.riskFree; // Risikofri rente → for Likviditet/kontanter-andel
+            const highYieldReturn = row.highYield / baseValues.highYield; // High Yield → for Renter-andel
             // Use actual nordic stocks and emerging markets data if available, otherwise use stocks as proxy
             const nordicReturn = (row.nordicStocks && baseValues.nordicStocks) 
                 ? row.nordicStocks / baseValues.nordicStocks 
@@ -371,11 +372,11 @@ function calculatePortfolioValue(data, allocation, startCapital) {
                 ? row.emergingMarkets / baseValues.emergingMarkets 
                 : row.stocks / baseValues.stocks;
             
-            // Weighted portfolio value based on MNOK allocations
+            // Weighted portfolio value: Likviditet→riskFreeReturn, Renter→highYieldReturn, Aksjer→stockReturn
             portfolioValue = 
-                stocksAmount * stockReturn +
-                riskFreeAmount * riskFreeReturn +
-                highYieldAmount * highYieldReturn +
+                stocksAmount * riskFreeReturn +
+                riskFreeAmount * highYieldReturn +
+                highYieldAmount * stockReturn +
                 nordicStocksAmount * nordicReturn +
                 emergingMarketsAmount * emergingReturn;
             
@@ -1404,14 +1405,14 @@ function calculateAssetClassValue(data, assetClass, allocationPercent, startCapi
     data.forEach(row => {
         let returnValue;
         switch(assetClass) {
-            case 'stocks':
-                returnValue = row.stocks / baseValues.stocks;
-                break;
-            case 'riskFree':
+            case 'stocks': // Likviditet/kontanter → Risikofri rente (historiske kurser2.csv)
                 returnValue = row.riskFree / baseValues.riskFree;
                 break;
-            case 'highYield':
+            case 'riskFree': // Renter → High Yield (historiske kurser2.csv)
                 returnValue = row.highYield / baseValues.highYield;
+                break;
+            case 'highYield': // Aksjer → Globale aksjer (historiske kurser2.csv)
+                returnValue = row.stocks / baseValues.stocks;
                 break;
             case 'nordicStocks':
                 // Use actual nordic stocks data if available, otherwise use stocks as proxy
@@ -1456,10 +1457,10 @@ function calculateAssetClassValueWithoutRebalancing(data, portfolio, startCapita
     const emergingMarketsAmount = (portfolio.emergingMarkets / 100) * startCapital;
     
     data.forEach(row => {
-        // Calculate total return from base (same method as calculateAssetClassValue)
-        const stocksReturn = row.stocks / baseValues.stocks;
-        const riskFreeReturn = row.riskFree / baseValues.riskFree;
-        const highYieldReturn = row.highYield / baseValues.highYield;
+        // CSV mapping: Likviditet→Risikofri rente, Renter→High Yield, Aksjer→Globale aksjer (historiske kurser2.csv)
+        const stocksReturn = row.stocks / baseValues.stocks;       // Globale aksjer (for Aksjer)
+        const riskFreeReturn = row.riskFree / baseValues.riskFree; // Risikofri rente (for Likviditet)
+        const highYieldReturn = row.highYield / baseValues.highYield; // High Yield (for Renter)
         const nordicReturn = (row.nordicStocks && baseValues.nordicStocks) 
             ? row.nordicStocks / baseValues.nordicStocks 
             : row.stocks / baseValues.stocks;
@@ -1467,13 +1468,12 @@ function calculateAssetClassValueWithoutRebalancing(data, portfolio, startCapita
             ? row.emergingMarkets / baseValues.emergingMarkets 
             : row.stocks / baseValues.stocks;
         
-        // Each asset class value = initial amount * total return (no rebalancing)
-        // This means each grows independently based on its own return
+        // Each asset class value = initial amount * total return (no rebalancing). Map UI keys to CSV columns.
         values.push({
             date: row.date,
-            stocks: stocksAmount * stocksReturn,
-            riskFree: riskFreeAmount * riskFreeReturn,
-            highYield: highYieldAmount * highYieldReturn,
+            stocks: stocksAmount * riskFreeReturn,
+            riskFree: riskFreeAmount * highYieldReturn,
+            highYield: highYieldAmount * stocksReturn,
             nordicStocks: nordicStocksAmount * nordicReturn,
             emergingMarkets: emergingMarketsAmount * emergingReturn
         });
@@ -5664,11 +5664,11 @@ function createAssetsGrid() {
     container.innerHTML = years.map(year => {
         const returns = yearlyReturns[year];
         
-        // Rank assets - all 6 asset classes (including KPI)
+        // Rank assets - map UI labels to CSV columns: Likviditet→riskFree, Renter→highYield, Aksjer→stocks (historiske kurser2.csv)
         const assets = [
-            { name: 'Likviditet/kontanter', return: returns.stocks, class: 'stocks' },
-            { name: 'Renter', return: returns.riskFree, class: 'risikofri' },
-            { name: 'Aksjer', return: returns.highYield, class: 'highyield' },
+            { name: 'Likviditet/kontanter', return: returns.riskFree, class: 'stocks' },
+            { name: 'Renter', return: returns.highYield, class: 'risikofri' },
+            { name: 'Aksjer', return: returns.stocks, class: 'highyield' },
             { name: 'Alternative strategier', return: returns.nordicStocks, class: 'nordicstocks' },
             { name: 'Annet', return: returns.emergingMarkets, class: 'emergingmarkets' },
             { name: 'KPI', return: returns.kpi || 0, class: 'kpi' }
