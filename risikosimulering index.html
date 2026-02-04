@@ -754,8 +754,8 @@
             <section class="tab-content" id="tab-pyramid">
                 <div class="pyramid-controls" style="margin-bottom: var(--space-md); display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
                     <div class="portfolio-selector">
-                        <button class="selector-btn active" data-pyramid-portfolio="new" id="pyramid-portfolio-new">Ny Portefølje</button>
-                        <button class="selector-btn" data-pyramid-portfolio="current" id="pyramid-portfolio-current">Dagens Portefølje</button>
+                        <button class="selector-btn active" data-pyramid-portfolio="current" id="pyramid-portfolio-current">Dagens Portefølje</button>
+                        <button class="selector-btn" data-pyramid-portfolio="new" id="pyramid-portfolio-new">Ny Portefølje</button>
                     </div>
                     <div class="pyramid-period-toggle" style="display: flex; align-items: center; gap: 0;">
                         <button class="selector-btn active" data-period="full" id="period-toggle-full">Hele kalenderår</button>
@@ -764,8 +764,13 @@
                         <button class="selector-btn" id="pyramid-stats-btn">Statistikk</button>
                     </div>
                 </div>
-                <div class="pyramid-chart-container" id="pyramid-chart-container">
-                    <!-- Chart will be rendered here -->
+                <div class="pyramid-chart-wrap">
+                    <button type="button" class="pyramid-fullscreen-btn" id="pyramid-fullscreen-btn" title="Åpne grafikken i fullskjerm (90 %)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                    </button>
+                    <div class="pyramid-chart-container" id="pyramid-chart-container">
+                        <!-- Chart will be rendered here -->
+                    </div>
                 </div>
                 
                 <!-- Comparison Table Container -->
@@ -1004,6 +1009,20 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Pyramide fullskjerm (90 %) -->
+    <div class="pyramid-fullscreen-modal" id="pyramid-fullscreen-modal" aria-hidden="true">
+        <div class="pyramid-fullscreen-backdrop" id="pyramid-fullscreen-backdrop"></div>
+        <div class="pyramid-fullscreen-content">
+            <div class="pyramid-fullscreen-header">
+                <span class="pyramid-fullscreen-title">Pyramide – fullskjerm</span>
+                <button type="button" class="pyramid-fullscreen-close" id="pyramid-fullscreen-close" aria-label="Lukk fullskjerm">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="pyramid-fullscreen-body" id="pyramid-fullscreen-body"></div>
         </div>
     </div>
 

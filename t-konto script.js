@@ -2282,7 +2282,8 @@ function renderCashflowTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) 
     const adjustedAmount = baseAmount * inflationFactor;
     
     const name = upper(item.name);
-    if (/SKATT|KOSTNAD/.test(name)) {
+    // Skattefrie inntekter er inntekt, ikke utgift – inkluder i inntekter i kontantstrømmen
+    if ((/SKATT|KOSTNAD/.test(name)) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
       expenseItems.push({
         id: item.id || String(Math.random()),
         label: item.name,
@@ -4801,7 +4802,8 @@ function aggregateCashflowBase() {
   incomeItems.forEach((item) => {
     const amount = Number(item.amount) || 0;
     const name = upper(item.name);
-    if (/SKATT/.test(name)) {
+    // Skattefrie inntekter er inntekt, ikke skatt – tell som inntekt i kontantstrømmen
+    if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
       annualTax += amount;
       if (amount > 0) {
         individualTaxes.push({ key: item.name, value: amount });
@@ -7184,6 +7186,52 @@ function createItemRow(collectionName, item) {
       if (collectionName === "assets") updateAutoTax();
       updateTopSummaries();
     });
+
+    // Eiendeler: dobbelklikk i beløpscelle for å taste inn eksakt beløp manuelt (slider overstyrer ved dra)
+    if (collectionName === "assets") {
+      amount.setAttribute("title", "Dobbelklikk for å taste inn beløp");
+      amount.style.cursor = "text";
+      amount.addEventListener("dblclick", function startAmountEdit() {
+        const currentVal = Number(range.value) || 0;
+        const maxVal = Number(range.max) || 50000000;
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "asset-amount";
+        input.value = String(Math.round(currentVal));
+        input.style.width = amount.offsetWidth + "px";
+        input.style.textAlign = "right";
+        input.setAttribute("aria-label", "Beløp i kroner");
+        amount.replaceWith(input);
+        input.focus();
+        input.select();
+
+        function commitAmount() {
+          const raw = input.value.replace(/\s/g, "").replace(/kr/gi, "").replace(",", ".");
+          let num = Number(raw);
+          if (!isFinite(num) || num < 0) num = 0;
+          num = Math.min(Math.round(num), maxVal);
+          item.amount = num;
+          range.value = String(num);
+          input.replaceWith(amount);
+          amount.textContent = formatNOK(num);
+          updateTopSummaries();
+          if (collectionName === "assets") updateAutoTax();
+        }
+
+        input.addEventListener("blur", commitAmount);
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            input.removeEventListener("blur", commitAmount);
+            commitAmount();
+          }
+          if (e.key === "Escape") {
+            input.replaceWith(amount);
+            amount.textContent = formatNOK(Number(range.value));
+          }
+        });
+      });
+    }
   }
 
   col.appendChild(top);
@@ -7681,12 +7729,10 @@ function renderAnalysisModule(root) {
   const totalDebt = AppState.debts.reduce((s, x) => s + (x.amount || 0), 0);
   const upper = (s) => String(s || "").toUpperCase();
   const incomeItems = AppState.incomes;
-  const annualCosts = incomeItems
-    .filter((x) => /SKATT|KOSTNAD/.test(upper(x.name)))
-    .reduce((s, x) => s + (x.amount || 0), 0);
-  const totalIncome = incomeItems
-    .filter((x) => !/SKATT|KOSTNAD/.test(upper(x.name)))
-    .reduce((s, x) => s + (x.amount || 0), 0);
+  const isCost = (x) => /SKATT|KOSTNAD/.test(upper(x.name)) && !/SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const isIncome = (x) => !/SKATT|KOSTNAD/.test(upper(x.name)) || /SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const annualCosts = incomeItems.filter(isCost).reduce((s, x) => s + (x.amount || 0), 0);
+  const totalIncome = incomeItems.filter(isIncome).reduce((s, x) => s + (x.amount || 0), 0);
 
   // Debt service per year (beregnet per gjeldspost)
   const annualDebtPayment = calculateTotalAnnualDebtPayment(AppState.debts);
@@ -7809,8 +7855,10 @@ function renderTbeModule(root) {
 
   const incomeItems = AppState.incomes || [];
   const upper = (s) => String(s || "").toUpperCase();
-  const annualCosts = incomeItems.filter((x) => /SKATT|KOSTNAD/.test(upper(x.name))).reduce((s, x) => s + (x.amount || 0), 0);
-  const totalIncome = incomeItems.filter((x) => !/SKATT|KOSTNAD/.test(upper(x.name))).reduce((s, x) => s + (x.amount || 0), 0);
+  const isCost = (x) => /SKATT|KOSTNAD/.test(upper(x.name)) && !/SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const isIncome = (x) => !/SKATT|KOSTNAD/.test(upper(x.name)) || /SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const annualCosts = incomeItems.filter(isCost).reduce((s, x) => s + (x.amount || 0), 0);
+  const totalIncome = incomeItems.filter(isIncome).reduce((s, x) => s + (x.amount || 0), 0);
 
   // Gjeldsforpliktelser (per år) - beregnet per gjeldspost
   const annualDebtPayment = calculateTotalAnnualDebtPayment(AppState.debts);
@@ -8083,12 +8131,10 @@ function getFinancialSnapshot() {
 
   const upper = (s) => String(s || "").toUpperCase();
   const incomeItems = incomes || [];
-  const annualCosts = incomeItems
-    .filter((x) => /SKATT|KOSTNAD/.test(upper(x.name)))
-    .reduce((s, x) => s + (x.amount || 0), 0);
-  const totalIncome = incomeItems
-    .filter((x) => !/SKATT|KOSTNAD/.test(upper(x.name)))
-    .reduce((s, x) => s + (x.amount || 0), 0);
+  const isCost = (x) => /SKATT|KOSTNAD/.test(upper(x.name)) && !/SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const isIncome = (x) => !/SKATT|KOSTNAD/.test(upper(x.name)) || /SKATTEFRIE\s*INNTEKTER/.test(upper(x.name));
+  const annualCosts = incomeItems.filter(isCost).reduce((s, x) => s + (x.amount || 0), 0);
+  const totalIncome = incomeItems.filter(isIncome).reduce((s, x) => s + (x.amount || 0), 0);
   const disposableIncome = totalIncome - annualCosts;
   const annualDebtPayment = calculateTotalAnnualDebtPayment(debts);
   const cashflow = Math.round(totalIncome - annualCosts - annualDebtPayment);

@@ -1155,37 +1155,38 @@ p { /* Avsnitt */
 .asset-range { width: 100%; height: 6px; }
 .year-range { width: 100%; height: 8px; }
 
-/* Redusert høyde for inntekter-bokser (20% mindre) */
+/* Redusert høyde for inntekter- og kostnadsbokser (ca 15% lavere – mindre scroll ved 100 % zoom) */
+.panel-income .assets {
+  gap: 18px; /* mindre avstand mellom radene */
+}
 .panel-income .asset-row {
-  padding: 13px; /* Redusert fra 16px (20% mindre) */
+  padding: 11px; /* ca 15 % lavere enn 13px */
 }
-
 .panel-income .asset-col {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 6px;
 }
-
 .panel-income .asset-top {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 6px;
 }
-
 .panel-income .asset-name {
-  padding: 8px 10px; /* Redusert fra 10px 12px (20% mindre) */
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  line-height: 1.25;
 }
-
 .panel-income .asset-amount {
-  padding: 8px 13px; /* Redusert fra 10px 16px (20% mindre) */
-  font-size: 1.1rem; /* Redusert fra 1.25rem (ca 20% mindre) */
-  width: 392px; /* Samme bredde som eiendeler-fanen */
-  max-width: 392px; /* Sikrer at den ikke blir bredere */
+  padding: 6px 11px;
+  font-size: 1rem;
+  width: 392px;
+  max-width: 392px;
 }
-
-.panel-income .asset-col {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
-}
-
-/* Sliderne i inntekter-fanen skal være like brede som i eiendeler-fanen */
+/* Sliderne i inntekter-fanen: samme bredde som eiendeler, litt lavere track */
 .panel-income .asset-range {
   width: 50%;
+  height: 5px;
+}
+.panel-income .asset-delete {
+  width: 24px;
+  height: 24px;
 }
 
 /* Redusert høyde for eiendeler-bokser (20% mindre) */
@@ -1323,14 +1324,15 @@ p { /* Avsnitt */
 }
 
 .year-button.is-active {
-  background: var(--P_ACCENT);
+  background: #5F7B99;
   color: #ffffff;
-  border-color: var(--P_ACCENT);
+  border-color: #5F7B99;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .year-button.is-active:hover {
-  background: #3388CC;
+  background: #4e6a85;
+  border-color: #4e6a85;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
@@ -2086,14 +2088,15 @@ p { /* Avsnitt */
 }
 
 .t-konto-year-btn.is-active {
-  background: var(--P_ACCENT);
+  background: #5F7B99;
   color: #ffffff;
-  border-color: var(--P_ACCENT);
+  border-color: #5F7B99;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .t-konto-year-btn.is-active:hover {
-  background: #3388CC;
+  background: #4e6a85;
+  border-color: #4e6a85;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }

@@ -4510,8 +4510,8 @@ function createPyramidChart() {
     const container = document.getElementById('pyramid-chart-container');
     if (!container) return;
     
-    // Get selected portfolio
-    const portfolioBtn = document.querySelector('.pyramid-controls .selector-btn.active');
+    // Velg portefølje ut fra hvilken knapp som er valgt (Dagens vs Ny) – bruk kun knapper med data-pyramid-portfolio
+    const portfolioBtn = document.querySelector('.pyramid-controls .portfolio-selector .selector-btn.active');
     const portfolioType = portfolioBtn ? portfolioBtn.dataset.pyramidPortfolio : 'new';
     const portfolio = portfolioType === 'new' ? state.newPortfolio : state.currentPortfolio;
     
@@ -4545,129 +4545,86 @@ function createPyramidChart() {
     const bestPeriod = returnData.reduce((best, current) => current.return > best.return ? current : best, returnData[0]);
     const worstPeriod = returnData.reduce((worst, current) => current.return < worst.return ? current : worst, returnData[0]);
     
-    // Create bins based on period type
+    // X-akse tilpasses alltid tallmaterialet: beregn min/max fra data + liten margin
+    const dataMin = Math.min(...returnData.map(r => r.return));
+    const dataMax = Math.max(...returnData.map(r => r.return));
+    const dataRange = dataMax - dataMin;
+    const padding = Math.max(1, Math.max(2, dataRange * 0.05)); // minst 1 pp, eller 5 % av spennet
+    let minRaw = dataMin - padding;
+    let maxRaw = dataMax + padding;
+    
     const bins = {};
     let minBin, maxBin, binWidth;
     
     if (useQuarters || useHalfYears) {
-        // For quarters and half years: -22% to +18% with 1% intervals
-        minBin = -22;
-        maxBin = 18;
-        binWidth = 1;
+        // Kvartal / halvår: 1 % intervaller, pene heltall
+        binWidth = dataRange > 60 ? 2 : 1;
+        minBin = Math.floor(minRaw / binWidth) * binWidth;
+        maxBin = Math.ceil(maxRaw / binWidth) * binWidth;
+        if (minBin === maxBin) { maxBin = minBin + binWidth; }
         
-        // Initialize bins
         for (let binStart = minBin; binStart < maxBin; binStart += binWidth) {
             const binEnd = binStart + binWidth;
             const binKey = `${binStart}-${binEnd}`;
-            bins[binKey] = {
-                start: binStart,
-                end: binEnd,
-                items: [],
-                count: 0
-            };
+            bins[binKey] = { start: binStart, end: binEnd, items: [], count: 0 };
         }
-        
-        // Handle the last bin to include maxBin value
         const lastBinKey = `${maxBin - binWidth}-${maxBin}`;
         if (!bins[lastBinKey]) {
-            bins[lastBinKey] = {
-                start: maxBin - binWidth,
-                end: maxBin,
-                items: [],
-                count: 0
-            };
+            bins[lastBinKey] = { start: maxBin - binWidth, end: maxBin, items: [], count: 0 };
         }
         
-        // Assign data points to bins and count
         returnData.forEach(item => {
             const returnValue = item.return;
-            // Find which bin this return belongs to
             for (let binStart = minBin; binStart < maxBin; binStart += binWidth) {
                 const binEnd = binStart + binWidth;
-                // For the last bin, include values equal to maxBin
                 if (binStart === maxBin - binWidth && returnValue >= binStart && returnValue <= maxBin) {
                     const binKey = `${binStart}-${binEnd}`;
-                    bins[binKey].items.push(item);
-                    bins[binKey].count++;
+                    if (bins[binKey]) { bins[binKey].items.push(item); bins[binKey].count++; }
                     break;
                 } else if (returnValue >= binStart && returnValue < binEnd) {
                     const binKey = `${binStart}-${binEnd}`;
-                    bins[binKey].items.push(item);
-                    bins[binKey].count++;
+                    if (bins[binKey]) { bins[binKey].items.push(item); bins[binKey].count++; }
                     break;
                 }
             }
         });
     } else {
-        // For full year: -50% to +50% with 10% intervals, EXCEPT 0-10% which is split into 0-5% and 5-10%
-        minBin = -50;
-        maxBin = 50;
+        // Hele kalenderår: 10 % intervaller, 0–10 % delt i 0–5 og 5–10
         binWidth = 10;
+        minBin = Math.floor(minRaw / binWidth) * binWidth;
+        maxBin = Math.ceil(maxRaw / binWidth) * binWidth;
+        if (minBin === maxBin) { maxBin = minBin + binWidth; }
         
-        // Initialize bins with special handling for 0-10% interval
         for (let binStart = minBin; binStart < maxBin; binStart += binWidth) {
             if (binStart === 0) {
-                // Split 0-10% into 0-5% and 5-10%
-                const binKey1 = `0-5`;
-                bins[binKey1] = {
-                    start: 0,
-                    end: 5,
-                    items: [],
-                    count: 0
-                };
-                const binKey2 = `5-10`;
-                bins[binKey2] = {
-                    start: 5,
-                    end: 10,
-                    items: [],
-                    count: 0
-                };
+                bins['0-5'] = { start: 0, end: 5, items: [], count: 0 };
+                bins['5-10'] = { start: 5, end: 10, items: [], count: 0 };
             } else {
                 const binEnd = binStart + binWidth;
-                const binKey = `${binStart}-${binEnd}`;
-                bins[binKey] = {
-                    start: binStart,
-                    end: binEnd,
-                    items: [],
-                    count: 0
-                };
+                bins[`${binStart}-${binEnd}`] = { start: binStart, end: binEnd, items: [], count: 0 };
             }
         }
+        const lastBinKey = `${maxBin - binWidth}-${maxBin}`;
+        if (!bins[lastBinKey] && maxBin - binWidth !== 0) {
+            bins[lastBinKey] = { start: maxBin - binWidth, end: maxBin, items: [], count: 0 };
+        }
         
-        // Assign data points to bins and count
         returnData.forEach(item => {
             const returnValue = item.return;
-            // Find which bin this return belongs to
-            let assigned = false;
-            
-            // Check special bins first (0-5% and 5-10%)
             if (returnValue >= 0 && returnValue < 5) {
-                bins['0-5'].items.push(item);
-                bins['0-5'].count++;
-                assigned = true;
+                if (bins['0-5']) { bins['0-5'].items.push(item); bins['0-5'].count++; }
             } else if (returnValue >= 5 && returnValue < 10) {
-                bins['5-10'].items.push(item);
-                bins['5-10'].count++;
-                assigned = true;
+                if (bins['5-10']) { bins['5-10'].items.push(item); bins['5-10'].count++; }
             } else {
-                // Check regular bins
                 for (let binStart = minBin; binStart < maxBin; binStart += binWidth) {
-                    if (binStart === 0) continue; // Skip 0, already handled above
-                    
+                    if (binStart === 0) continue;
                     const binEnd = binStart + binWidth;
-                    // For the last bin, include values equal to maxBin
+                    const binKey = `${binStart}-${binEnd}`;
+                    if (!bins[binKey]) continue;
                     if (binStart === maxBin - binWidth && returnValue >= binStart && returnValue <= maxBin) {
-                        const binKey = `${binStart}-${binEnd}`;
-                        bins[binKey].items.push(item);
-                        bins[binKey].count++;
-                        assigned = true;
-                        break;
+                        bins[binKey].items.push(item); bins[binKey].count++; break;
                     } else if (returnValue >= binStart && returnValue < binEnd) {
-                        const binKey = `${binStart}-${binEnd}`;
-                        bins[binKey].items.push(item);
-                        bins[binKey].count++;
-                        assigned = true;
-                        break;
+                        bins[binKey].items.push(item); bins[binKey].count++; break;
                     }
                 }
             }
@@ -6057,8 +6014,8 @@ function setupEventListeners() {
         });
     });
     
-    // Pyramid portfolio selector buttons
-    const pyramidPortfolioButtons = document.querySelectorAll('.pyramid-controls .selector-btn');
+    // Pyramid portfolio selector buttons (kun Dagens / Ny – ikke periodeknappene)
+    const pyramidPortfolioButtons = document.querySelectorAll('.pyramid-controls .portfolio-selector .selector-btn');
     pyramidPortfolioButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             pyramidPortfolioButtons.forEach(b => b.classList.remove('active'));
@@ -6753,6 +6710,44 @@ function initializePyramidStatsModal() {
 }
 
 // ========================================
+// Pyramide fullskjerm (90 %)
+// ========================================
+let pyramidFullscreenInitialized = false;
+function initializePyramidFullscreen() {
+    if (pyramidFullscreenInitialized) return;
+    const btn = document.getElementById('pyramid-fullscreen-btn');
+    const modal = document.getElementById('pyramid-fullscreen-modal');
+    const body = document.getElementById('pyramid-fullscreen-body');
+    const closeBtn = document.getElementById('pyramid-fullscreen-close');
+    const backdrop = document.getElementById('pyramid-fullscreen-backdrop');
+    const container = document.getElementById('pyramid-chart-container');
+    if (!btn || !modal || !body || !container) return;
+
+    function openFullscreen() {
+        body.innerHTML = '';
+        if (container.innerHTML.trim()) {
+            body.appendChild(container.cloneNode(true));
+        }
+        modal.classList.add('is-open');
+        modal.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeFullscreen() {
+        modal.classList.remove('is-open');
+        modal.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    btn.addEventListener('click', openFullscreen);
+    if (closeBtn) closeBtn.addEventListener('click', closeFullscreen);
+    if (backdrop) backdrop.addEventListener('click', closeFullscreen);
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('is-open')) closeFullscreen();
+    });
+    pyramidFullscreenInitialized = true;
+}
+
+// ========================================
 // Year by Year Modal
 // ========================================
 let yearByYearModalInitialized = false;
@@ -7221,6 +7216,7 @@ async function init() {
     initializeDisclaimerModal();
     initializeYearByYearModal();
     initializePyramidStatsModal();
+    initializePyramidFullscreen();
     
     // Hent portefølje-knapp: hent Portefølje I+II+Likviditetsfond (2026) og aksjeandel Portefølje I fra Mål og behov
     const hentPortefoljeBtn = document.getElementById('hent-portefolje-btn');

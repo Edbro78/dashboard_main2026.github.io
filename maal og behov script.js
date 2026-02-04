@@ -1405,7 +1405,9 @@ function TabContainer() {
     const tabs = [
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
-        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={iframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
+        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={iframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> },
+        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
     ];
 
     const buildCombinedOutput = React.useCallback(() => {
@@ -4292,10 +4294,15 @@ return () => document.removeEventListener('keydown', onKey);
                                     type="button"
                                     onClick={() => {
                                         try {
-                                            const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('tKontoSparingForMaalOgBehov') : null;
-                                            const amount = raw != null ? Math.max(0, Math.min(5000000, Math.round(Number(raw) || 0))) : 0;
-                                            handleStateChange('annualSavings', amount);
-                                            setHenteSparingFraTKontoActive(true);
+                                            if (henteSparingFraTKontoActive) {
+                                                handleStateChange('annualSavings', 0);
+                                                setHenteSparingFraTKontoActive(false);
+                                            } else {
+                                                const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('tKontoSparingForMaalOgBehov') : null;
+                                                const amount = raw != null ? Math.max(0, Math.min(5000000, Math.round(Number(raw) || 0))) : 0;
+                                                handleStateChange('annualSavings', amount);
+                                                setHenteSparingFraTKontoActive(true);
+                                            }
                                         } catch (e) {}
                                     }}
                                     className={`border border-[#DDDDDD] h-10 rounded-lg flex items-center justify-center text-center px-3 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md whitespace-nowrap ${henteSparingFraTKontoActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A]' : 'bg-[#9CA3AF] text-white hover:bg-[#6B7280]'}`}
