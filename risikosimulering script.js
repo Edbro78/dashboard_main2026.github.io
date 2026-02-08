@@ -888,26 +888,36 @@ function closeChartFullscreen(modalId) {
 // ========================================
 // Chart Configuration
 // ========================================
+/** Hex til rgba for fill/opacity */
+function hexToRgba(hex, alpha) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+}
+
+/* Mål og behov fargepalett */
 const chartColors = {
     current: {
-        main: 'oklch(0.4562 0.1809 260.1560)', // chart-4
-        light: 'oklch(0.9489 0.0188 255.5341)', // accent with opacity
-        border: 'oklch(0.4562 0.1809 260.1560)'
+        main: '#4A6D8C',
+        light: '#f0f9fa',
+        border: '#4A6D8C'
     },
     new: {
-        main: 'oklch(0.6020 0.1679 258.6201)', // chart-3
-        light: 'oklch(0.9489 0.0188 255.5341)', // accent with opacity
-        border: 'oklch(0.6020 0.1679 258.6201)'
+        main: '#66CCDD',
+        light: '#f0f9fa',
+        border: '#66CCDD'
     },
     drawdown: {
-        main: 'oklch(0.4322 0.1500 28.9906)', // destructive
-        light: 'oklch(0.9489 0.0188 255.5341)' // accent with opacity
+        main: '#CC4B4B',
+        light: '#f0f9fa'
     },
-    stocks: 'oklch(0.6020 0.1679 258.6201)', // chart-3
-    riskFree: 'oklch(0.7450 0.1024 258.2961)', // chart-2
-    highYield: 'oklch(0.8479 0.0603 257.7878)', // chart-1
-    nurse: 'oklch(0.55 0.18 145)', // Green color for nurse index line
-    gold: 'oklch(0.65 0.15 75)' // Gold color for gold price index line
+    stocks: '#88CCEE',
+    riskFree: '#66CCDD',
+    highYield: '#3388CC',
+    nurse: '#66CC99',
+    gold: '#888888'
 };
 
 const commonChartOptions = {
@@ -924,19 +934,19 @@ const commonChartOptions = {
                 usePointStyle: true,
                 padding: 20,
                 font: {
-                    family: "'DM Sans', sans-serif",
+                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                     size: 13
                 }
             }
         },
         tooltip: {
-            backgroundColor: 'rgba(26, 32, 44, 0.95)',
+            backgroundColor: 'rgba(74, 109, 140, 0.95)',
             titleFont: {
-                family: "'DM Sans', sans-serif",
+                family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                 size: 14
             },
             bodyFont: {
-                family: "'JetBrains Mono', monospace",
+                family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                 size: 13
             },
             padding: 12,
@@ -958,7 +968,7 @@ const commonChartOptions = {
             },
             ticks: {
                 font: {
-                    family: "'DM Sans', sans-serif",
+                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                     size: 11
                 }
             }
@@ -969,7 +979,7 @@ const commonChartOptions = {
             },
             ticks: {
                 font: {
-                    family: "'JetBrains Mono', monospace",
+                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                     size: 11
                 }
             }
@@ -1061,11 +1071,11 @@ function updateTreemapChart(type) {
     
     // Prepare data - filter out zero values
     const data = [
-        { name: 'Likviditet/kontanter', value: portfolio.stocks, color: 'oklch(0.6020 0.1679 258.6201)' },
-        { name: 'Renter', value: portfolio.riskFree, color: 'oklch(0.7450 0.1024 258.2961)' },
-        { name: 'Aksjer', value: portfolio.highYield, color: 'oklch(0.8479 0.0603 257.7878)' },
-        { name: 'Alternative strategier', value: portfolio.nordicStocks, color: 'oklch(0.4562 0.1809 260.1560)' },
-        { name: 'Annet', value: portfolio.emergingMarkets, color: 'oklch(0.2722 0.1053 258.9631)' }
+        { name: 'Likviditet/kontanter', value: portfolio.stocks, color: '#88CCEE' },
+        { name: 'Renter', value: portfolio.riskFree, color: '#66CCDD' },
+        { name: 'Aksjer', value: portfolio.highYield, color: '#3388CC' },
+        { name: 'Alternative strategier', value: portfolio.nordicStocks, color: '#4A6D8C' },
+        { name: 'Annet', value: portfolio.emergingMarkets, color: '#333333' }
     ].filter(item => item.value > 0);
     
     if (data.length === 0) return;
@@ -1143,14 +1153,14 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
     ctx.fillRect(x, y, width, height);
     
     // Draw border
-    ctx.strokeStyle = 'oklch(1.0000 0 0)';
+    ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, width, height);
     
     // Draw text if space allows
     if (width > 60 && height > 30) {
-        ctx.fillStyle = 'oklch(1.0000 0 0)';
-        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -1171,7 +1181,7 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
         });
         
         // Draw value
-        ctx.font = '12px JetBrains Mono, monospace';
+        ctx.font = '12px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textBaseline = 'middle';
         ctx.fillText(Math.round(item.value) + '%', textX, startY + totalLabelHeight + 4 + valueHeight / 2);
     }
@@ -1345,9 +1355,9 @@ function createOverviewChart() {
                 tooltip: {
                     ...commonChartOptions.plugins.tooltip,
                     backgroundColor: '#ffffff',
-                    titleColor: 'oklch(0.2722 0.1053 258.9631)',
-                    bodyColor: 'oklch(0.2722 0.1053 258.9631)',
-                    borderColor: 'oklch(0.9324 0.0080 253.8552)',
+                    titleColor: '#333333',
+                    bodyColor: '#333333',
+                    borderColor: '#DDDDDD',
                     borderWidth: 1,
                     callbacks: {
                         title: function(context) {
@@ -1488,11 +1498,11 @@ function createAssetClassesChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: 'oklch(0.6020 0.1679 258.6201)' },
-        { key: 'riskFree', name: 'Renter', color: 'oklch(0.7450 0.1024 258.2961)' },
-        { key: 'highYield', name: 'Aksjer', color: 'oklch(0.8479 0.0603 257.7878)' },
-        { key: 'nordicStocks', name: 'Alternative strategier', color: 'oklch(0.4562 0.1809 260.1560)' },
-        { key: 'emergingMarkets', name: 'Annet', color: 'oklch(0.2722 0.1053 258.9631)' }
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#88CCEE' },
+        { key: 'riskFree', name: 'Renter', color: '#66CCDD' },
+        { key: 'highYield', name: 'Aksjer', color: '#3388CC' },
+        { key: 'nordicStocks', name: 'Alternative strategier', color: '#4A6D8C' },
+        { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
     if (assetClasses.length === 0) {
@@ -1559,9 +1569,9 @@ function createAssetClassesChart() {
                 tooltip: {
                     ...commonChartOptions.plugins.tooltip,
                     backgroundColor: '#ffffff',
-                    titleColor: 'oklch(0.2722 0.1053 258.9631)',
-                    bodyColor: 'oklch(0.2722 0.1053 258.9631)',
-                    borderColor: 'oklch(0.9324 0.0080 253.8552)',
+                    titleColor: '#333333',
+                    bodyColor: '#333333',
+                    borderColor: '#DDDDDD',
                     borderWidth: 1,
                     callbacks: {
                         title: function(context) {
@@ -1714,11 +1724,11 @@ function createAllocationChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: 'oklch(0.6020 0.1679 258.6201)' },
-        { key: 'riskFree', name: 'Renter', color: 'oklch(0.7450 0.1024 258.2961)' },
-        { key: 'highYield', name: 'Aksjer', color: 'oklch(0.8479 0.0603 257.7878)' },
-        { key: 'nordicStocks', name: 'Alternative strategier', color: 'oklch(0.4562 0.1809 260.1560)' },
-        { key: 'emergingMarkets', name: 'Annet', color: 'oklch(0.2722 0.1053 258.9631)' }
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#88CCEE' },
+        { key: 'riskFree', name: 'Renter', color: '#66CCDD' },
+        { key: 'highYield', name: 'Aksjer', color: '#3388CC' },
+        { key: 'nordicStocks', name: 'Alternative strategier', color: '#4A6D8C' },
+        { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
     if (assetClasses.length === 0) {
@@ -1755,8 +1765,7 @@ function createAllocationChart() {
                 value: (allocationPercent / 100) * pv.value
             }));
             
-            // Extract oklch values and add opacity for fill
-            const colorWithOpacity = asset.color.replace(')', ' / 0.6)');
+            const colorWithOpacity = hexToRgba(asset.color, 0.6);
             
             return {
                 label: `${asset.name} (${Math.round(allocationPercent)}%)`,
@@ -1825,8 +1834,7 @@ function createAllocationChart() {
         }
         
         datasets = assetClasses.map(asset => {
-            // Extract oklch values and add opacity for fill
-            const colorWithOpacity = asset.color.replace(')', ' / 0.6)');
+            const colorWithOpacity = hexToRgba(asset.color, 0.6);
             
             // Calculate the actual percentage from the last data point (to match what tooltip shows)
             // Use the last data point with actual values (skip any with 0 values at the end)
@@ -2247,7 +2255,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
     ctx.clearRect(0, 0, actualWidth, actualHeight);
     
     // Fill background with same color as chart-wrapper (--secondary)
-    const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim() || 'oklch(0.9510 0.0063 255.4756)';
+    const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim() || '#f9f9f9';
     ctx.fillStyle = bgColor;
     ctx.fillRect(0, 0, actualWidth, actualHeight);
     
@@ -2424,7 +2432,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         // Draw percentage in center - WITH % sign
         // Smaller text size for readability
         const percentFontSize = Math.max(14, Math.min(24, bubble.radius * 0.15));
-        ctx.font = `700 ${percentFontSize}px 'JetBrains Mono', monospace`; // Use mono like input tab values
+        ctx.font = `700 ${percentFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const percentText = bubble.percentage.toFixed(1) + '%';
         ctx.strokeText(percentText, bubble.x, bubble.y);
@@ -2433,7 +2441,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         // Draw value below - use JetBrains Mono like input tab
         // Smaller text size for readability
         const valueFontSize = Math.max(10, Math.min(16, bubble.radius * 0.10));
-        ctx.font = `700 ${valueFontSize}px 'JetBrains Mono', monospace`;
+        ctx.font = `700 ${valueFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const valueY = bubble.y + bubble.radius * 0.30;
         ctx.strokeText(formatCurrency(bubble.value), bubble.x, valueY);
@@ -2596,7 +2604,7 @@ function createComparisonChart() {
                     label: 'Dagens HWM',
                     data: currentHWM.map(v => ({ x: v.date, y: v.value })),
                     borderColor: chartColors.current.main,
-                    backgroundColor: 'oklch(0.9489 0.0188 255.5341 / 0.3)',
+                    backgroundColor: 'rgba(102, 204, 221, 0.3)',
                     borderWidth: 3,
                     fill: true,
                     stepped: 'before', // Creates the staircase effect
@@ -2607,7 +2615,7 @@ function createComparisonChart() {
                     label: 'Ny HWM',
                     data: newHWM.map(v => ({ x: v.date, y: v.value })),
                     borderColor: chartColors.new.main,
-                    backgroundColor: 'oklch(0.9489 0.0188 255.5341 / 0.3)',
+                    backgroundColor: 'rgba(102, 204, 221, 0.3)',
                     borderWidth: 3,
                     fill: true,
                     stepped: 'before', // Creates the staircase effect
@@ -2628,14 +2636,14 @@ function createComparisonChart() {
                             return [
                                 {
                                     text: 'Dagens Portefølje (HWM)',
-                                    fillStyle: 'oklch(0.9489 0.0188 255.5341 / 0.3)',
+                                    fillStyle: 'rgba(102, 204, 221, 0.3)',
                                     strokeStyle: chartColors.current.main,
                                     lineWidth: 3,
                                     hidden: false
                                 },
                                 {
                                     text: 'Ny Portefølje (HWM)',
-                                    fillStyle: 'oklch(0.9489 0.0188 255.5341 / 0.3)',
+                                    fillStyle: 'rgba(102, 204, 221, 0.3)',
                                     strokeStyle: chartColors.new.main,
                                     lineWidth: 3,
                                     hidden: false
@@ -2880,9 +2888,9 @@ function createEquityChart(portfolioValues, drawdowns) {
             },
             tooltip: {
                 enabled: true,
-                backgroundColor: 'oklch(0.2722 0.1053 258.9631 / 0.95)',
+                backgroundColor: 'rgba(74, 109, 140, 0.95)',
                 titleFont: { family: "'Inter', sans-serif", size: 11 },
-                bodyFont: { family: "'JetBrains Mono', monospace", size: 11 },
+                bodyFont: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 11 },
                 padding: 8,
                 cornerRadius: 4,
                 callbacks: {
@@ -2906,9 +2914,9 @@ function createEquityChart(portfolioValues, drawdowns) {
                 max: state.drawdownZoom.isZoomed ? state.drawdownZoom.maxX : undefined
             },
             y: {
-                grid: { color: 'oklch(0.2722 0.1053 258.9631 / 0.05)' },
+                grid: { color: 'rgba(74, 109, 140, 0.05)' },
                 ticks: {
-                    font: { family: "'JetBrains Mono', monospace", size: 10 },
+                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 10 },
                     callback: function(value) {
                         return (value / 1000000).toFixed(0) + 'M';
                     }
@@ -2924,8 +2932,8 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'Porteføljeverdi',
                     data: portfolioValues.map(v => ({ x: v.date, y: v.value })),
-                    borderColor: 'oklch(0.6020 0.1679 258.6201)',
-                    backgroundColor: 'oklch(0.9489 0.0188 255.5341 / 0.3)',
+                    borderColor: '#3388CC',
+                    backgroundColor: 'rgba(102, 204, 221, 0.3)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.3,
@@ -2935,7 +2943,7 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'All-Time High',
                     data: drawdowns.map(d => ({ x: d.date, y: d.peak })),
-                    borderColor: 'oklch(0.6020 0.1679 258.6201)',
+                    borderColor: '#3388CC',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
                     fill: false,
@@ -3027,7 +3035,7 @@ function createUnderwaterChart(drawdowns, viewType = 'percent') {
                 grid: { display: false },
                 position: 'bottom',
                 ticks: { 
-                    font: { family: "'DM Sans', sans-serif", size: 11 },
+                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 11 },
                     padding: 8
                 },
                 min: state.drawdownZoom.isZoomed ? state.drawdownZoom.minX : undefined,
@@ -3644,7 +3652,7 @@ function createNurseChart(tabNumber = 1) {
                     label: indexLabel,
                     data: indexAll.filter(n => n.index !== null && n.index > 0).map(n => ({ x: n.date, y: n.index })),
                     borderColor: isGoldTab ? chartColors.gold : (isBigMacTab ? '#DA291C' : (isOilTab ? '#000000' : (isM2OsloTab ? '#808080' : chartColors.nurse))),
-                    backgroundColor: isGoldTab ? 'oklch(0.65 0.15 75 / 0.2)' : (isBigMacTab ? 'rgba(218, 41, 28, 0.2)' : (isOilTab ? 'rgba(0, 0, 0, 0.2)' : (isM2OsloTab ? 'rgba(128, 128, 128, 0.2)' : 'oklch(0.55 0.18 145 / 0.2)'))),
+                    backgroundColor: isGoldTab ? 'rgba(136, 136, 136, 0.2)' : (isBigMacTab ? 'rgba(218, 41, 28, 0.2)' : (isOilTab ? 'rgba(0, 0, 0, 0.2)' : (isM2OsloTab ? 'rgba(128, 128, 128, 0.2)' : 'rgba(102, 204, 153, 0.2)'))),
                     borderWidth: 3.5,
                     fill: true,
                     tension: 0.3,
@@ -3668,7 +3676,7 @@ function createNurseChart(tabNumber = 1) {
                     },
                     ticks: {
                         font: {
-                            family: "'JetBrains Mono', monospace",
+                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         callback: function(value) {
@@ -3685,7 +3693,7 @@ function createNurseChart(tabNumber = 1) {
                     },
                     ticks: {
                         font: {
-                            family: "'JetBrains Mono', monospace",
+                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         color: isGoldTab ? chartColors.gold : (isBigMacTab ? '#DA291C' : (isOilTab ? '#000000' : (isM2OsloTab ? '#808080' : chartColors.nurse))),
@@ -4493,16 +4501,16 @@ function calculateStats(data) {
     return { mean, stddev };
 }
 
-// Get color style based on return interval (using oklch colors similar to Tailwind rose/emerald)
+// Get color style based on return interval (Mål og behov: rød #CC4B4B, grønn #0C8F4A)
 function getReturnColorStyle(returnValue) {
-    if (returnValue < -35) return 'background-color: oklch(0.35 0.15 15);'; // Dark red (rose-700)
-    if (returnValue < -25) return 'background-color: oklch(0.42 0.15 15);'; // Red (rose-600)
-    if (returnValue < -5) return 'background-color: oklch(0.65 0.15 15);'; // Light red (rose-400)
-    if (returnValue < 5) return 'background-color: oklch(0.80 0.12 150);'; // Light emerald (emerald-300)
-    if (returnValue < 15) return 'background-color: oklch(0.70 0.15 150);'; // Emerald (emerald-400)
-    if (returnValue < 25) return 'background-color: oklch(0.60 0.18 150);'; // Strong emerald (emerald-500)
-    if (returnValue < 35) return 'background-color: oklch(0.50 0.18 150);'; // Dark emerald (emerald-600)
-    return 'background-color: oklch(0.40 0.18 150);'; // Very dark emerald (emerald-700)
+    if (returnValue < -35) return 'background-color: #B14444;';
+    if (returnValue < -25) return 'background-color: #CC4B4B;';
+    if (returnValue < -5) return 'background-color: #E06B6B;';
+    if (returnValue < 5) return 'background-color: rgba(102, 204, 221, 0.6);';
+    if (returnValue < 15) return 'background-color: #66CC99;';
+    if (returnValue < 25) return 'background-color: #0C8F4A;';
+    if (returnValue < 35) return 'background-color: #0A7A3F;';
+    return 'background-color: #086B36;';
 }
 
 // Create pyramid chart
@@ -4754,26 +4762,26 @@ function createPyramidChart() {
                                 let colorStyle = getReturnColorStyle(item.return);
                                 // Special case: if in middle bin (-5 to 5) and return is negative, use red
                                 if (bin.start === -5 && item.return < 0) {
-                                    colorStyle = 'background-color: oklch(0.65 0.15 15);'; // Light red (rose-400)
+                                    colorStyle = 'background-color: #E06B6B;';
                                 }
                                 // For half years and quarters: all negative values should be red
                                 if ((useHalfYears || useQuarters) && item.return < 0) {
                                     if (item.return < -20) {
-                                        colorStyle = 'background-color: oklch(0.35 0.15 15);'; // Dark red (rose-700)
+                                        colorStyle = 'background-color: #B14444;';
                                     } else if (item.return < -10) {
-                                        colorStyle = 'background-color: oklch(0.42 0.15 15);'; // Red (rose-600)
+                                        colorStyle = 'background-color: #CC4B4B;';
                                     } else {
-                                        colorStyle = 'background-color: oklch(0.65 0.15 15);'; // Light red (rose-400)
+                                        colorStyle = 'background-color: #E06B6B;';
                                     }
                                 }
                                 // For full year: all negative values should be red
                                 if (!useHalfYears && !useQuarters && item.return < 0) {
                                     if (item.return < -35) {
-                                        colorStyle = 'background-color: oklch(0.35 0.15 15);'; // Dark red (rose-700)
+                                        colorStyle = 'background-color: #B14444;';
                                     } else if (item.return < -25) {
-                                        colorStyle = 'background-color: oklch(0.42 0.15 15);'; // Red (rose-600)
+                                        colorStyle = 'background-color: #CC4B4B;';
                                     } else {
-                                        colorStyle = 'background-color: oklch(0.65 0.15 15);'; // Light red (rose-400)
+                                        colorStyle = 'background-color: #E06B6B;';
                                     }
                                 }
                                 
@@ -4803,7 +4811,7 @@ function createPyramidChart() {
                             }).join('')}
                         </div>
                         <!-- X-axis label - always at the bottom, fully visible -->
-                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
+                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 11px; font-family: Whitney, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
                             ${useQuarters ? `${bin.start}%` : (useHalfYears ? `${bin.start}%` : `${bin.start}% - ${bin.end}%`)}
                         </div>
                     </div>
@@ -5180,8 +5188,8 @@ function createKPIStackedBarChart(ctx, tabNumber) {
                 {
                     label: 'KPI',
                     data: kpiValues,
-                    backgroundColor: 'oklch(0.65 0.02 0)', // Pleasant gray (same as before)
-                    borderColor: 'oklch(0.55 0.02 0)', // Slightly darker gray for border
+                    backgroundColor: '#888888',
+                    borderColor: '#666666',
                     borderWidth: 1.5,
                     borderRadius: {
                         topLeft: 4,
@@ -5197,8 +5205,8 @@ function createKPIStackedBarChart(ctx, tabNumber) {
                 {
                     label: 'Markedspremie',
                     data: marketPremiumValues,
-                    backgroundColor: 'oklch(0.4322 0.1500 28.9906)', // Red color (destructive from design system)
-                    borderColor: 'oklch(0.35 0.15 28)', // Darker red for border
+                    backgroundColor: '#CC4B4B',
+                    borderColor: '#B14444',
                     borderWidth: 1.5,
                     borderRadius: {
                         topLeft: 4,
@@ -5282,7 +5290,7 @@ function createKPIStackedBarChart(ctx, tabNumber) {
                     },
                     ticks: {
                         font: {
-                            family: "'JetBrains Mono', monospace",
+                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         callback: function(value) {

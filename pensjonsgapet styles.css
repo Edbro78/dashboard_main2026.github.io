@@ -126,6 +126,84 @@ body {
     font-weight: 500; /* Whitney Medium Italic ideal; fallback italic */
 }
 
+/* Reduced line spacing by 15% for fullscreen fit */
+#dashboardPage #input-container {
+    gap: 0 !important;
+}
+#dashboardPage #input-container > * + * {
+    margin-top: 0.77rem !important;
+}
+#dashboardPage .input-group .flex.justify-between.items-baseline,
+#dashboardPage .input-group .mb-2 {
+    margin-bottom: 0.31rem !important;
+}
+#dashboardPage .card-panel {
+    padding: 0.92rem !important;
+}
+#dashboardPage .card-panel.space-y-6 > * + * {
+    margin-top: 0.92rem !important;
+}
+#dashboardPage .grid.gap-8 {
+    gap: 1.23rem !important;
+}
+#dashboardPage .flex.flex-col.gap-8 {
+    gap: 1.23rem !important;
+}
+#dashboardPage .grid.gap-6 {
+    gap: 0.92rem !important;
+}
+#dashboardPage .grid.gap-3 {
+    gap: 0.46rem !important;
+}
+#dashboardPage .summary-panel,
+#dashboardPage .metrics-panel {
+    padding: 0.92rem !important;
+}
+#dashboardPage .mb-6 {
+    margin-bottom: 0.92rem !important;
+}
+#dashboardPage .mt-6 {
+    margin-top: 0.92rem !important;
+}
+#dashboardPage .mt-2,
+#dashboardPage .output-label.mt-2 {
+    margin-top: 0.31rem !important;
+}
+#dashboardPage .space-y-4 > * + * {
+    margin-top: 0.61rem !important;
+}
+#dashboardPage .space-y-3 > * + * {
+    margin-top: 0.46rem !important;
+}
+#dashboardPage .mt-4 {
+    margin-top: 0.61rem !important;
+}
+#dashboardPage .asset-input.mt-2 {
+    margin-top: 0.31rem !important;
+}
+#dashboardPage .pb-2 {
+    padding-bottom: 0.31rem !important;
+}
+#dashboardPage header.mb-8 {
+    margin-bottom: 1.84rem !important;
+}
+#dashboardPage .min-h-screen {
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-top: 0.92rem !important;
+    padding-bottom: 0.92rem !important;
+}
+#dashboardPage #combo-sliders-container.gap-6 {
+    gap: 0.92rem !important;
+}
+#dashboardPage .combo-output .output-value {
+    margin-bottom: 0.31rem !important;
+}
+#dashboardPage .combo-output {
+    padding-top: 0.61rem !important;
+    padding-bottom: 0.61rem !important;
+}
+
 /* --- Common Slider Styles --- */
 input[type="range"] {
     -webkit-appearance: none;
@@ -297,395 +375,3 @@ input[type="number"] {
     box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
 }
 
-/* ==================================================================
-   LIGHT MODE THEME STYLES
-   ================================================================== */
-
-/* General Button Styles for Light Mode - exclude choice-btn which has its own styling */
-.theme-light button:not(#themeToggle):not(.remove-event-btn):not(.choice-btn) {
-    background-color: #3388CC !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(89, 112, 147, 0.25), 0 2px 4px rgba(89, 112, 147, 0.15) !important;
-    transition: background-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.theme-light button:not(#themeToggle):not(.remove-event-btn):not(.choice-btn):hover {
-    background-color: #005599 !important;
-    box-shadow: 0 6px 16px rgba(89, 112, 147, 0.3), 0 3px 6px rgba(89, 112, 147, 0.2) !important;
-}
-
-.theme-light button:not(#themeToggle):not(.remove-event-btn):not(.choice-btn):active {
-    box-shadow: 0 2px 8px rgba(89, 112, 147, 0.2), 0 1px 3px rgba(89, 112, 147, 0.15) !important;
-}
-
-/* Global Light Mode Styles */
-.theme-light body {
-    background-color: #ffffff;
-    color: #333333;
-}
-
-.theme-light #dashboardPage {
-    background-color: #ffffff;
-}
-
-/* Header spacing adjustments */
-.theme-light #dashboardPage header {
-    margin-bottom: 1.75rem !important;
-}
-
-.theme-light #dashboardPage .relative.min-h-screen {
-    padding-top: 2.5rem;
-    padding-bottom: 2.5rem;
-}
-
-@media (min-width: 1024px) {
-    .theme-light #dashboardPage .relative.min-h-screen {
-        padding-top: 2.5rem;
-        padding-bottom: 2.5rem;
-    }
-}
-
-/* Card Panels */
-.theme-light .card-panel {
-    background-color: #ffffff !important;
-    border: 1px solid #DDDDDD !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06) !important;
-}
-
-/* Summary Panels (big number frames) */
-.theme-light .summary-panel {
-    background-color: #f9fafb !important;
-    border: 1px solid #DDDDDD !important;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
-}
-
-/* Metrics Panels */
-.theme-light .metrics-panel {
-    background-color: #f9f9f9 !important;
-    border: 1px solid #DDDDDD !important;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.08) !important;
-}
-
-/* Text Colors in Light Mode */
-.theme-light #dashboardPage .text-white,
-.theme-light #dashboardPage h1.text-white,
-.theme-light #dashboardPage h2.text-white,
-.theme-light #dashboardPage h3.text-white {
-    color: #333333 !important;
-}
-
-.theme-light #dashboardPage .text-slate-300,
-.theme-light #dashboardPage label.text-slate-300 {
-    color: #333333 !important;
-}
-
-.theme-light #dashboardPage h1,
-.theme-light #dashboardPage h2,
-.theme-light #dashboardPage h3,
-.theme-light #dashboardPage h4 {
-    color: #4A6D8C;
-}
-
-.theme-light #dashboardPage .output-label {
-    color: #666666;
-}
-
-.theme-light #dashboardPage .output-value {
-    color: #3388CC;
-}
-
-/* Inputs */
-.theme-light .asset-input,
-.theme-light input[type="number"],
-.theme-light input[type="text"] {
-    background-color: #ffffff;
-    border: 1px solid #DDDDDD;
-    color: #333333;
-}
-
-.theme-light .asset-input:focus,
-.theme-light input[type="number"]:focus,
-.theme-light input[type="text"]:focus {
-    outline: none;
-    border-color: #66CCDD;
-    box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
-}
-
-/* Private Debt Input (if exists) */
-.theme-light #private-debt.asset-input {
-    background-color: #dbeafe;
-    border: 1px solid #bfdbfe;
-    height: 3rem;
-    font-size: 17px;
-}
-
-/* Person Buttons (if exists) */
-.theme-light #person-count .person-btn {
-    background-color: #597093 !important;
-    color: #ffffff !important;
-    border: none !important;
-    padding-top: 0.65rem;
-    padding-bottom: 0.65rem;
-    border-radius: 0.75rem;
-    font-size: 0.95rem;
-    box-shadow: 0 4px 12px rgba(89, 112, 147, 0.25), 0 2px 4px rgba(89, 112, 147, 0.15) !important;
-}
-
-.theme-light #person-count .person-btn:hover {
-    background-color: #4a5f7f !important;
-    box-shadow: 0 6px 16px rgba(89, 112, 147, 0.3), 0 3px 6px rgba(89, 112, 147, 0.2) !important;
-}
-
-/* Sliders */
-.theme-light #dashboardPage input[type="range"] {
-    background: #DDDDDD;
-}
-
-.theme-light #dashboardPage input[type="range"]::-webkit-slider-thumb {
-    background: #66CCDD;
-    border: 2px solid #ffffff;
-}
-
-.theme-light #dashboardPage input[type="range"]::-moz-range-thumb {
-    background: #66CCDD;
-    border: 2px solid #ffffff;
-}
-
-/* Tables (if exists) */
-.theme-light .rate-table-container {
-    background-color: #f9fafb;
-    border: 1px solid #bfdbfe;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14), 0 4px 12px rgba(15, 23, 42, 0.08);
-}
-
-.theme-light .rate-table-container thead {
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.theme-light .rate-table-container tbody tr {
-    border-bottom: 1px solid #e5e7eb;
-}
-
-.theme-light .rate-table-as {
-    background-color: #eff6ff;
-}
-
-.theme-light .rate-table-container tfoot tr,
-.theme-light .rate-table-container tr:last-child {
-    background-color: #f3f4f6;
-    color: #111827;
-}
-
-/* Reset Button */
-.theme-light #reset-btn {
-    background-color: #597093 !important;
-    color: #ffffff !important;
-    border: none !important;
-    font-size: 0.95rem;
-    box-shadow: 0 4px 12px rgba(89, 112, 147, 0.25), 0 2px 4px rgba(89, 112, 147, 0.15) !important;
-}
-
-.theme-light #reset-btn:hover {
-    background-color: #4a5f7f !important;
-    box-shadow: 0 6px 16px rgba(89, 112, 147, 0.3), 0 3px 6px rgba(89, 112, 147, 0.2) !important;
-}
-
-/* Output FAB */
-.theme-light .outputFab,
-.theme-light #outputBtn {
-    background-color: #597093 !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(89, 112, 147, 0.25), 0 2px 4px rgba(89, 112, 147, 0.15) !important;
-}
-
-.theme-light .outputFab:hover,
-.theme-light #outputBtn:hover {
-    background-color: #4a5f7f !important;
-    box-shadow: 0 6px 16px rgba(89, 112, 147, 0.3), 0 3px 6px rgba(89, 112, 147, 0.2) !important;
-}
-
-/* Combo Buttons */
-.theme-light .combo-btn {
-    background-color: #84AEED !important;
-    color: #111827 !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(132, 174, 237, 0.25), 0 2px 4px rgba(132, 174, 237, 0.15) !important;
-}
-
-.theme-light .combo-btn:hover {
-    background-color: #6b9ae8 !important;
-    box-shadow: 0 6px 16px rgba(132, 174, 237, 0.3), 0 3px 6px rgba(132, 174, 237, 0.2) !important;
-}
-
-.theme-light .combo-btn[class*="bg-[var(--accent-blue-light)]"],
-.theme-light .combo-btn.bg-blue-600 {
-    background-color: #3B7EE3 !important;
-    color: #111827 !important;
-    box-shadow: 0 4px 12px rgba(59, 126, 227, 0.25), 0 2px 4px rgba(59, 126, 227, 0.15) !important;
-}
-
-/* Choice Buttons - base style (default) */
-.theme-light .choice-btn {
-    background-color: #84AEED !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(132, 174, 237, 0.25), 0 2px 4px rgba(132, 174, 237, 0.15) !important;
-}
-
-.theme-light .choice-btn:hover {
-    background-color: #6b9ae8 !important;
-    box-shadow: 0 6px 16px rgba(132, 174, 237, 0.3), 0 3px 6px rgba(132, 174, 237, 0.2) !important;
-}
-
-/* Selected state - must override base style */
-.theme-light .choice-btn[class*="bg-[var(--accent-blue-light)\]"],
-.theme-light .choice-btn.bg-blue-600,
-.theme-light .choice-btn[data-selected="true"],
-.theme-light .choice-btn.choice-btn-selected {
-    background-color: #66CCDD !important;
-    color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(59, 126, 227, 0.25), 0 2px 4px rgba(59, 126, 227, 0.15) !important;
-}
-
-/* Override text-slate-900 for selected buttons */
-.theme-light .choice-btn[class*="bg-[var(--accent-blue-light)\]"].text-slate-900,
-.theme-light .choice-btn.bg-blue-600.text-slate-900,
-.theme-light .choice-btn[data-selected="true"].text-slate-900,
-.theme-light .choice-btn.choice-btn-selected.text-slate-900 {
-    color: #ffffff !important;
-}
-
-/* Custom Combo Percent Input */
-.theme-light #customComboPercent {
-    background-color: #f9fafb;
-    border: 1px solid #bfdbfe;
-    color: #111827;
-}
-
-.theme-light #customComboPercent:focus {
-    border-color: #60A5FA;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
-}
-
-/* Custom Desired Pension Level Input */
-.theme-light #customDesiredPensionLevel {
-    background-color: #f9fafb;
-    border: 1px solid #bfdbfe;
-    color: #111827;
-}
-
-.theme-light #customDesiredPensionLevel:focus {
-    border-color: #60A5FA;
-    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.35);
-}
-
-/* Detailed View Content */
-.theme-light #detailedViewContent {
-    background-color: #E5E9EE !important;
-    border: 1px solid #bfdbfe;
-}
-
-.theme-light #detailedViewContent .text-slate-300 {
-    color: #111827 !important;
-}
-
-.theme-light #detailedViewContent .font-semibold.text-white {
-    color: #2563eb !important;
-}
-
-.theme-light #detailedViewContent hr {
-    border-color: #cbd5e1 !important;
-}
-
-/* Pension Gap Summary */
-.theme-light #pension-gap-summary {
-    background-color: #f9fafb;
-    border: 1px solid #bfdbfe;
-}
-
-/* Disclaimer Button */
-.theme-light #disclaimerBtn,
-.theme-light #disclaimerBtn[class*="bg-slate-700/70"] {
-    background-color: #84AEED !important;
-    color: #111827 !important;
-    border: none !important;
-    box-shadow: 0 4px 12px rgba(132, 174, 237, 0.25), 0 2px 4px rgba(132, 174, 237, 0.15) !important;
-}
-
-.theme-light #disclaimerBtn:hover,
-.theme-light #disclaimerBtn[class*="bg-slate-700/70"]:hover {
-    background-color: #6b9ae8 !important;
-    box-shadow: 0 6px 16px rgba(132, 174, 237, 0.3), 0 3px 6px rgba(132, 174, 237, 0.2) !important;
-}
-
-/* Override text color for disclaimer button */
-.theme-light #disclaimerBtn.text-slate-200 {
-    color: #111827 !important;
-}
-
-/* Toggle Buttons */
-.theme-light #toggleDetailedViewBtn,
-.theme-light #togglePensionGapBtn,
-.theme-light #toggleInputsBtn {
-    color: #6b7280;
-}
-
-.theme-light #toggleDetailedViewBtn:hover,
-.theme-light #togglePensionGapBtn:hover,
-.theme-light #toggleInputsBtn:hover {
-    color: #111827;
-    background-color: rgba(17, 24, 39, 0.05);
-}
-
-/* Theme Toggle Button */
-.theme-light #themeToggle {
-    background-color: rgba(51, 65, 85, 0.25);
-    border: 1px solid rgba(71, 85, 105, 0.6);
-    color: #E5E7EB;
-}
-
-.theme-light #themeToggle:hover {
-    background-color: rgba(51, 65, 85, 0.35);
-}
-
-/* Scrollbar (WebKit) */
-.theme-light ::-webkit-scrollbar-track {
-    background: #f9f9f9;
-}
-
-.theme-light ::-webkit-scrollbar-thumb {
-    background: #66CCDD;
-}
-
-.theme-light ::-webkit-scrollbar-thumb:hover {
-    background: #3388CC;
-}
-
-/* Input Group Labels */
-.theme-light .input-group label {
-    color: #333333;
-}
-
-/* Value Spans */
-.theme-light [class*="text-[var(--accent-blue-light)\]"],
-.theme-light #dashboardPage span[id$="-value"] {
-    color: #3388CC !important;
-}
-
-/* Border Colors */
-.theme-light [class*="border-[var(--border-color)]"] {
-    border-color: #DDDDDD;
-}
-
-/* Background Overrides for Specific Elements - these are handled by summary-panel and metrics-panel classes above */
-
-/* Text Color Overrides */
-.theme-light .text-slate-400 {
-    color: #666666;
-}
-
-.theme-light .text-slate-500 {
-    color: #666666;
-}

@@ -1,86 +1,89 @@
 /* ========================================
    Portfolio Insight Dashboard
-   Design System - Whitney/Proxima Nova Alternative
+   Design System - Mål og behov (Whitney, teal #66CCDD, heading #4A6D8C)
    ======================================== */
 
-/* T-konto-stil overskrift: Whitney (som T-konto) */
+/* Whitney @font-face (full set som Mål og behov) */
 @font-face { font-family: 'Whitney'; src: local('Whitney Black'), local('Whitney-Black'), local('Whitney Black Regular'); font-style: normal; font-weight: 900; font-display: swap; }
 @font-face { font-family: 'Whitney'; src: local('Whitney Bold'), local('Whitney-Bold'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Whitney'; src: local('Whitney Medium'), local('Whitney-Medium'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Whitney'; src: local('Whitney Book'), local('Whitney-Book'), local('Whitney Light'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
 
-/* CSS Variables - Brand Palette */
+/* CSS Variables - Mål og behov palette */
 :root {
-  --background: oklch(0.9759 0.0029 264.5420);
-  --foreground: oklch(0.2722 0.1053 258.9631);
-  --card: oklch(1.0000 0 0);
-  --card-foreground: oklch(0.2722 0.1053 258.9631);
-  --popover: oklch(1.0000 0 0);
-  --popover-foreground: oklch(0.2722 0.1053 258.9631);
-  --primary: oklch(0.5190 0.2061 260.1727);
-  --primary-foreground: oklch(1.0000 0 0);
-  --secondary: oklch(0.9510 0.0063 255.4756);
-  --secondary-foreground: oklch(0.2722 0.1053 258.9631);
-  --muted: oklch(0.9846 0.0017 247.8389);
-  --muted-foreground: oklch(0.5409 0.0616 258.6202);
-  --accent: oklch(0.9489 0.0188 255.5341);
-  --accent-foreground: oklch(0.4562 0.1809 260.1560);
-  --destructive: oklch(0.4322 0.1500 28.9906);
-  --destructive-foreground: oklch(1.0000 0 0);
-  --border: oklch(0.9324 0.0080 253.8552);
-  --input: oklch(0.9276 0.0058 264.5313);
-  --ring: oklch(0.6231 0.1880 259.8145);
-  --chart-1: oklch(0.8479 0.0603 257.7878);
-  --chart-2: oklch(0.7450 0.1024 258.2961);
-  --chart-3: oklch(0.6020 0.1679 258.6201);
-  --chart-4: oklch(0.4562 0.1809 260.1560);
-  --chart-5: oklch(0.2722 0.1053 258.9631);
+  --background: #f5f5f5;
+  --foreground: #333333;
+  --card: #ffffff;
+  --card-foreground: #333333;
+  --popover: #ffffff;
+  --popover-foreground: #333333;
+  --primary: #3388CC;
+  --primary-foreground: #ffffff;
+  --secondary: #f9f9f9;
+  --secondary-foreground: #333333;
+  --muted: #f9f9f9;
+  --muted-foreground: #666666;
+  --accent: #f0f9fa;
+  --accent-foreground: #4A6D8C;
+  --destructive: #CC4B4B;
+  --destructive-foreground: #ffffff;
+  --border: #DDDDDD;
+  --input: #DDDDDD;
+  --ring: #66CCDD;
+  --chart-1: #88CCEE;
+  --chart-2: #66CCDD;
+  --chart-3: #3388CC;
+  --chart-4: #4A6D8C;
+  --chart-5: #333333;
   
-  /* Legacy color mappings for compatibility */
-  --dark-blue: oklch(0.2722 0.1053 258.9631);
-  --blue: oklch(0.5190 0.2061 260.1727);
-  --cyan-40: oklch(0.7450 0.1024 258.2961);
-  --cyan-20: oklch(0.9510 0.0063 255.4756);
-  --light-grey: oklch(0.9759 0.0029 264.5420);
-  --white: oklch(1.0000 0 0);
-  --coal: oklch(0.2722 0.1053 258.9631);
-  --blue-60: oklch(0.6020 0.1679 258.6201);
-  --blue-15: oklch(0.9324 0.0080 253.8552);
-  --coral: oklch(0.4322 0.1500 28.9906);
-  --cyan: oklch(0.6231 0.1880 259.8145);
+  /* Legacy color mappings */
+  --dark-blue: #4A6D8C;
+  --blue: #3388CC;
+  --cyan-40: #66CCDD;
+  --cyan-20: #f0f9fa;
+  --light-grey: #f5f5f5;
+  --white: #ffffff;
+  --coal: #333333;
+  --blue-60: #3388CC;
+  --blue-15: #DDDDDD;
+  --coral: #CC4B4B;
+  --cyan: #66CCDD;
   
   /* Status colors */
-  --success: oklch(0.6020 0.1679 258.6201);
-  --success-light: oklch(0.9510 0.0063 255.4756);
-  --warning: oklch(0.7450 0.1024 258.2961);
-  --warning-light: oklch(0.9510 0.0063 255.4756);
-  --danger: oklch(0.4322 0.1500 28.9906);
-  --danger-light: oklch(0.9510 0.0063 255.4756);
+  --success: #0C8F4A;
+  --success-light: #f0f9fa;
+  --warning: #88CCEE;
+  --warning-light: #f0f9fa;
+  --danger: #CC4B4B;
+  --danger-light: #FDE8E7;
   
-  /* Chart Colors */
-  --chart-dark-blue: oklch(0.2722 0.1053 258.9631);
-  --chart-yale-blue: oklch(0.4562 0.1809 260.1560);
-  --chart-violet-blue: oklch(0.6020 0.1679 258.6201);
-  --chart-crayola-blue: oklch(0.7450 0.1024 258.2961);
-  --chart-jordy-blue: oklch(0.8479 0.0603 257.7878);
-  --chart-lavender: oklch(0.9510 0.0063 255.4756);
+  /* Chart Colors - Mål og behov */
+  --chart-dark-blue: #4A6D8C;
+  --chart-yale-blue: #4A6D8C;
+  --chart-violet-blue: #3388CC;
+  --chart-crayola-blue: #66CCDD;
+  --chart-jordy-blue: #88CCEE;
+  --chart-lavender: #f0f9fa;
   
   /* Asset class colors */
-  --stocks-color: var(--chart-3);
-  --stocks-light: var(--chart-1);
-  --risikofri-color: var(--chart-4);
-  --risikofri-light: var(--secondary);
-  --highyield-color: var(--chart-2);
-  --highyield-light: var(--chart-1);
+  --stocks-color: #88CCEE;
+  --stocks-light: #f0f9fa;
+  --risikofri-color: #4A6D8C;
+  --risikofri-light: #f0f9fa;
+  --highyield-color: #66CCDD;
+  --highyield-light: #f0f9fa;
   
   /* Portfolio colors */
-  --current-color: var(--chart-4);
-  --current-light: var(--secondary);
-  --new-color: var(--chart-3);
-  --new-light: var(--secondary);
+  --current-color: #4A6D8C;
+  --current-light: #f0f9fa;
+  --new-color: #66CCDD;
+  --new-light: #f0f9fa;
   
-  /* Font families - Using system fonts that match Whitney characteristics */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Font families - Whitney som Mål og behov */
+  --font-sans: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
-  --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+  --font-mono: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
   
   /* Typography Scale */
   --text-xs: 0.75rem;      /* 12px */
@@ -260,9 +263,9 @@ body {
 }
 
 .hent-portefolje-btn.active {
-    background: var(--success);
-    color: var(--primary-foreground);
-    border-color: var(--success);
+    background: #66CCDD;
+    color: white;
+    border-color: #66CCDD;
 }
 
 .info-badge {
@@ -413,7 +416,7 @@ body {
 .period-btn:hover {
     background: var(--accent);
     color: var(--accent-foreground);
-    border-color: var(--cyan);
+    border-color: #66CCDD;
     box-shadow: var(--shadow-md);
 }
 
@@ -610,7 +613,7 @@ body {
     font-size: var(--text-sm);
     font-weight: 700;
     color: var(--chart-violet-blue);
-    background: var(--chart-lavender);
+    background: transparent;
     padding: 2px var(--space-sm);
     border-radius: var(--radius-sm);
 }
@@ -630,11 +633,11 @@ body {
 .slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: var(--card);
-    border: 2px solid var(--primary);
+    background: #66CCDD;
+    border: 2px solid white;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
     transition: all var(--transition-fast);
@@ -645,11 +648,11 @@ body {
 }
 
 .slider::-moz-range-thumb {
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background: var(--card);
-    border: 2px solid var(--primary);
+    background: #66CCDD;
+    border: 2px solid white;
     cursor: pointer;
 }
 
@@ -1009,7 +1012,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: oklch(0.2722 0.1053 258.9631 / 0.8);
+    background: rgba(74, 109, 140, 0.8);
     z-index: 9999;
     align-items: center;
     justify-content: center;
@@ -1489,19 +1492,19 @@ body {
     align-items: center;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm);
-    background: var(--chart-lavender);
-    border: 1px solid var(--chart-crayola-blue);
+    background: #f0f9fa;
+    border: 1px solid #66CCDD;
     border-radius: var(--radius-md);
     cursor: pointer;
     font-family: inherit;
     font-size: var(--text-xs);
     font-weight: 500;
-    color: var(--chart-violet-blue);
+    color: #4A6D8C;
     transition: all var(--transition-fast);
 }
 
 .reset-zoom-btn:hover {
-    background: var(--chart-jordy-blue);
+    background: rgba(102, 204, 221, 0.25);
 }
 
 .reset-zoom-btn svg {
@@ -1714,8 +1717,8 @@ body {
 }
 
 .info-card.highlight {
-    background: linear-gradient(135deg, var(--success-light) 0%, var(--secondary) 100%);
-    border: 2px solid var(--success);
+    background: linear-gradient(135deg, #f0f9fa 0%, var(--secondary) 100%);
+    border: 2px solid #66CCDD;
 }
 
 .info-icon {
@@ -2195,8 +2198,8 @@ body {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--card);
-    border: 2px solid var(--primary);
+    background: #66CCDD;
+    border: 2px solid white;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: var(--shadow-md);
@@ -2208,8 +2211,8 @@ body {
 
 .year-slider::-webkit-slider-thumb:hover,
 .amount-slider::-webkit-slider-thumb:hover {
-    background: var(--accent);
-    border-color: var(--primary);
+    background: #3388CC;
+    border-color: white;
     box-shadow: var(--shadow-lg);
     transform: scale(1.1);
 }
@@ -2218,8 +2221,8 @@ body {
 .amount-slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--card);
-    border: 2px solid var(--primary);
+    background: #66CCDD;
+    border: 2px solid white;
     border-radius: 50%;
     cursor: pointer;
     box-shadow: var(--shadow-md);
@@ -2231,8 +2234,8 @@ body {
 
 .year-slider::-moz-range-thumb:hover,
 .amount-slider::-moz-range-thumb:hover {
-    background: var(--accent);
-    border-color: var(--primary);
+    background: #3388CC;
+    border-color: white;
     box-shadow: var(--shadow-lg);
     transform: scale(1.1);
 }
@@ -2648,15 +2651,15 @@ body {
 }
 
 .year-by-year-table tbody tr.negative-year-row {
-    background-color: #e3f2fd;
+    background-color: #f0f9fa;
 }
 
 .year-by-year-table tbody tr.negative-year-row:nth-child(even) {
-    background-color: #e3f2fd;
+    background-color: #f0f9fa;
 }
 
 .year-by-year-table tbody tr.negative-year-row:hover {
-    background-color: #bbdefb;
+    background-color: rgba(102, 204, 221, 0.25);
 }
 
 @media (max-width: 768px) {

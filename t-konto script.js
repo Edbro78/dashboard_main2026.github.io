@@ -154,30 +154,7 @@ function updateAutoTax() {
     }
   }
 
-  // Oppdater Formuesskatt
-  const wealthTaxItem = AppState.incomes.find(i => i.name === "Formuesskatt");
-  if (wealthTaxItem && wealthTaxItem._autoTaxEnabled) {
-    // Beregn sum av alle eiendeler
-    const assets = AppState.assets || [];
-    const sumAssets = assets.reduce((s, x) => s + (x.amount || 0), 0);
-    
-    // Formuesskatt = sum eiendeler × 0.5%
-    const calculatedTax = Math.round(sumAssets * 0.005);
-    wealthTaxItem.amount = calculatedTax;
-    
-    // Oppdater UI hvis elementet eksisterer
-    const taxRow = document.querySelector(`.asset-name[value="Formuesskatt"]`)?.closest('.asset-row');
-    if (taxRow) {
-      const taxRange = taxRow.querySelector('.asset-range');
-      const taxAmount = taxRow.querySelector('.asset-amount');
-      if (taxRange) {
-        taxRange.value = String(calculatedTax);
-      }
-      if (taxAmount) {
-        taxAmount.textContent = formatNOK(calculatedTax);
-      }
-    }
-  }
+  // Formuesskatt hentes kun fra Formuesskatt-fanen ved toggle-klikk (ikke beregnet her)
 
   // Oppdater Årlige kostnader
   const annualCostsItem = AppState.incomes.find(i => i.name === "ÅRLIGE KOSTNADER");
@@ -627,6 +604,36 @@ window.getTKontoFormuesskatt = function () {
     return Math.max(0, Math.round(amount));
   } catch (e) {
     return 0;
+  }
+};
+
+/** Returnerer data fra T-konto Eiendeler og Gjeld for Formuesskatt-fanen. */
+window.getTKontoDataForFormuesskatt = function () {
+  try {
+    var assets = AppState.assets || [];
+    var debts = AppState.debts || [];
+    var gjeld = debts.reduce(function (s, d) { return s + (d.amount || 0); }, 0);
+    var primærbolig = assets
+      .filter(function (a) { return /^FAST\s*EIENDOM$/i.test(a.name || "") || a.assetType === "eiendom"; })
+      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    var bilBåt = assets
+      .filter(function (a) { return /^BIL\/BÅT$/i.test(a.name || "") || /^BIL\s*BÅT$/i.test(a.name || "") || a.assetType === "bilbat"; })
+      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    var privatPorteføljeASK = assets
+      .filter(function (a) { return /Investeringer\s*Mål\s*og\s*behov/i.test(a.name || "") || a.assetType === "investeringer"; })
+      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    var bankinnskudd = assets
+      .filter(function (a) { return /^BANK$/i.test(a.name || ""); })
+      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    return {
+      gjeld: Math.round(gjeld),
+      primærbolig: Math.round(primærbolig),
+      bilBåt: Math.round(bilBåt),
+      privatPorteføljeASK: Math.round(privatPorteføljeASK),
+      bankinnskudd: Math.round(bankinnskudd)
+    };
+  } catch (e) {
+    return { gjeld: 0, primærbolig: 0, bilBåt: 0, privatPorteføljeASK: 0, bankinnskudd: 0 };
   }
 };
 
@@ -7306,22 +7313,31 @@ function createItemRow(collectionName, item) {
       } else if (item.name === "Formuesskatt") {
         toggleInput.addEventListener("change", () => {
           if (toggleInput.checked) {
-            // Beregn formuesskatt basert på sum av alle eiendeler (0.5%)
-            const assets = AppState.assets || [];
-            const sumAssets = assets.reduce((s, x) => s + (x.amount || 0), 0);
-            const calculatedTax = Math.round(sumAssets * 0.005);
-            item.amount = calculatedTax;
+            // Hent Total Formuesskatt fra Formuesskatt-fanen (ikke beregn 0.5%)
+            let valueFromFormuesskatt = 0;
+            const iframe = document.querySelector('iframe[src*="formuesskatt"]');
+            if (iframe && iframe.contentWindow && typeof iframe.contentWindow.getFormuesskattTotal === 'function') {
+              try {
+                valueFromFormuesskatt = iframe.contentWindow.getFormuesskattTotal();
+              } catch (e) { valueFromFormuesskatt = 0; }
+            }
+            item.amount = valueFromFormuesskatt;
             item._autoTaxEnabled = true;
             
             // Oppdater slider og visning
-            range.value = String(calculatedTax);
-            amount.textContent = formatNOK(calculatedTax);
-            // Eksporter beløpet til Mål og behov (tallet helt til høyre)
+            range.value = String(valueFromFormuesskatt);
+            amount.textContent = formatNOK(valueFromFormuesskatt);
             setFormuesskattForMaalOgBehov(item.amount);
             updateTopSummaries();
           } else {
-            // Deaktiver auto-beregning
+            // Toggle av: sett verdi til 0
             item._autoTaxEnabled = false;
+            toggleInput.checked = false;
+            item.amount = 0;
+            range.value = "0";
+            amount.textContent = formatNOK(0);
+            setFormuesskattForMaalOgBehov(0);
+            updateTopSummaries();
           }
         });
       } else if (item.name === "ÅRLIGE KOSTNADER") {

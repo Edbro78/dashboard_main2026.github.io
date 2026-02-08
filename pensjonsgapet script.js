@@ -1,132 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
 
-        // --- THEME TOGGLE FUNCTIONALITY ---
-        const themeToggle = document.getElementById('themeToggle');
-        const themeIcon = document.getElementById('themeIcon');
-        
-        // Initialize theme from localStorage - default is always dark mode
-        // Only apply light mode if explicitly saved as 'light' in localStorage
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'light') {
-            // Light mode is an active choice, apply it
-            document.documentElement.classList.add('theme-light');
-            if (themeIcon) themeIcon.textContent = '☾';
-        } else {
-            // Default to dark mode (if savedTheme is null, undefined, 'dark', or anything else)
-            document.documentElement.classList.remove('theme-light');
-            if (themeIcon) themeIcon.textContent = '☀︎';
-            // Ensure localStorage is set to 'dark' if it was empty
-            if (!savedTheme) {
-                localStorage.setItem('theme', 'dark');
-            }
-        }
-        
-        // Function to update disclaimer button color
-        const updateDisclaimerButton = () => {
-            const disclaimerBtn = document.getElementById('disclaimerBtn');
-            if (disclaimerBtn && document.documentElement.classList.contains('theme-light')) {
-                disclaimerBtn.style.setProperty('background-color', '#3388CC', 'important');
-                disclaimerBtn.style.setProperty('color', '#ffffff', 'important');
-                disclaimerBtn.style.setProperty('border', 'none', 'important');
-            } else if (disclaimerBtn) {
-                // Remove all inline styles to restore dark mode defaults
-                disclaimerBtn.style.removeProperty('background-color');
-                disclaimerBtn.style.removeProperty('color');
-                disclaimerBtn.style.removeProperty('border');
-                disclaimerBtn.style.removeProperty('box-shadow');
-            }
-        };
-        
-        // Function to remove inline styles from buttons when switching to dark mode
-        const removeLightModeStyles = () => {
-            // Remove styles from choice buttons
-            document.querySelectorAll('.choice-btn').forEach(btn => {
-                btn.style.removeProperty('background-color');
-                btn.style.removeProperty('color');
-            });
-            
-            // Remove styles from combo buttons
-            document.querySelectorAll('.combo-btn').forEach(btn => {
-                btn.style.removeProperty('background-color');
-                btn.style.removeProperty('color');
-            });
-        };
-        
-        // Function to apply light mode styles to buttons
-        const applyLightModeStyles = () => {
-            // Apply styles to choice buttons
-            document.querySelectorAll('.choice-btn').forEach(btn => {
-                // Check if button is selected
-                const isSelected = btn.classList.contains('bg-[var(--accent-blue-light)]') || 
-                                   btn.classList.contains('bg-blue-600') ||
-                                   btn.hasAttribute('data-selected') ||
-                                   btn.classList.contains('choice-btn-selected');
-                
-                if (isSelected) {
-                    btn.style.setProperty('background-color', '#66CCDD', 'important');
-                    btn.style.setProperty('color', '#ffffff', 'important');
-                } else {
-                    if (btn.classList.contains('aksjeandel-btn')) {
-                        btn.style.setProperty('background-color', '#ffffff', 'important');
-                        btn.style.setProperty('color', '#333333', 'important');
-                    } else {
-                        btn.style.setProperty('background-color', '#84AEED', 'important');
-                        btn.style.setProperty('color', '#ffffff', 'important');
-                    }
-                }
-            });
-            
-            // Apply styles to combo buttons
-            document.querySelectorAll('.combo-btn').forEach(btn => {
-                // Check if button is selected
-                const isSelected = btn.classList.contains('bg-[var(--accent-blue-light)]') || 
-                                   btn.classList.contains('bg-blue-600');
-                
-                if (isSelected) {
-                    btn.style.setProperty('background-color', '#66CCDD', 'important');
-                    btn.style.setProperty('color', '#333333', 'important');
-                } else {
-                    btn.style.setProperty('background-color', '#84AEED', 'important');
-                    btn.style.setProperty('color', '#333333', 'important');
-                }
-            });
-        };
-        
-        // Toggle theme on button click
-        if (themeToggle) {
-            themeToggle.addEventListener('click', () => {
-                const isLight = document.documentElement.classList.toggle('theme-light');
-                const newTheme = isLight ? 'light' : 'dark';
-                localStorage.setItem('theme', newTheme);
-                
-                if (themeIcon) {
-                    themeIcon.textContent = isLight ? '☾' : '☀︎';
-                }
-                
-                // If switching to dark mode, remove all inline styles
-                if (!isLight) {
-                    removeLightModeStyles();
-                } else {
-                    // If switching to light mode, apply light mode styles
-                    applyLightModeStyles();
-                }
-                
-                // Update disclaimer button color
-                updateDisclaimerButton();
-            });
-        }
-        
-        // Initialize disclaimer button color
-        updateDisclaimerButton();
-        
-        // Apply light mode styles if starting in light mode
-        if (document.documentElement.classList.contains('theme-light')) {
-            // Wait a bit for DOM to be ready
-            setTimeout(() => {
-                applyLightModeStyles();
-            }, 100);
-        }
-
         // --- GLOBAL APP STATE ---
 
         // Disclaimer modal wiring
@@ -255,6 +128,42 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             return outputText;
+        };
+        
+        window.PensjonsgapetGetOutputText = function() { return generateOutputText(); };
+        
+        window.PensjonsgapetApplyInputText = function(text) {
+            if (!text || !text.trim()) return;
+            const labelToId = {
+                'Din alder': 'age', 'Pensjonsalder': 'retirementAge', 'Grunnbeløp (1G)': 'grunnbelop',
+                'Dagens årslønn': 'currentSalary', 'OTP Saldo i dag': 'currentOTPSaldo', 'OTP-sats': 'otpRate',
+                'IPS Saldo i dag': 'currentIPSBalance', 'Årlig sparing IPS': 'ipsAnnualSaving',
+                'Årlig utbetaling fra Fripoliser': 'annualFripoliserPayout', 'Aksjeandel': 'expectedReturn',
+                'Utbetalingsperiode OTP': 'payoutYears', 'Forventet årlig KPI': 'cpiRate',
+                'Årlig utbetaling Folketrygden': 'socialSecurityEstimate', 'Ønsket pensjonsnivå': 'desiredPensionLevel'
+            };
+            const stockToReturn = { 0: 5, 20: 5.6, 45: 6.3, 55: 6.7, 65: 7, 85: 7.5, 100: 8 };
+            const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+            lines.forEach(line => {
+                const colonIdx = line.indexOf(':');
+                if (colonIdx < 0) return;
+                const label = line.substring(0, colonIdx).trim();
+                const valueStr = line.substring(colonIdx + 1).trim();
+                const id = labelToId[label];
+                if (!id) return;
+                const el = document.getElementById(id);
+                if (!el) return;
+                let num = parseFloat(valueStr.replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '')) || 0;
+                if (id === 'expectedReturn' && valueStr.includes('%')) {
+                    const stockMatch = valueStr.match(/(\d+)\s*%\s*aksjer/);
+                    if (stockMatch) num = stockToReturn[parseInt(stockMatch[1], 10)] ?? num;
+                }
+                el.value = String(num);
+                const valSpan = document.getElementById(id + '-value');
+                if (valSpan && id !== 'grunnbelop') valSpan.textContent = valueStr.includes('kr') ? new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(num) : valueStr;
+                if (el.type === 'range') el.dispatchEvent(new Event('input', { bubbles: true }));
+            });
+            if (typeof DashboardApp !== 'undefined' && DashboardApp.calculatePension) DashboardApp.calculatePension();
         };
         
         const openOutput = () => {
@@ -458,30 +367,15 @@ document.addEventListener('DOMContentLoaded', function() {
                             const btn = document.createElement('button');
                             btn.type = 'button';
                             btn.className = 'choice-btn aksjeandel-btn w-full py-1.5 text-sm rounded-lg bg-slate-700 text-white hover:bg-slate-600 transition border border-slate-600';
-                            if (document.documentElement.classList.contains('theme-light')) {
-                                btn.style.backgroundColor = '#ffffff';
-                                btn.style.color = '#333333';
-                                btn.style.borderColor = '#DDDDDD';
-                            }
                             btn.textContent = `${stock}%`;
                             btn.addEventListener('click', () => {
                                 input.value = stockToReturn[stock];
                                 btnRow.querySelectorAll('.choice-btn').forEach(b => {
                                     b.classList.remove('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                     b.removeAttribute('data-selected');
-                                    if (document.documentElement.classList.contains('theme-light')) {
-                                        b.style.backgroundColor = '#ffffff';
-                                        b.style.color = '#333333';
-                                        b.style.borderColor = '#DDDDDD';
-                                    }
                                 });
                                 btn.classList.add('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                 btn.setAttribute('data-selected', 'true');
-                                if (document.documentElement.classList.contains('theme-light')) {
-                                    btn.style.setProperty('background-color', '#66CCDD', 'important');
-                                    btn.style.setProperty('color', '#ffffff', 'important');
-                                    btn.style.setProperty('border-color', '#66CCDD', 'important');
-                                }
                                 input.dispatchEvent(new Event('input', { bubbles: true }));
                             });
                             btnRow.appendChild(btn);
@@ -548,11 +442,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const btn = document.createElement('button');
                                 btn.type = 'button';
                                 btn.className = 'choice-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition';
-                                // Set base color in light mode
-                                if (document.documentElement.classList.contains('theme-light')) {
-                                    btn.style.backgroundColor = '#84AEED';
-                                    btn.style.color = '#ffffff';
-                                }
                                 btn.textContent = `${val}%`;
                                 btn.addEventListener('click', () => {
                                     input.value = val;
@@ -560,20 +449,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     btnRow.querySelectorAll('.choice-btn').forEach(b => {
                                         b.classList.remove('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                         b.removeAttribute('data-selected');
-                                        // Reset to base color in light mode
-                                        if (document.documentElement.classList.contains('theme-light')) {
-                                            b.style.backgroundColor = '#84AEED';
-                                            b.style.color = '#ffffff';
-                                        }
                                     });
                                     // add to clicked button
                                     btn.classList.add('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                     btn.setAttribute('data-selected', 'true');
-                                    // Set selected color in light mode - use setProperty with important
-                                    if (document.documentElement.classList.contains('theme-light')) {
-                                        btn.style.setProperty('background-color', '#3B7EE3', 'important');
-                                        btn.style.setProperty('color', '#ffffff', 'important');
-                                    }
                                     // Clear custom input when button is selected
                                     customInput.value = '';
                                     // update label value immediately
@@ -589,11 +468,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const btn = document.createElement('button');
                                 btn.type = 'button';
                                 btn.className = 'choice-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition';
-                                // Set base color in light mode
-                                if (document.documentElement.classList.contains('theme-light')) {
-                                    btn.style.backgroundColor = '#84AEED';
-                                    btn.style.color = '#ffffff';
-                                }
                                 btn.textContent = `${val}%`;
                                 btn.addEventListener('click', () => {
                                     input.value = val;
@@ -601,20 +475,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                     btnRow.querySelectorAll('.choice-btn').forEach(b => {
                                         b.classList.remove('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                         b.removeAttribute('data-selected');
-                                        // Reset to base color in light mode
-                                        if (document.documentElement.classList.contains('theme-light')) {
-                                            b.style.backgroundColor = '#84AEED';
-                                            b.style.color = '#ffffff';
-                                        }
                                     });
                                     // add to clicked button
                                     btn.classList.add('bg-[var(--accent-blue-light)]', 'text-slate-900', 'choice-btn-selected');
                                     btn.setAttribute('data-selected', 'true');
-                                    // Set selected color in light mode - use setProperty with important
-                                    if (document.documentElement.classList.contains('theme-light')) {
-                                        btn.style.setProperty('background-color', '#3B7EE3', 'important');
-                                        btn.style.setProperty('color', '#ffffff', 'important');
-                                    }
                                     // update label value immediately
                                     if (valueSpan) valueSpan.textContent = `${val} %`;
                                     // trigger recalculation
@@ -641,15 +505,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Combination buttons handlers
                 const comboButtons = document.querySelectorAll('.combo-btn');
                 if (comboButtons && comboButtons.length > 0) {
-                    // Set base color for combo buttons in light mode
-                    if (document.documentElement.classList.contains('theme-light')) {
-                        comboButtons.forEach(btn => {
-                            if (!btn.classList.contains('bg-[var(--accent-blue-light)]')) {
-                                btn.style.setProperty('background-color', '#84AEED', 'important');
-                                btn.style.setProperty('color', '#111827', 'important');
-                            }
-                        });
-                    }
                     comboButtons.forEach(btn => {
                         btn.addEventListener('click', (e) => {
                             const percent = parseFloat(e.currentTarget.getAttribute('data-percent'));
@@ -659,19 +514,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             comboButtons.forEach(b => {
                                 b.classList.remove('bg-[var(--accent-blue-light)]', 'text-slate-900');
                                 b.removeAttribute('data-combo-selected');
-                                // Reset to base color in light mode
-                                if (document.documentElement.classList.contains('theme-light')) {
-                                    b.style.setProperty('background-color', '#84AEED', 'important');
-                                    b.style.setProperty('color', '#111827', 'important');
-                                }
                             });
                             e.currentTarget.classList.add('bg-[var(--accent-blue-light)]', 'text-slate-900');
                             e.currentTarget.setAttribute('data-combo-selected', 'true');
-                            // Set selected color in light mode
-                            if (document.documentElement.classList.contains('theme-light')) {
-                                e.currentTarget.style.setProperty('background-color', '#66CCDD', 'important');
-                                e.currentTarget.style.setProperty('color', '#111827', 'important');
-                            }
                             // Clear custom input when button is selected
                             const customInput = document.getElementById('customComboPercent');
                             if (customInput) customInput.value = '';

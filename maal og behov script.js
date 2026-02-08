@@ -1401,23 +1401,25 @@ function TabContainer() {
     const [showInputModal, setShowInputModal] = useState(false);
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
-    const iframeRef = React.useRef(null);
+    const risikoIframeRef = React.useRef(null);
+    const pensjonsgapetIframeRef = React.useRef(null);
+    const formuesskattIframeRef = React.useRef(null);
 
     const tabs = [
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
-        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={iframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Pensjonsgapet', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="pensjonsgapet%20index.html" title="Pensjonsgapet" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> },
-        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
+        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Pensjonsgapet', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjonsgapet" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
     ];
 
     const buildCombinedOutput = React.useCallback(() => {
         const maal = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
         const tkonto = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
-        let risiko = '(Risikosimulering: åpne fanen og bruk Output der for å hente data)';
+        let risiko = '(Risikosimulering: åpne fanen for å hente data)';
         try {
-            const win = iframeRef.current && iframeRef.current.contentWindow;
+            const win = risikoIframeRef.current && risikoIframeRef.current.contentWindow;
             if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
                 const data = win.RisikoSimuleringGetOutputData();
                 risiko = [
@@ -1428,6 +1430,20 @@ function TabContainer() {
                 ].join('\n');
             }
         } catch (_) {}
+        let pensjonsgapet = '(Pensjonsgapet: åpne fanen for å hente data)';
+        try {
+            const win = pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow;
+            if (win && typeof win.PensjonsgapetGetOutputText === 'function') {
+                pensjonsgapet = win.PensjonsgapetGetOutputText();
+            }
+        } catch (_) {}
+        let formuesskatt = '(Formuesskatt: åpne fanen for å hente data)';
+        try {
+            const win = formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow;
+            if (win && typeof win.FormuesskattGetOutputText === 'function') {
+                formuesskatt = win.FormuesskattGetOutputText();
+            }
+        } catch (_) {}
         return [
             '--- Mål og behov ---',
             maal,
@@ -1436,7 +1452,13 @@ function TabContainer() {
             tkonto,
             '',
             '--- Risikosimulering ---',
-            risiko
+            risiko,
+            '',
+            '--- Pensjonsgapet ---',
+            pensjonsgapet,
+            '',
+            '--- Formuesskatt ---',
+            formuesskatt
         ].join('\n');
     }, []);
 
@@ -1479,24 +1501,42 @@ function TabContainer() {
             return;
         }
         const full = inputText.trim();
-        const sections = { maal: '', tkonto: '', risiko: '' };
+        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '' };
         const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*T-konto\s*---|$)/i;
         const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*Risikosimulering\s*---|$)/i;
-        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*)$/i;
+        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*Pensjonsgapet\s*---|$)/i;
+        const rePensjonsgapet = /---\s*Pensjonsgapet\s*---([\s\S]*?)(?=---\s*Formuesskatt\s*---|$)/i;
+        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*)$/i;
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
+        const m4 = full.match(rePensjonsgapet);
+        const m5 = full.match(reFormuesskatt);
         if (m1) sections.maal = m1[1].trim();
         if (m2) sections.tkonto = m2[1].trim();
         if (m3) sections.risiko = m3[1].trim();
-        if (!sections.maal && !sections.tkonto && !sections.risiko) {
+        if (m4) sections.pensjonsgapet = m4[1].trim();
+        if (m5) sections.formuesskatt = m5[1].trim();
+        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt) {
             sections.maal = full;
         }
         try {
             if (sections.maal && MaalOgBehovState.applyInputText) MaalOgBehovState.applyInputText(sections.maal);
             if (sections.tkonto && typeof window.TKontoParseInputText === 'function') window.TKontoParseInputText(sections.tkonto);
-            if (sections.risiko && iframeRef.current && iframeRef.current.contentWindow) {
-                try { iframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+            if (sections.risiko && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
+                try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+            }
+            if (sections.pensjonsgapet && pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow) {
+                try {
+                    const win = pensjonsgapetIframeRef.current.contentWindow;
+                    if (typeof win.PensjonsgapetApplyInputText === 'function') win.PensjonsgapetApplyInputText(sections.pensjonsgapet);
+                } catch (_) {}
+            }
+            if (sections.formuesskatt && formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow) {
+                try {
+                    const win = formuesskattIframeRef.current.contentWindow;
+                    if (typeof win.FormuesskattApplyInputText === 'function') win.FormuesskattApplyInputText(sections.formuesskatt);
+                } catch (_) {}
             }
             setShowInputModal(false);
             setInputText('');
@@ -1557,7 +1597,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn output fra alle faner (med eller uten seksjonsoverskrifter). Data brukes i Mål og behov, T-konto og Risikosimulering.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjonsgapet ---, --- Formuesskatt ---. Alle seksjoner lastes inn i respektive faner.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -1573,7 +1613,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Komplett liste over input fra Mål og behov, T-konto og Risikosimulering.</p>
+                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjonsgapet, Formuesskatt. Kopier og lim inn i Input for å laste tilbake.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
