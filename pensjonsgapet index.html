@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pensjonskalkulator og Prognoseverktøy</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    
+    
+    <link rel="stylesheet" href="pensjonsgapet styles.css">
+</head>
+<body class="antialiased">
+
+    
+
+    <!-- Disclaimer Modal -->
+    <div id="disclaimerModal" class="fixed inset-0 z-[60] hidden items-start justify-center p-4 md:p-8">
+        <div class="absolute inset-0 bg-black/60" data-close="true"></div>
+        <div class="relative w-full max-w-3xl mx-auto rounded-xl bg-white text-[#333333] p-6 md:p-8 shadow-xl" style="border: 1px solid #DDDDDD;">
+            <button id="disclaimerClose" class="absolute top-3 right-3 text-slate-500 hover:text-slate-700" aria-label="Lukk">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"/></svg>
+            </button>
+            <h2 class="typo-h2 text-[#4A6D8C] mb-6"></h2>
+            <div class="text-[17px] leading-7 max-h-[70vh] overflow-y-auto pr-2">
+                <p>Disclaimer:</p>
+                <div class="h-6"></div>
+                <p>Resultatet av de beregninger som gjøres i kalkulatoren vil variere ut ifra hvilke tall som legges til grunn. Tallene som legges til grunn bestemmes i samtale mellom rådgiver og deltaker i møtet. Resultatet vil dermed kunne variere fra de tallene som fremkommer offisielle dokumenter i tilknytning til ytelse av investeringsrådgivning.</p>
+                <div class="h-6"></div>
+                <p>Beregningene i kalkulatoren må ansees som statiske og er kun ment for illustrasjonsformål. For konkrete fremstillinger, vises det til offisielle dokumenter knyttet til rådgivningen.</p>
+                <div class="h-6"></div>
+                <p><strong>Forklaring til beregningene:</strong></p>
+                <div class="h-6"></div>
+                <p>OTP saldo og OTP sats kan hentes ut i fra norskpensjon.no</p>
+                <div class="h-6"></div>
+                <p>Det forutsettes at sparingen vil fortsette med samme sats i alle år frem til oppgitt pensonsalder.</p>
+                <div class="h-6"></div>
+                <p>Settes det inn en sats på f.eks 5%, forutsettes det at det settes av 5% av lønn mellom 1- og 12 G.</p>
+                <div class="h-6"></div>
+                <p>Grunnbeløpet setter du inn selv i inputfeltet.</p>
+                <div class="h-6"></div>
+                <p>Forventet avkastning bør ikke avvike vesentlig fra hva vi ellers kommuniserer i SPWM.</p>
+                <div class="h-6"></div>
+                <p>Utbetalingsperiode vil i de fleste tilfeller ikke kunne være mindre enn 10 år.</p>
+                <div class="h-6"></div>
+                <p><strong>KPI:</strong></p>
+                <div class="h-6"></div>
+                <p>Det du legger inn her av forventet KPI vil påvirke flere tall i beregningen.</p>
+                <div class="h-6"></div>
+                <p>Tallene blir oppjustert årlig med KPI i alle år frem til oppgitt pensjonsalder.</p>
+                <div class="h-6"></div>
+                <p><strong>Tall som påvirkes av KPI:</strong></p>
+                <div class="h-6"></div>
+                <p>Grunnbeløp (når grunnbeløpet øker vil også det årlige sparebeløpet knyttet til OTP øke)</p>
+                <div class="h-6"></div>
+                <p>Dagens lønn</p>
+                <div class="h-6"></div>
+                <p>Utbetaling fra Folketrygden</p>
+                <div class="h-6"></div>
+                <p>Husk at dette er ment som en illustrasjon. Det vil være flere andre faktorer som vil påvirke nevnte tall. Beregningen er derfor en forenkling av virkeligheten.</p>
+                <div class="h-6"></div>
+                <p><strong>Årlig pensjon:</strong></p>
+                <div class="h-6"></div>
+                <p>Dette tallet representerer fremtidig utbetaling fra OTP + fremtidig estimert utbetaling fra folketrygden.</p>
+                <div class="h-6"></div>
+                <p>Dette vil være et riktig estimat på fremtidig pensjon om det ikke eksisterer privat sparing.</p>
+                <div class="h-6"></div>
+                <p>Det oppgitte fremtidige pensjonen vil være et lavere tall en estimert lønn siste år.</p>
+                <div class="h-6"></div>
+                <p>Dette oppgis som et %-beløp.</p>
+                <div class="h-6"></div>
+                <p><strong>Pensjonsgap:</strong></p>
+                <div class="h-6"></div>
+                <p>Om klienten har oppgitt et ønske om en fremtidig pensjon på 80% av estimert fremtidig sluttlønn, finnes det to løsninger.</p>
+                <div class="h-6"></div>
+                <p><strong>Engangsinnskudd:</strong> dette oppgis som et beløp klienten kan investere i dag for å dekke differansen mellom forventet fremtidig pensjon og ønsket fremtidig pensjon.</p>
+                <div class="h-6"></div>
+                <p><strong>Månedlig sparing:</strong> dette oppgis som et månedlig beløp som kan spares fra i dag og alle måneder frem til oppgitt pensjonsalder.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Output Modal -->
+    <div id="outputModal" class="fixed inset-0 z-[60] hidden items-start justify-center p-4 md:p-8">
+        <div class="absolute inset-0 bg-black/60" data-close="true"></div>
+        <div class="relative w-full max-w-2xl mx-auto rounded-xl bg-white text-[#333333] p-6 md:p-8 shadow-xl" style="border: 1px solid #DDDDDD;">
+            <button id="outputClose" class="absolute top-3 right-3 text-slate-500 hover:text-slate-700" aria-label="Lukk">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd"/></svg>
+            </button>
+            <h2 class="typo-h2 text-[#4A6D8C] mb-6">Output</h2>
+            <div class="space-y-4">
+                <div class="relative">
+                    <textarea id="outputTextArea" class="w-full h-64 p-4 pr-16 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Klikk på Output-knappen for å se alle verdier..."></textarea>
+                    <button id="copyButton" class="absolute bottom-3 right-3 px-3 py-1.5 text-xs font-medium rounded-md bg-[#3388CC] hover:bg-[#005599] text-white shadow-sm transition-colors flex items-center gap-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-3 h-3">
+                            <path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                        </svg>
+                        Kopier
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========== PAGE 1: PENSION DASHBOARD =========== -->
+    <div id="dashboardPage" class="page active">
+        <div class="relative min-h-screen flex flex-col items-center justify-center p-4 lg:p-8">
+            <div class="w-full mx-auto">
+                <header class="mb-8">
+                    <div class="flex justify-between items-center">
+                        <div class="flex-1">
+                            <button id="disclaimerBtn" class="px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors">Disclaimer/forklaring</button>
+                        </div>
+                        <h1 class="typo-h1 text-center">Pensjon og fremtidige utbetalinger</h1>
+                        <div class="flex-1 flex justify-end">
+                            <button id="themeToggle" class="w-[34px] h-[34px] rounded-full bg-[rgba(51,65,85,0.25)] border border-[rgba(71,85,105,0.6)] text-[#E5E7EB] flex items-center justify-center hover:bg-[rgba(51,65,85,0.35)] transition-all hover:translate-y-[-1px] text-lg" aria-label="Toggle theme">
+                                <span id="themeIcon">☀︎</span>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 text-center mt-2"></p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Column 1: Input Section -->
+                    <div class="card-panel space-y-6 bg-[var(--card-bg)] p-6 rounded-xl">
+                        <h2 class="typo-h2 border-b border-[var(--border-color)] pb-2">Input</h2>
+                        <div id="input-container" class="space-y-5"></div>
+                    </div>
+
+                    <!-- Column 2: Results Section -->
+                    <div class="card-panel space-y-6 bg-[var(--card-bg)] p-6 rounded-xl">
+                        <div>
+                           <h2 class="typo-h2 border-b border-[var(--border-color)] pb-2 mb-6">Resultater</h2>
+                            <div class="grid grid-cols-1 gap-6 text-center">
+                                <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center">
+                                    <div id="total-annual-pension" class="output-value">0 kr</div>
+                                    <div class="output-label mt-2">Årlig pensjon (estimat)</div>
+                                </div>
+                                <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center">
+                                    <div id="pension-percentage" class="output-value">0 %</div>
+                                    <div class="output-label mt-2">% av sluttlønn</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6 space-y-4">
+                            <div class="flex justify-between items-center">
+                                <h3 class="typo-h3">Detaljert oversikt</h3>
+                                <button id="toggleDetailedViewBtn" class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-700/50" aria-label="Vis/skjul detaljert oversikt">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="detailedViewContent" class="metrics-panel bg-slate-900/80 p-4 rounded-lg space-y-3">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>År til pensjonsalder:</span>
+                                    <span id="years-to-retirement" class="font-semibold text-white">0</span>
+                                </div>
+                                <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Sluttlønn (estimat):</span>
+                                    <span id="future-salary" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                 <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig sparing (OTP) i dag:</span>
+                                    <span id="annual-otp-saving" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                 <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>OTP saldo ved pensjon:</span>
+                                    <span id="future-otp-balance" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                 <hr class="border-[var(--border-color)]">
+                                 <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig utbetaling fra OTP:</span>
+                                    <span id="annual-otp-payout" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig sparing (IPS) i dag:</span>
+                                    <span id="annual-ips-saving" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>IPS saldo ved pensjon:</span>
+                                    <span id="future-ips-balance" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig utbetaling fra IPS:</span>
+                                    <span id="annual-ips-payout" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                <hr class="border-[var(--border-color)]">
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig utbetaling fra Fripoliser:</span>
+                                    <span id="annual-fripoliser-payout" class="font-semibold text-white">0 kr</span>
+                                </div>
+                                <div class="flex justify-between items-center text-slate-300">
+                                    <span>Årlig utbetaling fra Folketrygden:</span>
+                                    <span id="future-social-security" class="font-semibold text-white">0 kr</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Gap Section -->
+                    <div class="flex flex-col gap-8">
+                        <div class="card-panel space-y-6 bg-[var(--card-bg)] p-6 rounded-xl flex flex-col flex-grow">
+                            <div class="flex justify-between items-center border-b border-[var(--border-color)] pb-2">
+                                <h2 class="typo-h2">Pensjonsgap</h2>
+                                <button id="togglePensionGapBtn" class="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-700/50" aria-label="Vis/skjul pensjonsgap">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                                        <path d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
+                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 010-1.113zM17.25 12a5.25 5.25 0 11-10.5 0 5.25 5.25 0 0110.5 0z" clip-rule="evenodd" />
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="pensionGapContent">
+                                <div id="gap-calculation-output" class="flex-grow">
+                                    <div id="goal-met-message" class="hidden text-center text-lg font-semibold text-[var(--success-green)] py-8">
+                                        
+                                    </div>
+                                    
+                                    <div id="pension-gap-summary" class="hidden metrics-panel bg-slate-800/60 p-4 rounded-lg text-center mb-6">
+                                        <div class="output-label">Brutto årlig utbetaling utover pensjon</div>
+                                        <div id="pension-gap-details" class="text-xl font-bold text-[var(--accent-blue-light)] mt-1">0,0 % (0 kr / år)</div>
+                                    </div>
+
+                                    <div id="goal-results" class="grid grid-cols-1 gap-6 text-center">
+                                        <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center">
+                                            <div id="lump-sum-today" class="output-value">0 kr</div>
+                                            <div class="output-label mt-2">Nødvendig engangsinnskudd i dag</div>
+                                        </div>
+                                        <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center">
+                                            <div id="monthly-saving-needed" class="output-value">0 kr</div>
+                                            <div class="output-label mt-2">Alternativ månedlig sparing</div>
+                                        </div>
+                                    </div>
+                                    <p id="goal-explainer" class="text-center text-sm text-slate-500 mt-4">Beregningen forutsetter at ekstra sparing får samme avkastning som oppgitt.</p>
+
+                                    <!-- Combination Solution Section -->
+                                    <div id="combo-section" class="hidden mt-8">
+                                        <h2 class="typo-h2 mb-3">Kombinasjonsløsning</h2>
+                                        <p class="text-slate-400 text-sm mb-3">Velg andel som engangsinnskudd. Resten blir månedlig sparing.</p>
+                                        <div class="grid grid-cols-6 gap-3 mb-5">
+                                            <div class="relative">
+                                                <input type="number" id="customComboPercent" class="w-full py-1 text-sm rounded-full bg-slate-700 text-white border border-slate-600 text-center focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="" min="0" max="100" step="1" value="">
+                                                <div class="absolute inset-0 pointer-events-none flex items-center justify-center">
+                                                    <span class="text-xs text-slate-400">%</span>
+                                                </div>
+                                            </div>
+                                            <button class="combo-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition" data-percent="20">20%</button>
+                                            <button class="combo-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition" data-percent="40">40%</button>
+                                            <button class="combo-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition" data-percent="60">60%</button>
+                                            <button class="combo-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition" data-percent="80">80%</button>
+                                            <button class="combo-btn w-full py-1 text-sm rounded-full bg-slate-700 text-white hover:bg-slate-600 transition" data-percent="100">100%</button>
+                                        </div>
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-center">
+                                            <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center combo-output">
+                                                <div id="combo-lump-sum" class="output-value">0 kr</div>
+                                                <div class="output-label mt-2">Engangsinnskudd</div>
+                                            </div>
+                                            <div class="summary-panel bg-slate-900/80 p-6 rounded-lg flex flex-col justify-center combo-output">
+                                                <div id="combo-monthly" class="output-value">0 kr</div>
+                                                <div class="output-label mt-2">Månedlig sparing </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Sliders relocated under boxes: Ønsket pensjonsnivå og Forventet årlig KPI (always visible) -->
+                                <div id="combo-sliders-container" class="mt-4 grid grid-cols-1 gap-6"></div>
+                            </div>
+                             <!-- Navigation Button to Part 2 -->
+                            
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+
+    
+
+    <script src="pensjonsgapet script.js"></script>
+</body>
+</html>

@@ -261,7 +261,8 @@ const MaalOgBehovState = {
     savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
     advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
     waterfallMode: false,
-    henteSparingFraTKontoActive: false
+    henteSparingFraTKontoActive: false,
+    henteAltFraPensionActive: false
 };
 if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState; }
 
@@ -1406,6 +1407,7 @@ function TabContainer() {
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={iframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Pensjonsgapet', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="pensjonsgapet%20index.html" title="Pensjonsgapet" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
     ];
@@ -1615,6 +1617,8 @@ function App() {
     const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
     const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
     const [henteSparingFraTKontoActive, setHenteSparingFraTKontoActive] = useState(MaalOgBehovState.henteSparingFraTKontoActive ?? false);
+    const [henteAltFraPensionActive, setHenteAltFraPensionActive] = useState(MaalOgBehovState.henteAltFraPensionActive ?? false);
+    const savedStateBeforePensionRef = React.useRef(null);
     const [showChartImageModal, setShowChartImageModal] = useState(false);
     const [chartImageCopied, setChartImageCopied] = useState(false);
     const chartExportCanvasRef = React.useRef(null);
@@ -1731,6 +1735,10 @@ function App() {
         MaalOgBehovState.henteSparingFraTKontoActive = henteSparingFraTKontoActive;
     }, [henteSparingFraTKontoActive]);
 
+    useEffect(() => {
+        MaalOgBehovState.henteAltFraPensionActive = henteAltFraPensionActive;
+    }, [henteAltFraPensionActive]);
+
     // Beregn vektet aksjeandel ved start basert på tre porteføljer
     const computeInitialStockPct = useCallback((s) => {
         const p1 = Math.max(0, s.initialPortfolioSize || 0); // Portefølje I
@@ -1831,6 +1839,43 @@ function App() {
         });
     }, []);
 
+    // Toggle for "Hent alt fra pensjon" – henter data fra pensjonsgapet-fanen
+    const handleHenteAltFraPension = useCallback(() => {
+        if (henteAltFraPensionActive) {
+            // Skru av: gjenopprett tidligere state
+            if (savedStateBeforePensionRef.current) {
+                setState(savedStateBeforePensionRef.current);
+                savedStateBeforePensionRef.current = null;
+            }
+            setHenteAltFraPensionActive(false);
+        } else {
+            // Skru på: hent fra pensjonsgapet (localStorage) og overstyr mål og behov
+            try {
+                const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('pensjonsgapetHentAltFraPension') : null;
+                const data = raw ? JSON.parse(raw) : null;
+                if (!data || typeof data.engangsinnskudd !== 'number') return;
+                savedStateBeforePensionRef.current = { ...state };
+                const engangs = Math.max(0, data.engangsinnskudd || 0);
+                setState(prev => ({
+                    ...prev,
+                    initialPortfolioSize: engangs,
+                    pensionPortfolioSize: 0,
+                    additionalPensionAmount: 0,
+                    annualSavings: Math.max(0, data.aarligSparing || 0),
+                    investedCapital: Math.min(prev.investedCapital, engangs),
+                    investmentYears: Math.max(1, Math.min(30, data.yearsToRetirement || prev.investmentYears)),
+                    payoutYears: Math.max(0, Math.min(30, data.payoutYears || prev.payoutYears)),
+                    desiredAnnualConsumptionPayout: Math.max(0, data.bruttoArligUtbetaling || 0),
+                    desiredAnnualWealthTaxPayout: 0,
+                    row1StockAllocation: [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : prev.row1StockAllocation,
+                    initialStockAllocation: [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : prev.initialStockAllocation,
+                    taxCalculationEnabled: false,
+                }));
+                setHenteAltFraPensionActive(true);
+                setHenteSparingFraTKontoActive(false);
+            } catch (e) {}
+        }
+    }, [henteAltFraPensionActive, state]);
 
     const handleAddEvent = useCallback(() => {
         setState(s => {
@@ -4289,7 +4334,7 @@ return () => document.removeEventListener('keydown', onKey);
                                 <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px', marginLeft: '10px' }}>Simuleringer/grafikk</h2>
                             </div>
                             <h2 className="xl:hidden typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
-                            <div className="hidden xl:flex justify-start w-full mb-3">
+                            <div className="hidden xl:flex justify-start items-center gap-3 w-full mb-3">
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -4305,9 +4350,18 @@ return () => document.removeEventListener('keydown', onKey);
                                             }
                                         } catch (e) {}
                                     }}
-                                    className={`border border-[#DDDDDD] h-10 rounded-lg flex items-center justify-center text-center px-3 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md whitespace-nowrap ${henteSparingFraTKontoActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A]' : 'bg-[#9CA3AF] text-white hover:bg-[#6B7280]'}`}
+                                    className={`border border-[#DDDDDD] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${henteSparingFraTKontoActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A]' : 'bg-[#9CA3AF] text-white hover:bg-[#6B7280]'}`}
+                                    style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                                 >
                                     hente sparing fra T-konto
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleHenteAltFraPension}
+                                    className={`border border-[#DDDDDD] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${henteAltFraPensionActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A] border-[#22C55E]' : 'bg-[#1A2A47] text-white hover:bg-[#2A3A5A]'}`}
+                                    style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
+                                >
+                                    Hent alt fra pensjon
                                 </button>
                             </div>
                     <button
