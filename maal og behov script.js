@@ -1414,36 +1414,44 @@ function TabContainer() {
         { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
     ];
 
+    const INGEN_DATA = 'ingen data';
     const buildCombinedOutput = React.useCallback(() => {
-        const maal = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
-        const tkonto = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
-        let risiko = '(Risikosimulering: åpne fanen for å hente data)';
+        const maalRaw = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
+        const tkontoRaw = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
+        const maal = (maalRaw && String(maalRaw).trim()) ? maalRaw : INGEN_DATA;
+        const tkonto = (tkontoRaw && String(tkontoRaw).trim()) ? tkontoRaw : INGEN_DATA;
+        let risiko = INGEN_DATA;
         try {
             const win = risikoIframeRef.current && risikoIframeRef.current.contentWindow;
             if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
                 const data = win.RisikoSimuleringGetOutputData();
+                const v = (x) => (x === undefined || x === null || (typeof x === 'string' && !String(x).trim())) ? INGEN_DATA : x;
                 risiko = [
-                    `Startkapital: ${data.startkapital}`,
-                    `Periode: ${data.periode}`,
-                    `Aksjekapital i dagens portefølje: ${Number(data.aksjekapitalDagens)} %`,
-                    `Aksjekapital i ny portefølje: ${Number(data.aksjekapitalNy)} %`
+                    `Startkapital: ${v(data.startkapital)}`,
+                    `Periode: ${v(data.periode)}`,
+                    `Aksjekapital i dagens portefølje: ${Number(data.aksjekapitalDagens ?? 0)} %`,
+                    `Aksjekapital i ny portefølje: ${Number(data.aksjekapitalNy ?? 0)} %`
                 ].join('\n');
             }
         } catch (_) {}
-        let pensjonsgapet = '(Pensjonsgapet: åpne fanen for å hente data)';
+        let pensjonsgapet = INGEN_DATA;
         try {
             const win = pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow;
             if (win && typeof win.PensjonsgapetGetOutputText === 'function') {
-                pensjonsgapet = win.PensjonsgapetGetOutputText();
+                const txt = win.PensjonsgapetGetOutputText();
+                pensjonsgapet = (txt && String(txt).trim()) ? txt : INGEN_DATA;
             }
         } catch (_) {}
-        let formuesskatt = '(Formuesskatt: åpne fanen for å hente data)';
+        let formuesskatt = INGEN_DATA;
         try {
             const win = formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow;
             if (win && typeof win.FormuesskattGetOutputText === 'function') {
-                formuesskatt = win.FormuesskattGetOutputText();
+                const txt = win.FormuesskattGetOutputText();
+                formuesskatt = (txt && String(txt).trim()) ? txt : INGEN_DATA;
             }
         } catch (_) {}
+        let gradvis = INGEN_DATA;
+        // Gradvis implementering – placeholder for fremtidig innhold
         return [
             '--- Mål og behov ---',
             maal,
@@ -1458,7 +1466,10 @@ function TabContainer() {
             pensjonsgapet,
             '',
             '--- Formuesskatt ---',
-            formuesskatt
+            formuesskatt,
+            '',
+            '--- Gradvis implementering ---',
+            gradvis
         ].join('\n');
     }, []);
 
@@ -1501,28 +1512,34 @@ function TabContainer() {
             return;
         }
         const full = inputText.trim();
-        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '' };
+        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', gradvis: '' };
         const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*T-konto\s*---|$)/i;
         const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*Risikosimulering\s*---|$)/i;
         const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*Pensjonsgapet\s*---|$)/i;
         const rePensjonsgapet = /---\s*Pensjonsgapet\s*---([\s\S]*?)(?=---\s*Formuesskatt\s*---|$)/i;
-        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*)$/i;
+        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*Gradvis implementering\s*---|$)/i;
+        const reGradvis = /---\s*Gradvis implementering\s*---([\s\S]*)$/i;
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
         const m4 = full.match(rePensjonsgapet);
         const m5 = full.match(reFormuesskatt);
+        const m6 = full.match(reGradvis);
         if (m1) sections.maal = m1[1].trim();
         if (m2) sections.tkonto = m2[1].trim();
         if (m3) sections.risiko = m3[1].trim();
         if (m4) sections.pensjonsgapet = m4[1].trim();
         if (m5) sections.formuesskatt = m5[1].trim();
-        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt) {
+        if (m6) sections.gradvis = m6[1].trim();
+        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.gradvis) {
             sections.maal = full;
         }
         try {
             if (sections.maal && MaalOgBehovState.applyInputText) MaalOgBehovState.applyInputText(sections.maal);
-            if (sections.tkonto && typeof window.TKontoParseInputText === 'function') window.TKontoParseInputText(sections.tkonto);
+            if (sections.tkonto && typeof window.TKontoParseInputText === 'function') {
+                const ok = window.TKontoParseInputText(sections.tkonto);
+                if (ok && typeof window.TKontoRefreshAfterInputLoad === 'function') window.TKontoRefreshAfterInputLoad();
+            }
             if (sections.risiko && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
                 try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
             }
@@ -1597,7 +1614,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjonsgapet ---, --- Formuesskatt ---. Alle seksjoner lastes inn i respektive faner.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjonsgapet ---, --- Formuesskatt ---, --- Gradvis implementering ---. Alle seksjoner lastes inn i respektive faner.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -1613,7 +1630,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjonsgapet, Formuesskatt. Kopier og lim inn i Input for å laste tilbake.</p>
+                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjonsgapet, Formuesskatt, Gradvis implementering. Kopier og lim inn i Input for å laste tilbake.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
@@ -1880,37 +1897,43 @@ function App() {
     }, []);
 
     // Toggle for "Hent alt fra pensjon" – henter data fra pensjonsgapet-fanen
+    // Ved aktivering: kun Portefølje I, Aksjeandel portefølje I, Årlig sparing, Antall år investeringsperiode, Antall år utbetaling er aktive; Skatteberegning av; hendelser nullstilles; resten default. Ved deaktivering: alt gjenopprettes.
     const handleHenteAltFraPension = useCallback(() => {
         if (henteAltFraPensionActive) {
-            // Skru av: gjenopprett tidligere state
+            // Skru av: gjenopprett opprinnelige verdier inkl. hendelser
             if (savedStateBeforePensionRef.current) {
                 setState(savedStateBeforePensionRef.current);
                 savedStateBeforePensionRef.current = null;
             }
             setHenteAltFraPensionActive(false);
         } else {
-            // Skru på: hent fra pensjonsgapet (localStorage) og overstyr mål og behov
+            // Skru på: lagre full state (inkl. hendelser), sett alt til default, overstyr kun de tillatte feltene fra pensjon
             try {
                 const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('pensjonsgapetHentAltFraPension') : null;
                 const data = raw ? JSON.parse(raw) : null;
                 if (!data || typeof data.engangsinnskudd !== 'number') return;
-                savedStateBeforePensionRef.current = { ...state };
+                // Dykkopi av state slik at hendelser og resten gjenopprettes ved deaktivering
+                savedStateBeforePensionRef.current = {
+                    ...state,
+                    events: state.events && state.events.length ? state.events.map(e => ({ ...e })) : [],
+                };
                 const engangs = Math.max(0, data.engangsinnskudd || 0);
-                setState(prev => ({
-                    ...prev,
+                const aksjeandel = [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : INITIAL_APP_STATE.row1StockAllocation;
+                const bruttoArligUtbetaling = Math.max(0, data.bruttoArligUtbetaling ?? 0);
+                // Start med alle defaultverdier, nullstill hendelser, overstyr kun de tillatte feltene
+                setState({
+                    ...INITIAL_APP_STATE,
+                    events: [],
                     initialPortfolioSize: engangs,
-                    pensionPortfolioSize: 0,
-                    additionalPensionAmount: 0,
+                    row1StockAllocation: aksjeandel,
+                    initialStockAllocation: aksjeandel,
                     annualSavings: Math.max(0, data.aarligSparing || 0),
-                    investedCapital: Math.min(prev.investedCapital, engangs),
-                    investmentYears: Math.max(1, Math.min(30, data.yearsToRetirement || prev.investmentYears)),
-                    payoutYears: Math.max(0, Math.min(30, data.payoutYears || prev.payoutYears)),
-                    desiredAnnualConsumptionPayout: Math.max(0, data.bruttoArligUtbetaling || 0),
-                    desiredAnnualWealthTaxPayout: 0,
-                    row1StockAllocation: [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : prev.row1StockAllocation,
-                    initialStockAllocation: [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : prev.initialStockAllocation,
+                    investmentYears: Math.max(1, Math.min(30, data.yearsToRetirement ?? INITIAL_APP_STATE.investmentYears)),
+                    payoutYears: Math.max(0, Math.min(30, data.payoutYears ?? INITIAL_APP_STATE.payoutYears)),
+                    desiredAnnualConsumptionPayout: bruttoArligUtbetaling, // Brutto årlig utbetaling utover pensjon → Ønsket årlig uttak til forbruk
                     taxCalculationEnabled: false,
-                }));
+                    investedCapital: 0,
+                });
                 setHenteAltFraPensionActive(true);
                 setHenteSparingFraTKontoActive(false);
             } catch (e) {}
@@ -2942,10 +2965,13 @@ function App() {
     }, [prognosis]);
 
 // --- Output generation & clipboard helpers --- //
+const INGEN_DATA_OUTPUT = 'ingen data';
 const generateOutputText = useCallback(() => {
 const lines = [];
+// Helper: felt uten data gir standardverdien "ingen data"
+const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA_OUTPUT : v;
 // Helper function to format currency without "kr" prefix
-const formatCurrencyValue = (value) => formatNumberRaw(value);
+const formatCurrencyValue = (value) => formatNumberRaw(value ?? 0);
 
 // 1. Portefølje I
 lines.push(`1 Portefølje I : ${formatCurrencyValue(state.initialPortfolioSize)}`);
@@ -2990,7 +3016,7 @@ if (state.events && state.events.length > 0 && state.events[0]) {
     lines.push(`19a Hendelse 1 startår : ${e1.startAar || START_YEAR}`);
     lines.push(`19b Hendelse 1 sluttår : ${e1.sluttAar || START_YEAR}`);
     lines.push(`19c Hendelse 1 påvirker innskutt kapital : ${e1.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`19d Hendelse 1 type : ${e1.type || 'Hendelse'}`);
+    lines.push(`19d Hendelse 1 type : ${orIngenData(e1.type) || 'Hendelse'}`);
 } else {
     lines.push(`19 Hendelse 1 beløp : 0`);
     lines.push(`19a Hendelse 1 startår : ${START_YEAR}`);
@@ -3005,7 +3031,7 @@ if (state.events && state.events.length > 1 && state.events[1]) {
     lines.push(`20a Hendelse 2 startår : ${e2.startAar || START_YEAR}`);
     lines.push(`20b Hendelse 2 sluttår : ${e2.sluttAar || START_YEAR}`);
     lines.push(`20c Hendelse 2 påvirker innskutt kapital : ${e2.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`20d Hendelse 2 type : ${e2.type || 'Hendelse'}`);
+    lines.push(`20d Hendelse 2 type : ${orIngenData(e2.type) || 'Hendelse'}`);
 } else {
     lines.push(`20 Hendelse 2 beløp : 0`);
     lines.push(`20a Hendelse 2 startår : ${START_YEAR}`);
@@ -3020,7 +3046,7 @@ if (state.events && state.events.length > 2 && state.events[2]) {
     lines.push(`21a Hendelse 3 startår : ${e3.startAar || START_YEAR}`);
     lines.push(`21b Hendelse 3 sluttår : ${e3.sluttAar || START_YEAR}`);
     lines.push(`21c Hendelse 3 påvirker innskutt kapital : ${e3.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`21d Hendelse 3 type : ${e3.type || 'Hendelse'}`);
+    lines.push(`21d Hendelse 3 type : ${orIngenData(e3.type) || 'Hendelse'}`);
 } else {
     lines.push(`21 Hendelse 3 beløp : 0`);
     lines.push(`21a Hendelse 3 startår : ${START_YEAR}`);
@@ -3035,7 +3061,7 @@ if (state.events && state.events.length > 3 && state.events[3]) {
     lines.push(`22a Hendelse 4 startår : ${e4.startAar || START_YEAR}`);
     lines.push(`22b Hendelse 4 sluttår : ${e4.sluttAar || START_YEAR}`);
     lines.push(`22c Hendelse 4 påvirker innskutt kapital : ${e4.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`22d Hendelse 4 type : ${e4.type || 'Hendelse'}`);
+    lines.push(`22d Hendelse 4 type : ${orIngenData(e4.type) || 'Hendelse'}`);
 } else {
     lines.push(`22 Hendelse 4 beløp : 0`);
     lines.push(`22a Hendelse 4 startår : ${START_YEAR}`);
@@ -3048,7 +3074,7 @@ lines.push(`23 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSe
 // 24. Målsøk Portefølje I resultat
 lines.push(`24 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
 // 25. Investortype
-lines.push(`25 Investortype : ${state.investorType}`);
+lines.push(`25 Investortype : ${orIngenData(state.investorType)}`);
 // 26. utsatt skatt på renter
 lines.push(`26 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
 // 27. Skatteberegning
@@ -4225,11 +4251,11 @@ return () => document.removeEventListener('keydown', onKey);
     }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation]);
 
     return (
-        <div className="font-sans text-[#333333] bg-white p-4 sm:p-6 pr-8 sm:pr-12 min-h-screen w-full box-border">
+        <div className="maal-og-behov-tab font-sans text-[#333333] bg-white p-4 sm:p-6 pr-8 sm:pr-12 min-h-screen w-full box-border">
             <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ paddingRight: '2rem' }}>
 
                 <div className="relative">
-                    <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full">
+                    <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full">
                     <h1 className="typo-h1 text-center text-[#4A6D8C] mb-4">Mål og behov</h1>
                     <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
                         <button

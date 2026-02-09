@@ -1160,7 +1160,7 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
     // Draw text if space allows
     if (width > 60 && height > 30) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 11px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.font = 'bold 12px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -1168,9 +1168,9 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
         
         // Split label by space if it contains multiple words
         const words = item.name.split(' ');
-        const lineHeight = 13;
+        const lineHeight = 14; /* +10 % */
         const totalLabelHeight = words.length * lineHeight;
-        const valueHeight = 14;
+        const valueHeight = 15; /* +10 % */
         const totalTextHeight = totalLabelHeight + valueHeight + 4; // 4px spacing between label and value
         const startY = y + height / 2 - totalTextHeight / 2 + lineHeight / 2;
         
@@ -1181,7 +1181,7 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
         });
         
         // Draw value
-        ctx.font = '12px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.font = '13px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textBaseline = 'middle';
         ctx.fillText(Math.round(item.value) + '%', textX, startY + totalLabelHeight + 4 + valueHeight / 2);
     }
@@ -2088,7 +2088,7 @@ function createBubbleChart() {
     if (assetClasses.length === 0) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = 'var(--foreground)';
-        ctx.font = '16px Inter';
+        ctx.font = '18px Inter'; /* +10 % */
         ctx.textAlign = 'center';
         ctx.fillText('Ingen aktivaklasser valgt', canvas.width / 2, canvas.height / 2);
         return;
@@ -2284,7 +2284,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
     
     // Draw year label - show actual year (2001, 2002, etc.)
     ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--foreground') || '#000';
-    ctx.font = 'bold 18px Inter';
+    ctx.font = 'bold 20px Inter'; /* +10 % */
     ctx.textAlign = 'center';
     ctx.fillText(yearData.year.toString(), actualWidth / 2, 30);
     
@@ -2419,7 +2419,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         
         // Draw asset name at top - use Inter (sans-serif) like input tab labels
         // Smaller text size for readability
-        const nameFontSize = Math.max(12, Math.min(18, bubble.radius * 0.12));
+        const nameFontSize = Math.max(13, Math.min(20, bubble.radius * 0.132)); /* +10 % */
         ctx.font = `600 ${nameFontSize}px 'Inter', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -2431,7 +2431,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         
         // Draw percentage in center - WITH % sign
         // Smaller text size for readability
-        const percentFontSize = Math.max(14, Math.min(24, bubble.radius * 0.15));
+        const percentFontSize = Math.max(15, Math.min(26, bubble.radius * 0.165)); /* +10 % */
         ctx.font = `700 ${percentFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const percentText = bubble.percentage.toFixed(1) + '%';
@@ -2440,7 +2440,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         
         // Draw value below - use JetBrains Mono like input tab
         // Smaller text size for readability
-        const valueFontSize = Math.max(10, Math.min(16, bubble.radius * 0.10));
+        const valueFontSize = Math.max(11, Math.min(18, bubble.radius * 0.11)); /* +10 % */
         ctx.font = `700 ${valueFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const valueY = bubble.y + bubble.radius * 0.30;
@@ -2889,8 +2889,8 @@ function createEquityChart(portfolioValues, drawdowns) {
             tooltip: {
                 enabled: true,
                 backgroundColor: 'rgba(74, 109, 140, 0.95)',
-                titleFont: { family: "'Inter', sans-serif", size: 11 },
-                bodyFont: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 11 },
+                titleFont: { family: "'Inter', sans-serif", size: 12 },
+                bodyFont: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
                 padding: 8,
                 cornerRadius: 4,
                 callbacks: {
@@ -2909,14 +2909,14 @@ function createEquityChart(portfolioValues, drawdowns) {
                 type: 'time',
                 time: { unit: 'year', displayFormats: { year: 'yyyy' } },
                 grid: { display: false },
-                ticks: { font: { family: "'Inter', sans-serif", size: 10 } },
+                ticks: { font: { family: "'Inter', sans-serif", size: 11 } }, /* +10 % */
                 min: state.drawdownZoom.isZoomed ? state.drawdownZoom.minX : undefined,
                 max: state.drawdownZoom.isZoomed ? state.drawdownZoom.maxX : undefined
             },
             y: {
                 grid: { color: 'rgba(74, 109, 140, 0.05)' },
                 ticks: {
-                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 10 },
+                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */ /* +10 % */
                     callback: function(value) {
                         return (value / 1000000).toFixed(0) + 'M';
                     }
@@ -3035,7 +3035,7 @@ function createUnderwaterChart(drawdowns, viewType = 'percent') {
                 grid: { display: false },
                 position: 'bottom',
                 ticks: { 
-                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 11 },
+                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
                     padding: 8
                 },
                 min: state.drawdownZoom.isZoomed ? state.drawdownZoom.minX : undefined,
@@ -3050,7 +3050,7 @@ function createUnderwaterChart(drawdowns, viewType = 'percent') {
                     color: 'rgba(0, 0, 0, 0.05)' // Same as other charts
                 },
                 ticks: {
-                    font: { family: "'JetBrains Mono', monospace", size: 11 },
+                    font: { family: "'JetBrains Mono', monospace", size: 12 }, /* +10 % */
                     color: mainColor, // Red color for Y-axis labels (matching the graph)
                     callback: function(value, index, ticks) {
                         const chartViewType = this.chart.options.viewType || 'percent';
@@ -4513,6 +4513,9 @@ function getReturnColorStyle(returnValue) {
     return 'background-color: #086B36;';
 }
 
+// Lagret høyde for pyramide-chart slik at den ikke flytter seg ved hver oppdatering
+let pyramidChartStoredHeight = null;
+
 // Create pyramid chart
 function createPyramidChart() {
     const container = document.getElementById('pyramid-chart-container');
@@ -4698,49 +4701,35 @@ function createPyramidChart() {
     // Find current max height for this portfolio
     const currentMaxHeight = Math.max(...Object.values(bins).map(bin => bin.items.length));
     
-    // Calculate available container height (accounting for header, stats, padding, etc.)
-    // Get actual container dimensions instead of viewport
-    const containerRect = container.getBoundingClientRect();
-    const containerHeight = containerRect.height || container.offsetHeight;
-    
-    // Calculate optimal box height to fit all possible years within available space
-    const boxMargin = 1;
-    const xAxisLabelHeight = 20; // Space for x-axis labels (reduced to minimize white area below)
-    const topPadding = 20;
-    const bottomPadding = -50; // Negative to move graphic down and minimize white area below chart
-    const containerPadding = 24; // var(--space-lg) typically 24px
-    
-    // Use container height minus padding and labels
-    const usableHeight = containerHeight - topPadding - bottomPadding - xAxisLabelHeight - (containerPadding * 2); // Account for container padding
-    
-    // Calculate box height: (usable height) / (max possible periods + some margin)
-    const baseBoxHeight = Math.max(16, Math.min(22.8, Math.floor(usableHeight / (maxPossiblePeriods + 2))));
-    let boxHeight = baseBoxHeight * 1.1 * 1.1 * 1.2; // Increase height by 45.2% total (10% + 10% + 20%)
-    
-    // Adjust box height based on period type (only for pyramid tab)
-    if (useHalfYears) {
-        // For half years: reduce by 50% then additional 30%, then increase by 30% twice, then 15%, then additional 20% twice
-        boxHeight = boxHeight * 0.5 * 0.7 * 1.3 * 1.3 * 1.15 * 1.2 * 1.2;
-    } else if (useQuarters) {
-        // For quarters: reduce by 50% then additional 30%, then increase by 30% twice, then 15%
-        boxHeight = boxHeight * 0.5 * 0.7 * 1.3 * 1.3 * 1.15;
-    } else {
-        // Full year (hele kalenderår)
-        boxHeight = boxHeight * 0.85 * 0.9; // Reduce by 15% then additional 10% (total 23.5% reduction) for full year
+    // Stabil høyde: bruk kun lagret verdi etter første kjøring, ellers les fra wrapper når containeren er tom
+    const wrap = container.closest('.pyramid-chart-wrap');
+    const isFirstRun = !container.querySelector('.pyramid-chart');
+    if (isFirstRun && pyramidChartStoredHeight == null) {
+        const refRect = wrap ? wrap.getBoundingClientRect() : null;
+        const refHeight = (refRect && refRect.height > 0) ? refRect.height : 450;
+        pyramidChartStoredHeight = Math.max(400, refHeight);
     }
+    const containerHeight = pyramidChartStoredHeight;
     
-    const totalBoxHeight = boxHeight + (boxMargin * 2);
+    // Automatisk høydetilpasning: den høyeste søylen fyller til toppen, alle bokser synlige
+    const boxMargin = 1;
+    const xAxisLabelHeight = 20;
+    const topPadding = 20;
+    const bottomPadding = -50;
+    const containerPadding = 24;
     
-    // Calculate static chart height to fit container without scrolling
-    // Use container height minus container padding
-    const staticChartHeight = Math.max(400, containerHeight - (containerPadding * 2));
+    const baseChartHeight = Math.max(400, containerHeight - (containerPadding * 2));
+    const staticChartHeight = Math.round(baseChartHeight * 1.15);
     
-    // Render chart with static height, x-axis at bottom
-    // Calculate the actual content height (chart height minus x-axis label space)
-    // Ensure x-axis is always visible by reserving space at the bottom
-    // Distance between x-axis and boxes (reduced to minimize white area below graphic)
-    const xAxisSpace = boxHeight * 0.5; // Half box height – enough for readability, less empty space
-    const contentHeight = staticChartHeight - xAxisSpace - xAxisLabelHeight - bottomPadding;
+    // Tilgjengelig høyde for søyler (før x-akse-plass): H. Den høyeste søylen skal nå toppen.
+    const H = baseChartHeight - topPadding - xAxisLabelHeight - bottomPadding;
+    const numBarsInTallest = Math.max(1, currentMaxHeight);
+    // xAxisSpace = 0.5*boxHeight; søylehøyde = numBarsInTallest*(boxHeight+2*margin). Krav: 0.5*boxHeight + numBarsInTallest*(boxHeight+2*margin) = H
+    // => boxHeight = (H - 2*numBarsInTallest*boxMargin) / (0.5 + numBarsInTallest)
+    let boxHeight = (H - 2 * numBarsInTallest * boxMargin) / (0.5 + numBarsInTallest);
+    boxHeight = Math.max(6, Math.min(40, boxHeight)); // min 6px synlig, max 40px
+    const xAxisSpace = boxHeight * 0.5;
+    const contentHeight = H - xAxisSpace;
     
     // Sort bins by start value to ensure correct order
     const sortedBinKeys = Object.keys(bins).sort((a, b) => {
@@ -4810,8 +4799,8 @@ function createPyramidChart() {
                                 `;
                             }).join('')}
                         </div>
-                        <!-- X-axis label - always at the bottom, fully visible -->
-                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 11px; font-family: Whitney, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
+                        <!-- X-axis label - alltid nederst i chart-området -->
+                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 12px; font-family: Whitney, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
                             ${useQuarters ? `${bin.start}%` : (useHalfYears ? `${bin.start}%` : `${bin.start}% - ${bin.end}%`)}
                         </div>
                     </div>
@@ -5775,6 +5764,60 @@ function setupEventListeners() {
                 validateAndAdjustSlider('new', slider.id, parseFloat(e.target.value));
             });
         }
+    });
+    
+    // Aksjer: + knapp – vis/skjul underslidere (Norske aksjer, Emerging markets aksjer, Globale aksjer)
+    document.querySelectorAll('.aksjer-expand-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.aksjer-item');
+            const sub = item && item.querySelector('.aksjer-sub-sliders');
+            if (!sub) return;
+            const isOpen = !sub.hidden;
+            sub.hidden = isOpen;
+            btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            btn.textContent = isOpen ? '+' : '−';
+        });
+    });
+    
+    // Renter: + knapp – vis/skjul underslidere (IG renter Norge, IG renter Globalt, High yield Norge/Norden, Global high yield)
+    document.querySelectorAll('.renter-expand-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const item = btn.closest('.renter-item');
+            const sub = item && item.querySelector('.renter-sub-sliders');
+            if (!sub) return;
+            const isOpen = !sub.hidden;
+            sub.hidden = isOpen;
+            btn.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            btn.textContent = isOpen ? '+' : '−';
+        });
+    });
+    
+    // Aksjer-underslidere: oppdater prosentvisning (påvirker ikke hovedsummen)
+    const aksjerSubIds = ['aksjer-norske', 'aksjer-emerging', 'aksjer-global'];
+    ['current', 'new'].forEach(prefix => {
+        aksjerSubIds.forEach(suffix => {
+            const slider = document.getElementById(`${prefix}-${suffix}`);
+            const valueEl = document.getElementById(`${prefix}-${suffix}-value`);
+            if (slider && valueEl) {
+                slider.addEventListener('input', () => {
+                    valueEl.textContent = Math.round(parseFloat(slider.value)) + '%';
+                });
+            }
+        });
+    });
+    
+    // Renter-underslidere: oppdater prosentvisning (påvirker ikke hovedsummen)
+    const renterSubIds = ['renter-ig-norge', 'renter-ig-global', 'renter-hy-norden', 'renter-hy-global'];
+    ['current', 'new'].forEach(prefix => {
+        renterSubIds.forEach(suffix => {
+            const slider = document.getElementById(`${prefix}-${suffix}`);
+            const valueEl = document.getElementById(`${prefix}-${suffix}-value`);
+            if (slider && valueEl) {
+                slider.addEventListener('input', () => {
+                    valueEl.textContent = Math.round(parseFloat(slider.value)) + '%';
+                });
+            }
+        });
     });
     
     // Allocation shortcut buttons for both portfolios

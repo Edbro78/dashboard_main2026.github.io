@@ -422,18 +422,24 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.FormuesskattGetOutputText = function() {
+        const INGEN_DATA = 'ingen data';
+        const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA : v;
         const lines = [];
         const personCount = WealthTaxApp.state && WealthTaxApp.state.personCount ? WealthTaxApp.state.personCount : 1;
-        lines.push(`Antall personer: ${personCount}`);
+        lines.push(`Antall personer: ${orIngenData(personCount) || 1}`);
         const values = WealthTaxApp.getValues ? WealthTaxApp.getValues() : { assets: {}, privateDebt: 0, inflationRate: 3 };
-        lines.push(`Privat gjeld (NOK): ${WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(values.privateDebt || 0) : values.privateDebt}`);
+        const privGjeld = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(values.privateDebt || 0) : (values.privateDebt ?? INGEN_DATA);
+        lines.push(`Privat gjeld (NOK): ${orIngenData(privGjeld) || '0'}`);
         (WealthTaxApp.assetsConfig || []).forEach(asset => {
             const val = (values.assets && values.assets[asset.id]) ?? asset.value ?? 0;
-            lines.push(`${asset.label}: ${WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(val) : val}`);
+            const label = orIngenData(asset.label) || 'Eiendel';
+            const formatted = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(val) : val;
+            lines.push(`${label}: ${orIngenData(formatted) ?? formatted}`);
         });
-        lines.push(`Forventet inflasjon (%): ${(values.inflationRate || 3).toString().replace('.', ',')}`);
+        lines.push(`Forventet inflasjon (%): ${orIngenData((values.inflationRate ?? 3).toString()) || '3'}`);
         const totalEl = document.getElementById('total-wealth-tax');
-        if (totalEl) lines.push(`Total Formuesskatt: ${totalEl.textContent || '0 kr'}`);
+        const totalVal = totalEl ? totalEl.textContent : INGEN_DATA;
+        lines.push(`Total Formuesskatt: ${orIngenData(totalVal) || '0 kr'}`);
         return lines.join('\n');
     };
     

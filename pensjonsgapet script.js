@@ -55,33 +55,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 'cpiRate': 'Forventet årlig KPI'
             };
             
+            const INGEN_DATA = 'ingen data';
+            const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA : v;
+            
             outputText += 'INPUTFELTER:\n';
             outputText += '================\n\n';
             
-            // Add input values
+            // Add input values – felt uten data gir "ingen data"
             Object.keys(inputLabels).forEach(id => {
                 const element = document.getElementById(id);
                 if (element) {
                     const value = element.value;
                     const label = inputLabels[id];
-                    let displayValue = value;
-                    
-                    // Format based on field type
-                    if (id === 'age' || id === 'retirementAge') {
-                        displayValue = `${value} år`;
-                    } else if (id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
-                        displayValue = `${parseFloat(value).toLocaleString('nb-NO')} kr`;
-                    } else if (id === 'otpRate' || id === 'desiredPensionLevel' || id === 'cpiRate') {
-                        displayValue = `${parseFloat(value).toFixed(1)} %`;
-                    } else if (id === 'expectedReturn') {
-                        const returnToStock = { 5: 0, 5.6: 20, 6.3: 45, 6.7: 55, 7: 65, 7.5: 85, 8: 100 };
-                        const ret = parseFloat(value);
-                        const stock = returnToStock[ret] !== undefined ? returnToStock[ret] : ret;
-                        displayValue = `${stock}% aksjer (${ret}% avkastning)`;
-                    } else if (id === 'payoutYears') {
-                        displayValue = `${value} år`;
+                    const hasValue = value !== undefined && value !== null && String(value).trim() !== '';
+                    let displayValue = INGEN_DATA;
+                    if (hasValue) {
+                        if (id === 'age' || id === 'retirementAge') {
+                            displayValue = `${value} år`;
+                        } else if (id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
+                            displayValue = `${parseFloat(value).toLocaleString('nb-NO')} kr`;
+                        } else if (id === 'otpRate' || id === 'desiredPensionLevel' || id === 'cpiRate') {
+                            displayValue = `${parseFloat(value).toFixed(1)} %`;
+                        } else if (id === 'expectedReturn') {
+                            const returnToStock = { 5: 0, 5.6: 20, 6.3: 45, 6.7: 55, 7: 65, 7.5: 85, 8: 100 };
+                            const ret = parseFloat(value);
+                            const stock = returnToStock[ret] !== undefined ? returnToStock[ret] : ret;
+                            displayValue = `${stock}% aksjer (${ret}% avkastning)`;
+                        } else if (id === 'payoutYears') {
+                            displayValue = `${value} år`;
+                        } else {
+                            displayValue = value;
+                        }
                     }
-                    
                     outputText += `${label}: ${displayValue}\n`;
                 }
             });
@@ -101,8 +106,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         comboPercent = ` (${selectedButton.getAttribute('data-percent')}%)`;
                     }
                 }
-                outputText += `Kombinasjonsløsning - Engangsinnskudd${comboPercent}: ${comboLumpSum.textContent}\n`;
-                outputText += `Kombinasjonsløsning - Månedlig sparing${comboPercent}: ${comboMonthly.textContent}\n`;
+                outputText += `Kombinasjonsløsning - Engangsinnskudd${comboPercent}: ${orIngenData(comboLumpSum.textContent) || comboLumpSum.textContent || INGEN_DATA}\n`;
+                outputText += `Kombinasjonsløsning - Månedlig sparing${comboPercent}: ${orIngenData(comboMonthly.textContent) || comboMonthly.textContent || INGEN_DATA}\n`;
             }
             
             outputText += '\n\nRESULTATER:\n';
@@ -115,16 +120,16 @@ document.addEventListener('DOMContentLoaded', function() {
             const monthlySavingNeeded = document.getElementById('monthly-saving-needed');
             
             if (totalAnnualPension) {
-                outputText += `Årlig pensjon (estimat): ${totalAnnualPension.textContent}\n`;
+                outputText += `Årlig pensjon (estimat): ${orIngenData(totalAnnualPension.textContent) || totalAnnualPension.textContent || INGEN_DATA}\n`;
             }
             if (pensionPercentage) {
-                outputText += `% av sluttlønn: ${pensionPercentage.textContent}\n`;
+                outputText += `% av sluttlønn: ${orIngenData(pensionPercentage.textContent) || pensionPercentage.textContent || INGEN_DATA}\n`;
             }
             if (lumpSumToday) {
-                outputText += `Nødvendig engangsinnskudd i dag: ${lumpSumToday.textContent}\n`;
+                outputText += `Nødvendig engangsinnskudd i dag: ${orIngenData(lumpSumToday.textContent) || lumpSumToday.textContent || INGEN_DATA}\n`;
             }
             if (monthlySavingNeeded) {
-                outputText += `Alternativ månedlig sparing: ${monthlySavingNeeded.textContent}\n`;
+                outputText += `Alternativ månedlig sparing: ${orIngenData(monthlySavingNeeded.textContent) || monthlySavingNeeded.textContent || INGEN_DATA}\n`;
             }
             
             return outputText;

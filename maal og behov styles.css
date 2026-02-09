@@ -91,12 +91,32 @@
         height: 300px;
     }
 
-    /* Panel styles */
+    /* Panel styles – lekker skygge på hvite containere */
     .panel {
         background: white;
         border: 1px solid #DDDDDD;
         border-radius: 12px;
         padding: 24px;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Alle containere i Mål og behov – lekker skygge (subtil, myk, jevn) */
+    .maal-og-behov-tab [class*="bg-white"][class*="rounded"]:not([class*="shadow-2xl"]) {
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    }
+    .maal-og-behov-tab [class*="bg-gray-50"][class*="rounded"] {
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    }
+    .maal-og-behov-tab button[class*="rounded-lg"],
+    .maal-og-behov-tab button[class*="rounded-md"],
+    .maal-og-behov-tab button[class*="rounded-xl"],
+    .maal-og-behov-tab button[class*="rounded-full"],
+    .maal-og-behov-tab button[class*="rounded-2xl"] {
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    }
+    .maal-og-behov-tab input[class*="bg-white"],
+    .maal-og-behov-tab input[class*="rounded"] {
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
     }
 
     /* Grid layout */
@@ -112,13 +132,14 @@
         }
     }
 
-    /* Form input styles */
+    /* Form input styles – lekker skygge */
     .form-input {
         background: white;
         border: 1px solid #DDDDDD;
         border-radius: 6px;
         padding: 6px 12px;
         color: #333333;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
     }
 
     .form-input:focus {
@@ -151,6 +172,7 @@
         padding: 12px;
         border-radius: 8px;
         transition: all 0.2s ease-in-out;
+        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
     }
 
     .btn-secondary:hover {
@@ -164,13 +186,14 @@
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
-    /* Event row styles */
+    /* Event row styles – lekker skygge */
     .event-row {
         background: #f9f9f9;
         border: 1px solid #DDDDDD;
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 12px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07), 0 4px 24px rgba(0, 0, 0, 0.05);
     }
 
     .event-slider-track {

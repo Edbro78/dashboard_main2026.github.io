@@ -1736,16 +1736,16 @@ function buildFinanceSVG(assetCategories, financingParts, totalAssets, yearVal, 
   shadow.appendChild(feDrop);
   defs.appendChild(shadow);
 
-  // Lekker skygge for søyler
+  // Lekker skygge for søyler – tydeligere skygge
   const barShadow = document.createElementNS(svgNS, "filter");
   barShadow.setAttribute("id", "barShadow");
   barShadow.setAttribute("x", "-30%"); barShadow.setAttribute("y", "-30%");
   barShadow.setAttribute("width", "160%"); barShadow.setAttribute("height", "160%");
   const feDropBar = document.createElementNS(svgNS, "feDropShadow");
-  feDropBar.setAttribute("dx", "0"); feDropBar.setAttribute("dy", "4");
-  feDropBar.setAttribute("stdDeviation", "8");
+  feDropBar.setAttribute("dx", "0"); feDropBar.setAttribute("dy", "6");
+  feDropBar.setAttribute("stdDeviation", "12");
   feDropBar.setAttribute("flood-color", "#000000");
-  feDropBar.setAttribute("flood-opacity", "0.25");
+  feDropBar.setAttribute("flood-opacity", "0.32");
   barShadow.appendChild(feDropBar);
   defs.appendChild(barShadow);
 
@@ -8539,6 +8539,8 @@ function initOutputUI() {
 }
 
 function generateOutputText() {
+  const INGEN_DATA = "ingen data";
+  const orIngenData = (v) => (v === undefined || v === null || (typeof v === "string" && !String(v).trim())) ? INGEN_DATA : v;
   // Formatering
   const formatValue = (v) => {
     const value = Number(v) || 0;
@@ -8561,7 +8563,7 @@ function generateOutputText() {
     privatArray.forEach((privat, index) => {
       if (privat) {
         const defaultName = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
-        const displayName = privat.name || defaultName;
+        const displayName = orIngenData(privat.name) || defaultName;
         const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
         lines.push(`${counter}: Struktur - ${label} navn: ${displayName}`);
         counter++;
@@ -8572,7 +8574,7 @@ function generateOutputText() {
     if (structure.holding1) {
       lines.push(`${counter}: Struktur - Holding AS 1 aktiv: ${structure.holding1.active ? "ja" : "nei"}`);
       counter++;
-      const holding1Name = structure.holding1.name || "Holding AS";
+      const holding1Name = orIngenData(structure.holding1.name) || "Holding AS";
       lines.push(`${counter}: Struktur - Holding AS 1 navn: ${holding1Name}`);
       counter++;
     }
@@ -8580,7 +8582,7 @@ function generateOutputText() {
     if (structure.holding2) {
       lines.push(`${counter}: Struktur - Holding AS 2 aktiv: ${structure.holding2.active ? "ja" : "nei"}`);
       counter++;
-      const holding2Name = structure.holding2.name || "Holding II AS";
+      const holding2Name = orIngenData(structure.holding2.name) || "Holding II AS";
       lines.push(`${counter}: Struktur - Holding AS 2 navn: ${holding2Name}`);
       counter++;
     }
@@ -8591,16 +8593,17 @@ function generateOutputText() {
   allAssets.forEach((asset) => {
     // Inkluder alle eiendeler - ingen filtrering basert på navn eller type
     if (asset && asset.name !== undefined) {
-      lines.push(`${counter}: ${asset.name}: ${formatValue(asset.amount || 0)}`);
+      const assetName = orIngenData(asset.name) || "Eiendel";
+      lines.push(`${counter}: ${assetName}: ${formatValue(asset.amount || 0)}`);
       counter++;
       // Lagre assetType hvis den er satt (for å bevare type når navn endres)
       if (asset.assetType) {
-        lines.push(`${counter}: ${asset.name} - AssetType: ${asset.assetType}`);
+        lines.push(`${counter}: ${assetName} - AssetType: ${orIngenData(asset.assetType)}`);
         counter++;
       }
       // Lagre entity-tilordning (privat, holding1, holding2)
       if (asset.entity) {
-        lines.push(`${counter}: ${asset.name} - Entity: ${asset.entity}`);
+        lines.push(`${counter}: ${assetName} - Entity: ${orIngenData(asset.entity)}`);
         counter++;
       }
     }
@@ -8608,27 +8611,29 @@ function generateOutputText() {
   
   // Gjeld (Debts) - navn og beløp
   (AppState.debts || []).forEach((debt) => {
-    lines.push(`${counter}: ${debt.name}: ${formatValue(debt.amount)}`);
+    const debtName = orIngenData(debt.name) || "Gjeld";
+    lines.push(`${counter}: ${debtName}: ${formatValue(debt.amount)}`);
     counter++;
     
     // Lånetype (select)
     const debtParams = debt.debtParams || AppState.debtParams;
-    lines.push(`${counter}: ${debt.name} - Lånetype: ${debtParams.type || "Annuitetslån"}`);
+    lines.push(`${counter}: ${debtName} - Lånetype: ${orIngenData(debtParams.type) || "Annuitetslån"}`);
     counter++;
     
     // Lånetid (år) - slider
-    lines.push(`${counter}: ${debt.name} - Lånetid: ${debtParams.years || 25} år`);
+    lines.push(`${counter}: ${debtName} - Lånetid: ${debtParams.years || 25} år`);
     counter++;
     
     // Rentekostnader (%) - slider
     const rate = (debtParams.rate || 0) * 100;
-    lines.push(`${counter}: ${debt.name} - Rentekostnader: ${formatPercent(rate)}`);
+    lines.push(`${counter}: ${debtName} - Rentekostnader: ${formatPercent(rate)}`);
     counter++;
   });
   
   // Inntekter (Incomes)
   (AppState.incomes || []).forEach((income) => {
-    lines.push(`${counter}: ${income.name}: ${formatValue(income.amount)}`);
+    const incomeName = orIngenData(income.name) || "Inntekt";
+    lines.push(`${counter}: ${incomeName}: ${formatValue(income.amount)}`);
     counter++;
   });
   
@@ -8997,25 +9002,21 @@ function parseInputText(text) {
       });
     }
     
-    // Oppdater Holdingselskaper
-    if (structureData.holding1Active !== undefined) {
+    // Oppdater Holdingselskaper (aktiv-status og/eller navn)
+    if (structureData.holding1Active !== undefined || structureData.holding1Name) {
       if (!AppState.structure.holding1) {
         AppState.structure.holding1 = { active: false, name: "Holding AS" };
       }
-      AppState.structure.holding1.active = structureData.holding1Active;
-      if (structureData.holding1Name) {
-        AppState.structure.holding1.name = structureData.holding1Name;
-      }
+      if (structureData.holding1Active !== undefined) AppState.structure.holding1.active = structureData.holding1Active;
+      if (structureData.holding1Name) AppState.structure.holding1.name = structureData.holding1Name;
     }
     
-    if (structureData.holding2Active !== undefined) {
+    if (structureData.holding2Active !== undefined || structureData.holding2Name) {
       if (!AppState.structure.holding2) {
         AppState.structure.holding2 = { active: false, name: "Holding II AS" };
       }
-      AppState.structure.holding2.active = structureData.holding2Active;
-      if (structureData.holding2Name) {
-        AppState.structure.holding2.name = structureData.holding2Name;
-      }
+      if (structureData.holding2Active !== undefined) AppState.structure.holding2.active = structureData.holding2Active;
+      if (structureData.holding2Name) AppState.structure.holding2.name = structureData.holding2Name;
     }
   }
   
@@ -9023,6 +9024,29 @@ function parseInputText(text) {
 }
 
 window.TKontoParseInputText = parseInputText;
+
+// Kalles etter Input lastes inn fra felles Input-modal (TabContainer) – oppdaterer T-konto UI
+window.TKontoRefreshAfterInputLoad = function () {
+  const moduleRoot = document.getElementById("module-root");
+  const currentNav = document.querySelector(".nav-item.is-active");
+  if (moduleRoot && currentNav) {
+    const section = currentNav.getAttribute("data-section") || currentNav.textContent || "";
+    if (section === "Forside" && typeof renderForsideModule === "function") renderForsideModule(moduleRoot);
+    else if (section === "Struktur" && typeof renderStrukturModule === "function") renderStrukturModule(moduleRoot);
+    else if (section === "Eiendeler" && typeof renderAssetsModule === "function") renderAssetsModule(moduleRoot);
+    else if (section === "Gjeld" && typeof renderDebtModule === "function") renderDebtModule(moduleRoot);
+    else if (section === "Inntekter" && typeof renderIncomeModule === "function") renderIncomeModule(moduleRoot);
+    else if (section === "Analyse" && typeof renderAnalysisModule === "function") renderAnalysisModule(moduleRoot);
+    else if ((section === "TBE" || section === "Tapsbærende evne") && typeof renderTbeModule === "function") renderTbeModule(moduleRoot);
+    else if (section === "Forventet avkastning" && typeof renderExpectationsModule === "function") renderExpectationsModule(moduleRoot);
+    else if ((section === "T-Konto" || section === "Treemap") && typeof renderGraphicsModule === "function") renderGraphicsModule(moduleRoot);
+    else if (section === "Kontantstrøm" && typeof renderWaterfallModule === "function") renderWaterfallModule(moduleRoot);
+    else if (section === "Fremtidig utvikling" && typeof renderFutureModule === "function") renderFutureModule(moduleRoot);
+    else if (typeof renderStrukturModule === "function") renderStrukturModule(moduleRoot);
+  }
+  if (typeof updateTopSummaries === "function") updateTopSummaries();
+  if (typeof notifyCashflowRoutingChange === "function") notifyCashflowRoutingChange("Input");
+};
 
 function parseValue(str) {
   if (!str) return 0;

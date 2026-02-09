@@ -326,64 +326,85 @@ header.text-center.mb-1.relative {
     margin-bottom: 1.75rem !important; /* ~28px */
 }
 
-/* --- Formuesskatt: Kompakt layout, 15% mindre linjeavstand, fullskjerm uten scroll --- */
+/* --- Formuesskatt: Samme avstand og skriftstørrelse som Pensjonsgapet --- */
 .formuesskatt-dashboard {
-    padding-top: 0.75rem !important;
-    padding-bottom: 0.75rem !important;
+    padding-top: 0.78rem !important;
+    padding-bottom: 0.78rem !important;
 }
 .formuesskatt-header {
     margin-bottom: 0.5rem !important;
 }
 .formuesskatt-title {
-    margin-bottom: 0.425rem !important;
+    margin-bottom: 0.43rem !important;
 }
+/* Venstre og høyre container lik størrelse: like bredde og høyde */
 .formuesskatt-grid {
-    gap: 1.275rem !important; /* gap-8 × 0.85 */
+    gap: 1.05rem !important;
+    min-height: 0;
+}
+@media (min-width: 1024px) {
+    .formuesskatt-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .formuesskatt-col {
+        min-width: 0;
+        min-height: 0;
+        flex: 1;
+    }
+    .formuesskatt-col .formuesskatt-panel {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
 }
 .formuesskatt-col {
-    gap: 1.275rem !important; /* space-y-6 × 0.85 */
+    gap: 0.78rem !important;
+    display: flex;
+    flex-direction: column;
 }
 .formuesskatt-panel {
-    padding: 1rem !important; /* p-4, reducert fra p-6 */
+    padding: 0.78rem !important;
 }
 .formuesskatt-h2 {
-    padding-bottom: 0.85rem !important; /* pb-4 × 0.85 */
-    margin-bottom: 1.275rem !important; /* mb-6 × 0.85 */
+    padding-bottom: 0.78rem !important;
+    margin-bottom: 0.78rem !important;
 }
 .formuesskatt-h3 {
-    padding-bottom: 0.85rem !important;
-    margin-top: 1.275rem !important;
-    margin-bottom: 1.0625rem !important; /* mb-5 × 0.85 */
+    padding-bottom: 0.78rem !important;
+    margin-top: 0.78rem !important;
+    margin-bottom: 0.65rem !important;
 }
+/* Samme avstand mellom felt som Pensjonsgapet (0.65rem mellom slidere) */
 .formuesskatt-input-group > * + * {
-    margin-top: 1.0625rem !important; /* space-y-5 × 0.85 = 1.25rem × 0.85 */
+    margin-top: 0.65rem !important;
 }
 .formuesskatt-field > * + * {
-    margin-top: 0.425rem !important; /* mt-0.5/mt-1 × 0.85 */
+    margin-top: 0.26rem !important;
 }
 .formuesskatt-label {
-    margin-bottom: 0.1rem !important; /* mb-0.5 × 0.85 */
+    margin-bottom: 0.26rem !important;
 }
 .formuesskatt-input {
-    margin-top: 0.425rem !important;
+    margin-top: 0.26rem !important;
 }
 .formuesskatt-reset-btn {
-    margin-top: 0.425rem !important; /* mt-2 × 0.85 */
+    margin-top: 0.26rem !important;
 }
 .formuesskatt-assets .asset-slider-group + .asset-slider-group {
-    margin-top: 1.0625rem !important; /* space-y-5 × 0.85 */
+    margin-top: 0.65rem !important;
 }
 .formuesskatt-summary {
-    margin-bottom: 1.0625rem !important; /* mb-6 × 0.85 */
+    margin-bottom: 0.78rem !important;
 }
 .formuesskatt-metrics > * + * {
-    margin-top: 1.0625rem !important; /* 15% mindre enn space-y-5 */
+    margin-top: 0.65rem !important;
 }
 .formuesskatt-metrics .flex {
     padding: 0.15rem 0 !important;
 }
 
-/* Mer kompakt for fullskjerm – asset-sliders og input */
+/* Samme skriftstørrelse som Pensjonsgapet – stor til liten over slidere */
 #page1 .formuesskatt-panel .asset-input,
 #page1 .formuesskatt-panel #private-debt.asset-input {
     height: 2.25rem !important;
@@ -398,8 +419,23 @@ header.text-center.mb-1.relative {
     width: 16px !important;
     height: 16px !important;
 }
+/* Eiendel-slidere: samme gradient som Pensjonsgapet (0.95rem → 0.75rem) */
+#assets-container .asset-slider-group:nth-child(1) { font-size: 0.95rem; }
+#assets-container .asset-slider-group:nth-child(2) { font-size: 0.92rem; }
+#assets-container .asset-slider-group:nth-child(3) { font-size: 0.9rem; }
+#assets-container .asset-slider-group:nth-child(4) { font-size: 0.88rem; }
+#assets-container .asset-slider-group:nth-child(5) { font-size: 0.86rem; }
+#assets-container .asset-slider-group:nth-child(6) { font-size: 0.84rem; }
+#assets-container .asset-slider-group:nth-child(7) { font-size: 0.82rem; }
+#assets-container .asset-slider-group:nth-child(8) { font-size: 0.81rem; }
+#assets-container .asset-slider-group:nth-child(9) { font-size: 0.8rem; }
+#assets-container .asset-slider-group:nth-child(10) { font-size: 0.79rem; }
+#assets-container .asset-slider-group:nth-child(11) { font-size: 0.78rem; }
+#assets-container .asset-slider-group:nth-child(12) { font-size: 0.77rem; }
+#assets-container .asset-slider-group:nth-child(13) { font-size: 0.76rem; }
+#assets-container .asset-slider-group:nth-child(n+14) { font-size: 0.75rem; }
 .formuesskatt-panel .asset-slider-group .heading-s {
-    font-size: 1rem !important;
+    font-size: inherit !important;
 }
 .formuesskatt-panel .output-value {
     font-size: 1.5rem !important;
@@ -414,6 +450,14 @@ header.text-center.mb-1.relative {
     padding-top: 0.4rem !important;
     padding-bottom: 0.4rem !important;
     font-size: 0.85rem !important;
+}
+/* Første felt (Antall personer, Privat gjeld) – samme størrelse som øverste slider */
+.formuesskatt-input-group > .formuesskatt-field {
+    font-size: 0.95rem;
+}
+.formuesskatt-input-group > .formuesskatt-field .formuesskatt-label,
+.formuesskatt-input-group > .formuesskatt-field .label-ui {
+    font-size: inherit;
 }
 #hent-fra-tkonto-btn.tkonto-active {
     background-color: #16a34a !important;

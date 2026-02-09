@@ -49,10 +49,10 @@ body {
     display: block; /* The active page is shown */
 }
 
-/* --- Typography (Mål og behov-spec) --- */
+/* --- Typography: samme nivå som Formuesskatt, 15 % mindre --- */
 :root {
-    --heading-scale: 0.42;
-    --label-scale: 0.7;
+    --heading-scale: 0.357;   /* 0.42 × 0.85 */
+    --label-scale: 0.595;    /* 0.7 × 0.85 */
 }
 .typo-h1 { font-family: 'Whitney', sans-serif; font-weight: 900; font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale))); line-height: 1.1; letter-spacing: 0; }
 .typo-h2 { font-family: 'Whitney', sans-serif; font-weight: 900; font-size: clamp(calc(1.125rem * var(--heading-scale)), calc(3.5vw * var(--heading-scale)), calc(5rem * var(--heading-scale))); line-height: 1.15; letter-spacing: 0; }
@@ -80,27 +80,51 @@ body {
 #dashboardPage h3, #dashboardPage .typo-h3 { font-weight: 700; color: var(--light-text); }
 #dashboardPage h4, #dashboardPage .typo-h4 { font-weight: 700; color: var(--light-text); }
 
-/* Labels: Whitney Medium, uppercase with ~10% letter spacing */
+/* Labels: Whitney Medium, uppercase – stor til liten skrift (første slider størst) */
 #dashboardPage .input-group label {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.1em;
 }
+#dashboardPage #input-container .input-group:nth-child(1) { font-size: 0.95rem; }
+#dashboardPage #input-container .input-group:nth-child(2) { font-size: 0.92rem; }
+#dashboardPage #input-container .input-group:nth-child(3) { font-size: 0.9rem; }
+#dashboardPage #input-container .input-group:nth-child(4) { font-size: 0.88rem; }
+#dashboardPage #input-container .input-group:nth-child(5) { font-size: 0.86rem; }
+#dashboardPage #input-container .input-group:nth-child(6) { font-size: 0.84rem; }
+#dashboardPage #input-container .input-group:nth-child(7) { font-size: 0.82rem; }
+#dashboardPage #input-container .input-group:nth-child(8) { font-size: 0.81rem; }
+#dashboardPage #input-container .input-group:nth-child(9) { font-size: 0.8rem; }
+#dashboardPage #input-container .input-group:nth-child(10) { font-size: 0.79rem; }
+#dashboardPage #input-container .input-group:nth-child(11) { font-size: 0.78rem; }
+#dashboardPage #input-container .input-group:nth-child(12) { font-size: 0.77rem; }
+#dashboardPage #input-container .input-group:nth-child(13) { font-size: 0.76rem; }
+#dashboardPage #input-container .input-group:nth-child(n+14) { font-size: 0.75rem; }
+/* Slidere under Pensjonsgap (Kombinasjonsløsning) – også stor til liten */
+#dashboardPage #combo-sliders-container .input-group:nth-child(1) { font-size: 0.82rem; }
+#dashboardPage #combo-sliders-container .input-group:nth-child(2) { font-size: 0.8rem; }
+/* Verdier ved slidere og input – samme som Formuesskatt (0.9rem) */
+#dashboardPage .input-group input,
+#dashboardPage .input-group [id$="-value"],
+#dashboardPage #input-container .asset-input {
+    font-size: 0.9rem !important;
+}
+/* Samme skala som Formuesskatt, 15 % mindre enn før */
 #dashboardPage .output-value {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--accent-blue-vibrant);
     word-break: break-word;
 }
 #dashboardPage .output-label {
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: var(--medium-text);
 }
 
 /* Slightly smaller numbers inside combo result cards to fit nicely */
 #dashboardPage .combo-output .output-value {
-    font-size: 1.5rem; /* smaller to ensure one-line fit */
-    line-height: 2rem;
+    font-size: 1.275rem; /* 15 % mindre, samme nivå som Formuesskatt */
+    line-height: 1.7rem;
     word-break: normal;
     overflow-wrap: normal;
     white-space: nowrap; /* avoid line breaks in currency */
@@ -116,8 +140,8 @@ body {
 
 /* Keep number rows aligned across combo cards */
 #dashboardPage .combo-output .output-value {
-    margin-bottom: 0.5rem;
-    min-height: 2rem; /* reserve same height for the number line */
+    margin-bottom: 0.43rem;
+    min-height: 1.7rem; /* 15 % mindre */
 }
 
 /* Quote block styles per spec (optional, for future use) */
@@ -126,82 +150,82 @@ body {
     font-weight: 500; /* Whitney Medium Italic ideal; fallback italic */
 }
 
-/* Reduced line spacing by 15% for fullscreen fit */
+/* Linjeavstand mellom slidere og paneler 15 % mindre (× 0.85) – samme nivå som Formuesskatt */
 #dashboardPage #input-container {
     gap: 0 !important;
 }
 #dashboardPage #input-container > * + * {
-    margin-top: 0.77rem !important;
+    margin-top: 0.65rem !important;
 }
 #dashboardPage .input-group .flex.justify-between.items-baseline,
 #dashboardPage .input-group .mb-2 {
-    margin-bottom: 0.31rem !important;
+    margin-bottom: 0.26rem !important;
 }
 #dashboardPage .card-panel {
-    padding: 0.92rem !important;
+    padding: 0.78rem !important;
 }
 #dashboardPage .card-panel.space-y-6 > * + * {
-    margin-top: 0.92rem !important;
+    margin-top: 0.78rem !important;
 }
 #dashboardPage .grid.gap-8 {
-    gap: 1.23rem !important;
+    gap: 1.05rem !important;
 }
 #dashboardPage .flex.flex-col.gap-8 {
-    gap: 1.23rem !important;
+    gap: 1.05rem !important;
 }
 #dashboardPage .grid.gap-6 {
-    gap: 0.92rem !important;
+    gap: 0.78rem !important;
 }
 #dashboardPage .grid.gap-3 {
-    gap: 0.46rem !important;
+    gap: 0.39rem !important;
 }
 #dashboardPage .summary-panel,
 #dashboardPage .metrics-panel {
-    padding: 0.92rem !important;
+    padding: 0.78rem !important;
 }
 #dashboardPage .mb-6 {
-    margin-bottom: 0.92rem !important;
+    margin-bottom: 0.78rem !important;
 }
 #dashboardPage .mt-6 {
-    margin-top: 0.92rem !important;
+    margin-top: 0.78rem !important;
 }
 #dashboardPage .mt-2,
 #dashboardPage .output-label.mt-2 {
-    margin-top: 0.31rem !important;
+    margin-top: 0.26rem !important;
 }
 #dashboardPage .space-y-4 > * + * {
-    margin-top: 0.61rem !important;
+    margin-top: 0.52rem !important;
 }
 #dashboardPage .space-y-3 > * + * {
-    margin-top: 0.46rem !important;
+    margin-top: 0.39rem !important;
 }
 #dashboardPage .mt-4 {
-    margin-top: 0.61rem !important;
+    margin-top: 0.52rem !important;
 }
 #dashboardPage .asset-input.mt-2 {
-    margin-top: 0.31rem !important;
+    margin-top: 0.26rem !important;
 }
 #dashboardPage .pb-2 {
-    padding-bottom: 0.31rem !important;
+    padding-bottom: 0.26rem !important;
 }
 #dashboardPage header.mb-8 {
-    margin-bottom: 1.84rem !important;
+    margin-bottom: 1.56rem !important;
 }
 #dashboardPage .min-h-screen {
     min-height: 100vh;
     min-height: 100dvh;
-    padding-top: 0.92rem !important;
-    padding-bottom: 0.92rem !important;
+    padding-top: 0.78rem !important;
+    padding-bottom: 0.78rem !important;
 }
 #dashboardPage #combo-sliders-container.gap-6 {
-    gap: 0.92rem !important;
+    gap: 0.78rem !important;
 }
 #dashboardPage .combo-output .output-value {
-    margin-bottom: 0.31rem !important;
+    margin-bottom: 0.26rem !important;
 }
 #dashboardPage .combo-output {
-    padding-top: 0.61rem !important;
-    padding-bottom: 0.61rem !important;
+    padding-top: 0.52rem !important;
+    padding-bottom: 0.52rem !important;
 }
 
 /* --- Common Slider Styles --- */
@@ -301,7 +325,7 @@ input[type="number"] {
 /* Output Modal Textarea Styling */
 #outputTextArea {
     font-family: 'Whitney', 'Inter', sans-serif;
-    font-size: 14px;
+    font-size: 12px;
     line-height: 1.5;
     background-color: #f8fafc;
     border: 2px solid #e2e8f0;

@@ -157,22 +157,81 @@
                                     <input type="range" id="current-stocks" min="0" max="100" value="20" step="0.1" class="slider">
                                 </div>
                                 
-                                <!-- Renter -->
-                                <div class="slider-item">
+                                <!-- Renter (med + for underslidere) -->
+                                <div class="slider-item renter-item">
                                     <div class="slider-header">
-                                        <label for="current-riskfree">Renter</label>
+                                        <span class="slider-header-left">
+                                            <label for="current-riskfree">Renter</label>
+                                            <button type="button" class="renter-expand-btn" aria-expanded="false" title="Vis underslidere for renter">+</button>
+                                        </span>
                                         <span class="slider-value" id="current-riskfree-value">20.0%</span>
                                     </div>
                                     <input type="range" id="current-riskfree" min="0" max="100" value="20" step="0.1" class="slider">
+                                    <div class="renter-sub-sliders" id="current-renter-sub" hidden>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-renter-ig-norge">IG renter Norge</label>
+                                                <span class="slider-value" id="current-renter-ig-norge-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-renter-ig-norge" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-renter-ig-global">IG renter Globalt</label>
+                                                <span class="slider-value" id="current-renter-ig-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-renter-ig-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-renter-hy-norden">High yield Norge/Norden</label>
+                                                <span class="slider-value" id="current-renter-hy-norden-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-renter-hy-norden" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-renter-hy-global">Global high yield</label>
+                                                <span class="slider-value" id="current-renter-hy-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-renter-hy-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <!-- Aksjer -->
-                                <div class="slider-item">
+                                <!-- Aksjer (med + for underslidere) -->
+                                <div class="slider-item aksjer-item">
                                     <div class="slider-header">
-                                        <label for="current-highyield">Aksjer</label>
+                                        <span class="slider-header-left">
+                                            <label for="current-highyield">Aksjer</label>
+                                            <button type="button" class="aksjer-expand-btn" aria-expanded="false" title="Vis underslidere for aksjer">+</button>
+                                        </span>
                                         <span class="slider-value" id="current-highyield-value">20.0%</span>
                                     </div>
                                     <input type="range" id="current-highyield" min="0" max="100" value="20" step="0.1" class="slider">
+                                    <div class="aksjer-sub-sliders" id="current-aksjer-sub" hidden>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-aksjer-norske">Norske aksjer</label>
+                                                <span class="slider-value" id="current-aksjer-norske-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-aksjer-norske" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-aksjer-emerging">Emerging markets aksjer</label>
+                                                <span class="slider-value" id="current-aksjer-emerging-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-aksjer-emerging" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="current-aksjer-global">Globale aksjer</label>
+                                                <span class="slider-value" id="current-aksjer-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="current-aksjer-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <!-- Alternative strategier -->
@@ -242,22 +301,81 @@
                                     <input type="range" id="new-stocks" min="0" max="100" value="20" step="0.1" class="slider">
                                 </div>
                                 
-                                <!-- Renter -->
-                                <div class="slider-item">
+                                <!-- Renter (med + for underslidere) -->
+                                <div class="slider-item renter-item">
                                     <div class="slider-header">
-                                        <label for="new-riskfree">Renter</label>
+                                        <span class="slider-header-left">
+                                            <label for="new-riskfree">Renter</label>
+                                            <button type="button" class="renter-expand-btn" aria-expanded="false" title="Vis underslidere for renter">+</button>
+                                        </span>
                                         <span class="slider-value" id="new-riskfree-value">20.0%</span>
                                     </div>
                                     <input type="range" id="new-riskfree" min="0" max="100" value="20" step="0.1" class="slider">
+                                    <div class="renter-sub-sliders" id="new-renter-sub" hidden>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-renter-ig-norge">IG renter Norge</label>
+                                                <span class="slider-value" id="new-renter-ig-norge-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-renter-ig-norge" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-renter-ig-global">IG renter Globalt</label>
+                                                <span class="slider-value" id="new-renter-ig-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-renter-ig-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-renter-hy-norden">High yield Norge/Norden</label>
+                                                <span class="slider-value" id="new-renter-hy-norden-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-renter-hy-norden" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item renter-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-renter-hy-global">Global high yield</label>
+                                                <span class="slider-value" id="new-renter-hy-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-renter-hy-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                    </div>
                                 </div>
                                 
-                                <!-- Aksjer -->
-                                <div class="slider-item">
+                                <!-- Aksjer (med + for underslidere) -->
+                                <div class="slider-item aksjer-item">
                                     <div class="slider-header">
-                                        <label for="new-highyield">Aksjer</label>
+                                        <span class="slider-header-left">
+                                            <label for="new-highyield">Aksjer</label>
+                                            <button type="button" class="aksjer-expand-btn" aria-expanded="false" title="Vis underslidere for aksjer">+</button>
+                                        </span>
                                         <span class="slider-value" id="new-highyield-value">20.0%</span>
                                     </div>
                                     <input type="range" id="new-highyield" min="0" max="100" value="20" step="0.1" class="slider">
+                                    <div class="aksjer-sub-sliders" id="new-aksjer-sub" hidden>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-aksjer-norske">Norske aksjer</label>
+                                                <span class="slider-value" id="new-aksjer-norske-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-aksjer-norske" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-aksjer-emerging">Emerging markets aksjer</label>
+                                                <span class="slider-value" id="new-aksjer-emerging-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-aksjer-emerging" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                        <div class="slider-item aksjer-sub-item">
+                                            <div class="slider-header">
+                                                <label for="new-aksjer-global">Globale aksjer</label>
+                                                <span class="slider-value" id="new-aksjer-global-value">0%</span>
+                                            </div>
+                                            <input type="range" id="new-aksjer-global" min="0" max="100" value="0" step="0.1" class="slider">
+                                        </div>
+                                    </div>
                                 </div>
                                 
                                 <!-- Alternative strategier -->
