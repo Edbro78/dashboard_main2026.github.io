@@ -2025,6 +2025,22 @@ function App() {
     const activeSimulatedReturns = simButtonActive && savedSimulatedReturns.stockReturns.length > 0 
         ? savedSimulatedReturns 
         : simulatedReturns;
+
+    // Hjelpefunksjon: netto hendelsesbeløp for et gitt simuleringår (år-indeks 0 = første år).
+    // Sikrer at beløp og år er tall (unngår streng-konkatenasjon og feil sammenligning).
+    const getEventAmountForYear = (stateObj, yearIndex) => {
+        const year = START_YEAR + yearIndex;
+        let net = 0;
+        (stateObj.events || []).forEach(event => {
+            const startAar = Number(event.startAar) || START_YEAR;
+            const sluttAarNum = Number(event.sluttAar);
+            const sluttAar = (event.sluttAar != null && !isNaN(sluttAarNum)) ? sluttAarNum : startAar;
+            if (year >= startAar && year <= sluttAar) {
+                net += Number(event.belop) || 0;
+            }
+        });
+        return net;
+    };
     
     // Monte Carlo simulering: Beregn maksimal utbetaling gitt en simulert avkastningsserie
     const calculateMaxPayout = useCallback((stockReturns, bondReturns, state) => {
@@ -2042,18 +2058,24 @@ function App() {
             const stockPct = annualStockPercentages[i] / 100;
             const bondPct = 1 - stockPct;
             
-            // Legg til sparing i investeringsårene
+            // Legg til sparing og positive hendelser (før avkastning), som i prognosen
             if (isInvestmentYear && state.annualSavings > 0) {
                 testValueZeroPayout += state.annualSavings;
             }
-            
+            if (isInvestmentYear) {
+                const eventAmt = getEventAmountForYear(state, i);
+                if (eventAmt > 0) testValueZeroPayout += eventAmt;
+            }
             // Beregn avkastning
             const stockReturn = stockReturns[i] / 100;
             const bondReturn = bondReturns[i] / 100;
             const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
-            
             testValueZeroPayout *= (1 + portfolioReturn);
-            
+            // Negative hendelser (uttak) etter avkastning for året, som i prognosen
+            if (isInvestmentYear) {
+                const eventAmt = getEventAmountForYear(state, i);
+                if (eventAmt < 0) testValueZeroPayout += eventAmt;
+            }
             // Hvis porteføljen går negativ selv uten utbetaling, kan vi ikke utbetale noe
             if (testValueZeroPayout <= 0) {
                 return 0;
@@ -2081,18 +2103,24 @@ function App() {
                 const stockPct = annualStockPercentages[i] / 100;
                 const bondPct = 1 - stockPct;
                 
-                // Legg til sparing i investeringsårene
+                // Legg til sparing og positive hendelser (før avkastning)
                 if (isInvestmentYear && state.annualSavings > 0) {
                     testValue += state.annualSavings;
                 }
-                
+                if (isInvestmentYear) {
+                    const eventAmt = getEventAmountForYear(state, i);
+                    if (eventAmt > 0) testValue += eventAmt;
+                }
                 // Beregn avkastning
                 const stockReturn = stockReturns[i] / 100;
                 const bondReturn = bondReturns[i] / 100;
                 const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
-                
                 testValue *= (1 + portfolioReturn);
-                
+                // Negative hendelser (uttak) etter avkastning for året
+                if (isInvestmentYear) {
+                    const eventAmt = getEventAmountForYear(state, i);
+                    if (eventAmt < 0) testValue += eventAmt;
+                }
                 // Trekk fra utbetaling i utbetalingsårene
                 if (!isInvestmentYear) {
                     testValue -= testPayout;
@@ -2142,17 +2170,19 @@ function App() {
             const stockPct = annualStockPercentages[i] / 100;
             const bondPct = 1 - stockPct;
             
-            // Legg til sparing i investeringsårene
+            // Legg til sparing og positive hendelser (før avkastning), som i prognosen
             if (state.annualSavings > 0) {
                 portfolioValue += state.annualSavings;
             }
-            
+            const eventAmt = getEventAmountForYear(state, i);
+            if (eventAmt > 0) portfolioValue += eventAmt;
             // Beregn avkastning
             const stockReturn = stockReturns[i] / 100;
             const bondReturn = bondReturns[i] / 100;
             const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
-            
             portfolioValue *= (1 + portfolioReturn);
+            // Negative hendelser (uttak) etter avkastning for året, som i prognosen
+            if (eventAmt < 0) portfolioValue += eventAmt;
         }
         
         return portfolioValue;
@@ -2192,7 +2222,7 @@ function App() {
         
         return results.sort((a, b) => a - b); // Sorter for å lage normalfordeling
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [monteCarloKey, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.payoutYears]); // Regenerer når standardavvik eller andre relevante verdier endres
+    }, [monteCarloKey, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.payoutYears, state.events]); // Regenerer når standardavvik, hendelser eller andre relevante verdier endres
     
     // Beregn normalfordelingsdata for grafikken
     const monteCarloChartData = useMemo(() => {
@@ -2500,7 +2530,7 @@ function App() {
         
         return results.sort((a, b) => a - b); // Sorter for å lage normalfordeling
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [monteCarloPortfolioKey, calculatePortfolioValue, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears]);
+    }, [monteCarloPortfolioKey, calculatePortfolioValue, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.events]);
     
     // Monte Carlo fra 0- til 100% aksjer: Beregn porteføljens verdi med spesifikk aksjeandel
     const calculatePortfolioValueWithStockAllocation = useCallback((stockReturns, bondReturns, state, stockAllocationPercent) => {
@@ -2514,17 +2544,19 @@ function App() {
         
         // Simuler porteføljevekst gjennom investeringsperioden med fast aksjeandel
         for (let i = 0; i < state.investmentYears; i++) {
-            // Legg til sparing i investeringsårene
+            // Legg til sparing og positive hendelser (før avkastning)
             if (state.annualSavings > 0) {
                 portfolioValue += state.annualSavings;
             }
-            
+            const eventAmt = getEventAmountForYear(state, i);
+            if (eventAmt > 0) portfolioValue += eventAmt;
             // Beregn avkastning med spesifikk aksjeandel
             const stockReturn = stockReturns[i] / 100;
             const bondReturn = bondReturns[i] / 100;
             const portfolioReturn = (stockPct * stockReturn) + (bondPct * bondReturn);
-            
             portfolioValue *= (1 + portfolioReturn);
+            // Negative hendelser (uttak) etter avkastning for året
+            if (eventAmt < 0) portfolioValue += eventAmt;
         }
         
         return portfolioValue;
@@ -2571,7 +2603,7 @@ function App() {
         
         return results;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [monteCarloStockAllocationKey, calculatePortfolioValueWithStockAllocation, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.annualSavings]);
+    }, [monteCarloStockAllocationKey, calculatePortfolioValueWithStockAllocation, state.stockStdDev, state.bondStdDev, state.stockReturnRate, state.bondReturnRate, state.investmentYears, state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.annualSavings, state.events]);
     
     // Beregn frekvenstabeller for hver aksjeandel
     const monteCarloStockAllocationFrequencyTables = useMemo(() => {

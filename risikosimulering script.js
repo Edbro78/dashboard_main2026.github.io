@@ -16,14 +16,18 @@ const state = {
         riskFree: 80, // Renter (20% aksjer → 80% renter)
         highYield: 20,// Aksjer
         nordicStocks: 0,    // Alternative strategier – kun ved manuelt valg
-        emergingMarkets: 0 // Annet – kun ved manuelt valg
+        emergingMarkets: 0, // Annet – kun ved manuelt valg
+        renterIGPct: 56,    // Andel av portefølje (80% * 70%) – Renter IG
+        renterHYPct: 24     // Andel av portefølje (80% * 30%) – Renter High Yield
     },
     newPortfolio: {
         stocks: 0,    // Likviditet/kontanter – kun ved manuelt valg
         riskFree: 45, // Renter (55% aksjer → 45% renter)
         highYield: 55,// Aksjer
         nordicStocks: 0,    // Alternative strategier – kun ved manuelt valg
-        emergingMarkets: 0 // Annet – kun ved manuelt valg
+        emergingMarkets: 0, // Annet – kun ved manuelt valg
+        renterIGPct: 31.5,  // Andel av portefølje (45% * 70%) – Renter IG
+        renterHYPct: 13.5   // Andel av portefølje (45% * 30%) – Renter High Yield
     },
     charts: {
         overview: null,
@@ -214,19 +218,45 @@ function parseCSV(csvString) {
                     // YYYY-MM-DD format
                     row.date = new Date(value);
                 }
-            } else if (header.toLowerCase().includes('globale aksjer')) {
-                // Convert comma to dot for decimal separator, remove spaces
+            } else if (header.toLowerCase().includes('globale aksjer') && header.toLowerCase().includes('aksjer')) {
+                // Aksjer - Globale aksjer (historiske kurser2.csv)
                 const numValue = value.replace(/\s/g, '').replace(',', '.');
                 row.stocks = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('norske aksjer') && header.toLowerCase().includes('aksjer')) {
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.aksjerNorske = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('nordiske aksjer') && header.toLowerCase().includes('aksjer')) {
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.aksjerNordiske = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('fremvoksende markeder')) {
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.aksjerFremvoksende = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('alternative strategier')) {
+                // Alternative strategier – data fra kolonnen Alternative strategier (historiske kurser2.csv)
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.nordicStocks = parseFloat(numValue);
+            } else if (header.toLowerCase().trim() === 'annet' || (header.toLowerCase().includes('annet') && !header.toLowerCase().includes('aksjer'))) {
+                // Annet – data fra kolonnen Annet (historiske kurser2.csv)
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.emergingMarkets = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('kontanter') && header.toLowerCase().includes('bank')) {
+                // Likviditet/kontanter – data fra kolonnen Kontanter - bank (historiske kurser2.csv)
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.riskFree = parseFloat(numValue);
             } else if (header.toLowerCase().includes('risikofri rente')) {
                 const numValue = value.replace(/\s/g, '').replace(',', '.');
                 row.riskFree = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('investment grade') && header.toLowerCase().includes('renter')) {
+                // Renter IG – data fra kolonnen Renter - investment grade (historiske kurser2.csv)
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.renterIG = parseFloat(numValue);
+            } else if (header.toLowerCase().includes('high yield') && header.toLowerCase().includes('renter')) {
+                // Renter High Yield – data fra kolonnen Renter - high yield (historiske kurser2.csv)
+                const numValue = value.replace(/\s/g, '').replace(',', '.');
+                row.highYield = parseFloat(numValue);
             } else if (header.toLowerCase().includes('high yield')) {
                 const numValue = value.replace(/\s/g, '').replace(',', '.');
                 row.highYield = parseFloat(numValue);
-            } else if (header.toLowerCase().includes('norske aksjer')) {
-                const numValue = value.replace(/\s/g, '').replace(',', '.');
-                row.nordicStocks = parseFloat(numValue);
             } else if (header.toLowerCase().includes('emerging markets')) {
                 const numValue = value.replace(/\s/g, '').replace(',', '.');
                 row.emergingMarkets = parseFloat(numValue);
@@ -337,6 +367,31 @@ function getPeriodLabel() {
 // ========================================
 // Portfolio Calculations
 // ========================================
+// Renter-avkastning: vektet Renter IG + Renter High Yield (fordeling fra underslidere; standard 70/30)
+function getRenterReturn(row, baseValues, allocation) {
+    const hasIG = row.renterIG != null && baseValues.renterIG != null;
+    if (hasIG) {
+        const sum = (allocation.renterIGPct || 0) + (allocation.renterHYPct || 0);
+        const wIG = sum > 0 ? (allocation.renterIGPct || 0) / sum : 0.7;
+        const wHY = sum > 0 ? (allocation.renterHYPct || 0) / sum : 0.3;
+        return wIG * (row.renterIG / baseValues.renterIG) + wHY * (row.highYield / baseValues.highYield);
+    }
+    return row.highYield / baseValues.highYield;
+}
+
+// Aksjer-avkastning: alltid vektet 10 % Norske + 10 % Nordiske + 20 % Emerging + 60 % Globale (uavhengig av underslidere)
+function getAksjerReturn(row, baseValues) {
+    const num = (v, b) => (v != null && b != null ? v / b : null);
+    const norske = num(row.aksjerNorske, baseValues.aksjerNorske);
+    const nordiske = num(row.aksjerNordiske, baseValues.aksjerNordiske);
+    const fremvoksende = num(row.aksjerFremvoksende, baseValues.aksjerFremvoksende);
+    const globale = num(row.stocks, baseValues.stocks);
+    if (norske != null && nordiske != null && fremvoksende != null && globale != null) {
+        return 0.10 * norske + 0.10 * nordiske + 0.20 * fremvoksende + 0.60 * globale;
+    }
+    return row.stocks / baseValues.stocks;
+}
+
 function calculatePortfolioValue(data, allocation, startCapital) {
     const values = [];
     const baseValues = data[0];
@@ -359,12 +414,10 @@ function calculatePortfolioValue(data, allocation, startCapital) {
         let portfolioValue;
         
         if (hasAllData) {
-            // Calculate relative returns from base (CSV: Globale aksjer→row.stocks, Risikofri rente→row.riskFree, High Yield→row.highYield)
-            // UI mapping: Likviditet/kontanter→stocksAmount uses Risikofri rente; Renter→riskFreeAmount uses High Yield; Aksjer→highYieldAmount uses Globale aksjer
-            const stockReturn = row.stocks / baseValues.stocks;       // Globale aksjer → for Aksjer-andel
-            const riskFreeReturn = row.riskFree / baseValues.riskFree; // Risikofri rente → for Likviditet/kontanter-andel
-            const highYieldReturn = row.highYield / baseValues.highYield; // High Yield → for Renter-andel
-            // Use actual nordic stocks and emerging markets data if available, otherwise use stocks as proxy
+            // Calculate relative returns from base. Aksjer = 10% Norske + 10% Nordiske + 20% Fremvoksende + 60% Globale
+            const stockReturn = getAksjerReturn(row, baseValues);       // Aksjer: vektet Norske/Nordiske/Fremvoksende/Globale
+            const riskFreeReturn = row.riskFree / baseValues.riskFree; // Kontanter - bank → for Likviditet/kontanter-andel
+            const highYieldReturn = getRenterReturn(row, baseValues, allocation); // Renter IG + Renter High Yield (vektet) → for Renter-andel
             const nordicReturn = (row.nordicStocks && baseValues.nordicStocks) 
                 ? row.nordicStocks / baseValues.nordicStocks 
                 : row.stocks / baseValues.stocks;
@@ -372,7 +425,6 @@ function calculatePortfolioValue(data, allocation, startCapital) {
                 ? row.emergingMarkets / baseValues.emergingMarkets 
                 : row.stocks / baseValues.stocks;
             
-            // Weighted portfolio value: Likviditet→riskFreeReturn, Renter→highYieldReturn, Aksjer→stockReturn
             portfolioValue = 
                 stocksAmount * riskFreeReturn +
                 riskFreeAmount * highYieldReturn +
@@ -648,16 +700,26 @@ function calculateYearlyReturns(data) {
                 }
             }
             
+            const stocksPct = ((last.stocks - first.stocks) / first.stocks * 100);
+            const aksjerNorskePct = (first.aksjerNorske != null && last.aksjerNorske != null) ? ((last.aksjerNorske - first.aksjerNorske) / first.aksjerNorske * 100) : stocksPct;
+            const aksjerNordiskePct = (first.aksjerNordiske != null && last.aksjerNordiske != null) ? ((last.aksjerNordiske - first.aksjerNordiske) / first.aksjerNordiske * 100) : stocksPct;
+            const aksjerFremvoksendePct = (first.aksjerFremvoksende != null && last.aksjerFremvoksende != null) ? ((last.aksjerFremvoksende - first.aksjerFremvoksende) / first.aksjerFremvoksende * 100) : stocksPct;
             yearlyReturns[year] = {
-                stocks: ((last.stocks - first.stocks) / first.stocks * 100),
+                stocks: stocksPct,
+                aksjerNorske: aksjerNorskePct,
+                aksjerNordiske: aksjerNordiskePct,
+                aksjerFremvoksende: aksjerFremvoksendePct,
                 riskFree: ((last.riskFree - first.riskFree) / first.riskFree * 100),
                 highYield: ((last.highYield - first.highYield) / first.highYield * 100),
+                renterIG: (first.renterIG != null && last.renterIG != null)
+                    ? ((last.renterIG - first.renterIG) / first.renterIG * 100)
+                    : ((last.highYield - first.highYield) / first.highYield * 100),
                 nordicStocks: (first.nordicStocks && last.nordicStocks) 
                     ? ((last.nordicStocks - first.nordicStocks) / first.nordicStocks * 100)
-                    : ((last.stocks - first.stocks) / first.stocks * 100), // Fallback to stocks if not available
+                    : stocksPct,
                 emergingMarkets: (first.emergingMarkets && last.emergingMarkets)
                     ? ((last.emergingMarkets - first.emergingMarkets) / first.emergingMarkets * 100)
-                    : ((last.stocks - first.stocks) / first.stocks * 100), // Fallback to stocks if not available
+                    : stocksPct,
                 kpi: kpiReturn
             };
         } else if (yearData.length === 1) {
@@ -665,8 +727,12 @@ function calculateYearlyReturns(data) {
             const single = yearData[0];
             yearlyReturns[year] = {
                 stocks: 0,
+                aksjerNorske: 0,
+                aksjerNordiske: 0,
+                aksjerFremvoksende: 0,
                 riskFree: 0,
                 highYield: 0,
+                renterIG: 0,
                 nordicStocks: 0,
                 emergingMarkets: 0,
                 kpi: single.kpi || 0
@@ -1025,6 +1091,27 @@ function updateSliderUI(type) {
     document.getElementById(`${prefix}-highyield`).value = portfolio.highYield;
     document.getElementById(`${prefix}-nordic`).value = portfolio.nordicStocks;
     document.getElementById(`${prefix}-emerging`).value = portfolio.emergingMarkets;
+    const renterIGEl = document.getElementById(`${prefix}-renter-ig`);
+    const renterHYEl = document.getElementById(`${prefix}-renter-hy`);
+    if (renterIGEl && portfolio.renterIGPct != null) renterIGEl.value = portfolio.renterIGPct;
+    if (renterHYEl && portfolio.renterHYPct != null) renterHYEl.value = portfolio.renterHYPct;
+    const renterIGValueEl = document.getElementById(`${prefix}-renter-ig-value`);
+    const renterHYValueEl = document.getElementById(`${prefix}-renter-hy-value`);
+    if (renterIGValueEl && renterIGEl) renterIGValueEl.textContent = Math.round(parseFloat(renterIGEl.value)) + '%';
+    if (renterHYValueEl && renterHYEl) renterHYValueEl.textContent = Math.round(parseFloat(renterHYEl.value)) + '%';
+    
+    // Aksjer-underslidere: sett til standardvekting (10% Norske, 10% Nordiske, 20% Emerging, 60% Globale) iht hovedslideren
+    const aksjerWeights = { 'aksjer-norske': 10, 'aksjer-nordiske': 10, 'aksjer-emerging': 20, 'aksjer-global': 60 };
+    const aksjerPct = portfolio.highYield; // andel aksjer i porteføljen
+    Object.entries(aksjerWeights).forEach(([suffix, weight]) => {
+        const val = (aksjerPct * weight) / 100;
+        const sliderEl = document.getElementById(`${prefix}-${suffix}`);
+        const valueEl = document.getElementById(`${prefix}-${suffix}-value`);
+        if (sliderEl && valueEl) {
+            sliderEl.value = Math.round(val * 10) / 10;
+            valueEl.textContent = Math.round(val) + '%';
+        }
+    });
     
     // Update treemap charts
     updateTreemapChart(type);
@@ -1069,13 +1156,31 @@ function updateTreemapChart(type) {
     // Disable image smoothing for crisp edges
     ctx.imageSmoothingEnabled = false;
     
-    // Prepare data - filter out zero values
+    // Farger fra fanen Aktivaklasser (samme som .asset-cell-klassene)
+    const assetClassColors = {
+        'Likviditet/kontanter': '#88CCEE',   // chart-1
+        'Renter IG': '#4A6D8C',              // risikofri-color
+        'Renter High Yield': '#66CCDD',      // chart-crayola-blue
+        'Norske aksjer': '#4A6D8C',          // chart-4
+        'Nordiske aksjer': '#3388CC',        // chart-3
+        'Emerging markets aksjer': '#333333', // chart-5
+        'Globale aksjer': '#66CCDD',         // chart-crayola-blue
+        'Alternative strategier': '#4A6D8C', // chart-4
+        'Annet': '#333333'                   // chart-5
+    };
+    // Alle aktivaklasser med andel > 0% (samme nivå som i Aktivaklasser-fanen)
+    const aksjerWeights = { 'Norske aksjer': 10, 'Nordiske aksjer': 10, 'Emerging markets aksjer': 20, 'Globale aksjer': 60 };
     const data = [
-        { name: 'Likviditet/kontanter', value: portfolio.stocks, color: '#88CCEE' },
-        { name: 'Renter', value: portfolio.riskFree, color: '#66CCDD' },
-        { name: 'Aksjer', value: portfolio.highYield, color: '#3388CC' },
-        { name: 'Alternative strategier', value: portfolio.nordicStocks, color: '#4A6D8C' },
-        { name: 'Annet', value: portfolio.emergingMarkets, color: '#333333' }
+        { name: 'Likviditet/kontanter', value: portfolio.stocks, color: assetClassColors['Likviditet/kontanter'] },
+        { name: 'Renter IG', value: portfolio.renterIGPct ?? 0, color: assetClassColors['Renter IG'] },
+        { name: 'Renter High Yield', value: portfolio.renterHYPct ?? 0, color: assetClassColors['Renter High Yield'] },
+        ...Object.entries(aksjerWeights).map(([name, weight]) => ({
+            name,
+            value: (portfolio.highYield * weight) / 100,
+            color: assetClassColors[name]
+        })),
+        { name: 'Alternative strategier', value: portfolio.nordicStocks, color: assetClassColors['Alternative strategier'] },
+        { name: 'Annet', value: portfolio.emergingMarkets, color: assetClassColors['Annet'] }
     ].filter(item => item.value > 0);
     
     if (data.length === 0) return;
@@ -1195,8 +1300,11 @@ function validateAndAdjustSlider(type, changedSliderId, newValue) {
     // Update the changed slider's value
     const newPercent = parseFloat(newValue);
     if (changedSliderId.includes('stocks')) portfolio.stocks = newPercent;
-    else if (changedSliderId.includes('riskfree')) portfolio.riskFree = newPercent;
-    else if (changedSliderId.includes('highyield')) portfolio.highYield = newPercent;
+    else if (changedSliderId.includes('riskfree')) {
+        portfolio.riskFree = newPercent;
+        portfolio.renterIGPct = Math.round(newPercent * 7) / 10;   // 70% av renterandelen
+        portfolio.renterHYPct = Math.round(newPercent * 3) / 10;   // 30% av renterandelen
+    } else if (changedSliderId.includes('highyield')) portfolio.highYield = newPercent;
     else if (changedSliderId.includes('nordic')) portfolio.nordicStocks = newPercent;
     else if (changedSliderId.includes('emerging')) portfolio.emergingMarkets = newPercent;
     
@@ -1415,14 +1523,14 @@ function calculateAssetClassValue(data, assetClass, allocationPercent, startCapi
     data.forEach(row => {
         let returnValue;
         switch(assetClass) {
-            case 'stocks': // Likviditet/kontanter → Risikofri rente (historiske kurser2.csv)
+            case 'stocks': // Likviditet/kontanter → Kontanter - bank (historiske kurser2.csv)
                 returnValue = row.riskFree / baseValues.riskFree;
                 break;
-            case 'riskFree': // Renter → High Yield (historiske kurser2.csv)
-                returnValue = row.highYield / baseValues.highYield;
+            case 'riskFree': // Renter → Renter IG + Renter High Yield (vektet, historiske kurser2.csv)
+                returnValue = getRenterReturn(row, baseValues, state.newPortfolio);
                 break;
-            case 'highYield': // Aksjer → Globale aksjer (historiske kurser2.csv)
-                returnValue = row.stocks / baseValues.stocks;
+            case 'highYield': // Aksjer → 10% Norske + 10% Nordiske + 20% Fremvoksende + 60% Globale (historiske kurser2.csv)
+                returnValue = getAksjerReturn(row, baseValues);
                 break;
             case 'nordicStocks':
                 // Use actual nordic stocks data if available, otherwise use stocks as proxy
@@ -1467,10 +1575,9 @@ function calculateAssetClassValueWithoutRebalancing(data, portfolio, startCapita
     const emergingMarketsAmount = (portfolio.emergingMarkets / 100) * startCapital;
     
     data.forEach(row => {
-        // CSV mapping: Likviditet→Risikofri rente, Renter→High Yield, Aksjer→Globale aksjer (historiske kurser2.csv)
-        const stocksReturn = row.stocks / baseValues.stocks;       // Globale aksjer (for Aksjer)
-        const riskFreeReturn = row.riskFree / baseValues.riskFree; // Risikofri rente (for Likviditet)
-        const highYieldReturn = row.highYield / baseValues.highYield; // High Yield (for Renter)
+        const stocksReturn = getAksjerReturn(row, baseValues);       // Aksjer: 10% Norske + 10% Nordiske + 20% Fremvoksende + 60% Globale
+        const riskFreeReturn = row.riskFree / baseValues.riskFree; // Kontanter - bank (for Likviditet)
+        const highYieldReturn = getRenterReturn(row, baseValues, portfolio); // Renter IG + Renter High Yield (vektet) for Renter
         const nordicReturn = (row.nordicStocks && baseValues.nordicStocks) 
             ? row.nordicStocks / baseValues.nordicStocks 
             : row.stocks / baseValues.stocks;
@@ -5617,15 +5724,16 @@ function createAssetsGrid() {
     
     container.innerHTML = years.map(year => {
         const returns = yearlyReturns[year];
-        
-        // Rank assets - map UI labels to CSV columns: Likviditet→riskFree, Renter→highYield, Aksjer→stocks (historiske kurser2.csv)
         const assets = [
-            { name: 'Likviditet/kontanter', return: returns.riskFree, class: 'stocks' },
-            { name: 'Renter', return: returns.highYield, class: 'risikofri' },
-            { name: 'Aksjer', return: returns.stocks, class: 'highyield' },
-            { name: 'Alternative strategier', return: returns.nordicStocks, class: 'nordicstocks' },
-            { name: 'Annet', return: returns.emergingMarkets, class: 'emergingmarkets' },
-            { name: 'KPI', return: returns.kpi || 0, class: 'kpi' }
+            { label: 'KPI', return: returns.kpi ?? 0, class: 'kpi' },
+            { label: 'IG', return: returns.renterIG ?? 0, class: 'renter-ig' },
+            { label: 'High Yield', return: returns.highYield ?? 0, class: 'renter-hy' },
+            { label: 'A Norge', return: returns.aksjerNorske ?? 0, class: 'aksjer-norge' },
+            { label: 'A Norden', return: returns.aksjerNordiske ?? 0, class: 'aksjer-norden' },
+            { label: 'Vekst m.', return: returns.aksjerFremvoksende ?? 0, class: 'aksjer-emerging' },
+            { label: 'A Global', return: returns.stocks ?? 0, class: 'aksjer-global' },
+            { label: 'Alt Strat.', return: returns.nordicStocks ?? 0, class: 'nordicstocks' },
+            { label: 'Annet', return: returns.emergingMarkets ?? 0, class: 'emergingmarkets' }
         ].sort((a, b) => b.return - a.return);
         
         return `
@@ -5634,8 +5742,10 @@ function createAssetsGrid() {
                 ${assets.map(asset => `
                     <div class="asset-cell ${asset.class} ${asset.return < 0 ? 'negative' : ''} ${state.selectedAssetClass === asset.class ? 'marked' : ''}" 
                          data-asset-class="${asset.class}">
-                        <span class="asset-name">${asset.name}</span>
-                        <span class="asset-return">${formatPercent(asset.return, 0)}</span>
+                        <div class="asset-cell-inner">
+                            <span class="asset-name">${asset.label}</span>
+                            <span class="asset-return">${formatPercent(asset.return, 0)}</span>
+                        </div>
                     </div>
                 `).join('')}
             </div>
@@ -5766,7 +5876,7 @@ function setupEventListeners() {
         }
     });
     
-    // Aksjer: + knapp – vis/skjul underslidere (Norske aksjer, Emerging markets aksjer, Globale aksjer)
+    // Aksjer: + knapp – vis/skjul underslidere (Norske aksjer, Nordiske aksjer, Emerging markets aksjer, Globale aksjer)
     document.querySelectorAll('.aksjer-expand-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const item = btn.closest('.aksjer-item');
@@ -5779,7 +5889,7 @@ function setupEventListeners() {
         });
     });
     
-    // Renter: + knapp – vis/skjul underslidere (IG renter Norge, IG renter Globalt, High yield Norge/Norden, Global high yield)
+    // Renter: + knapp – vis/skjul underslidere (Renter IG, Renter High Yield)
     document.querySelectorAll('.renter-expand-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const item = btn.closest('.renter-item');
@@ -5793,7 +5903,7 @@ function setupEventListeners() {
     });
     
     // Aksjer-underslidere: oppdater prosentvisning (påvirker ikke hovedsummen)
-    const aksjerSubIds = ['aksjer-norske', 'aksjer-emerging', 'aksjer-global'];
+    const aksjerSubIds = ['aksjer-norske', 'aksjer-nordiske', 'aksjer-emerging', 'aksjer-global'];
     ['current', 'new'].forEach(prefix => {
         aksjerSubIds.forEach(suffix => {
             const slider = document.getElementById(`${prefix}-${suffix}`);
@@ -5806,8 +5916,8 @@ function setupEventListeners() {
         });
     });
     
-    // Renter-underslidere: oppdater prosentvisning (påvirker ikke hovedsummen)
-    const renterSubIds = ['renter-ig-norge', 'renter-ig-global', 'renter-hy-norden', 'renter-hy-global'];
+    // Renter-underslidere: oppdater prosentvisning og portefølje (Renter IG / Renter High Yield – brukes i avkastningsberegning)
+    const renterSubIds = ['renter-ig', 'renter-hy'];
     ['current', 'new'].forEach(prefix => {
         renterSubIds.forEach(suffix => {
             const slider = document.getElementById(`${prefix}-${suffix}`);
@@ -5815,6 +5925,10 @@ function setupEventListeners() {
             if (slider && valueEl) {
                 slider.addEventListener('input', () => {
                     valueEl.textContent = Math.round(parseFloat(slider.value)) + '%';
+                    const portfolio = prefix === 'current' ? state.currentPortfolio : state.newPortfolio;
+                    portfolio.renterIGPct = parseFloat(document.getElementById(`${prefix}-renter-ig`)?.value) || 0;
+                    portfolio.renterHYPct = parseFloat(document.getElementById(`${prefix}-renter-hy`)?.value) || 0;
+                    updateCharts();
                 });
             }
         });
@@ -5836,6 +5950,8 @@ function setupEventListeners() {
             portfolio.highYield = allocationPercent;       // Aksjer
             portfolio.nordicStocks = 0;     // Alternative strategier – ikke inkludert
             portfolio.emergingMarkets = 0;  // Annet – ikke inkludert
+            portfolio.renterIGPct = Math.round(portfolio.riskFree * 7) / 10;   // 70% av renterandelen (sum = riskFree)
+            portfolio.renterHYPct = Math.round(portfolio.riskFree * 3) / 10;   // 30% av renterandelen
             
             const portfolioButtons = document.querySelectorAll(`.allocation-btn[data-portfolio="${portfolioType}"]`);
             portfolioButtons.forEach(b => b.classList.remove('active'));
@@ -6379,8 +6495,8 @@ const kpiData = {
 
 // Global variables for money value
 let currentAmount = 700000;
-let selectedHistoricalYear = 2025;
-let selectedFutureYear = 2025;
+let selectedHistoricalYear = 2026;
+let selectedFutureYear = 2026;
 let selectedKPI = 3;
 
 // Initialize money value calculations
@@ -6500,7 +6616,7 @@ function initializeKPIButtons() {
 // Update amount display
 function updateAmountDisplay(amountDisplay, presentAmount) {
     const formattedAmount = formatMoneyNumber(currentAmount);
-    if (amountDisplay) amountDisplay.textContent = '2025';
+    if (amountDisplay) amountDisplay.textContent = '2026';
     if (presentAmount) presentAmount.textContent = formattedAmount + ',-';
 }
 
@@ -6516,7 +6632,7 @@ function updateFutureYearDisplay(futureYearDisplay) {
 
 // Calculate historical value (inflation adjustment)
 function calculateHistoricalValue() {
-    const referenceYear = 2025;
+    const referenceYear = 2026;
     
     if (selectedHistoricalYear === referenceYear) {
         return currentAmount;
@@ -6524,7 +6640,7 @@ function calculateHistoricalValue() {
 
     let cumulativeInflation = 1;
     
-    // Calculate cumulative inflation from historical year to 2025
+    // Calculate cumulative inflation from historical year to 2026
     for (let year = selectedHistoricalYear; year < referenceYear; year++) {
         if (kpiData[year]) {
             cumulativeInflation *= (1 + kpiData[year] / 100);
@@ -6537,7 +6653,7 @@ function calculateHistoricalValue() {
 
 // Calculate future value (discounting)
 function calculateFutureValue() {
-    const referenceYear = 2025;
+    const referenceYear = 2026;
     
     if (selectedFutureYear === referenceYear) {
         return currentAmount;

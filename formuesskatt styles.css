@@ -1,15 +1,14 @@
 
 
 /* --- Generelle Stiler --- */
-html, body {
-    width: 100vw; /* Låst til viewport-bredde */
-    height: 100vh; /* Låst til viewport-høyde */
-    height: 100dvh; /* Bedre støtte på mobile nettlesere */
+/* Samme zoom-vennlige oppsett som Pensjonsgapet: ingen fast viewport-bredde/høyde
+   eller overflow:hidden på html/body, slik at ved inn/ut-zooming reflyter alt og
+   teksten holder seg på plass. */
+html {
     margin: 0;
-    overflow: hidden; /* Ingen vindusscrolling, selv ved zoom */
 }
-
 body {
+    margin: 0;
     font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
     font-weight: 400;
     line-height: 1.5;
@@ -38,6 +37,7 @@ body {
     --border-color: #364A6E;
     --body-bg: #0F172A;
     --success-green: #4ade80;
+    --heading-scale: 0.357; /* samme som Pensjonsgapet typo-h1 */
 }
 
 /* --- Dashboard Spesifikke Stiler --- */
@@ -57,6 +57,11 @@ body {
         padding-top: 2.5rem; 
         padding-bottom: 3.5rem; /* økt bunnmargin for bedre visuell luft */
     }
+}
+/* Formuesskatt: samme topp- og bunnmargin som Pensjonsgapet (fasit) */
+#page1 .dashboard-container.formuesskatt-dashboard {
+    padding-top: 0.78rem !important;
+    padding-bottom: 0.78rem !important;
 }
 
 /* Stil for hovedresultatverdiene */
@@ -331,16 +336,25 @@ header.text-center.mb-1.relative {
     padding-top: 0.78rem !important;
     padding-bottom: 0.78rem !important;
 }
+/* Samme headermargin som Pensjonsgapet (header.mb-8 = 1.56rem) */
 .formuesskatt-header {
-    margin-bottom: 0.5rem !important;
+    margin-bottom: 1.56rem !important;
 }
+/* H1 overskrift: identisk med Pensjonsgapet typo-h1 (fasit) */
 .formuesskatt-title {
+    font-family: 'Whitney', sans-serif;
+    font-weight: 900;
+    font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale)));
+    line-height: 1.1;
+    letter-spacing: 0;
+    color: var(--light-text);
     margin-bottom: 0.43rem !important;
 }
-/* Venstre og høyre container lik størrelse: like bredde og høyde */
+/* Venstre og høyre container: samme høyde som hverandre og samme oppførsel som Pensjonsgapet (grid stretch) */
 .formuesskatt-grid {
-    gap: 1.05rem !important;
+    gap: 1.05rem !important; /* samme som Pensjonsgapet gap-8 */
     min-height: 0;
+    align-items: stretch; /* begge kolonner får lik høyde som i Pensjonsgapet */
 }
 @media (min-width: 1024px) {
     .formuesskatt-grid {
@@ -349,7 +363,7 @@ header.text-center.mb-1.relative {
     .formuesskatt-col {
         min-width: 0;
         min-height: 0;
-        flex: 1;
+        /* Grid-item strekkes til radhøyde; panel fyller kolonnen under */
     }
     .formuesskatt-col .formuesskatt-panel {
         flex: 1;
