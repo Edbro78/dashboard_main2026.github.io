@@ -1680,6 +1680,15 @@ function App() {
     const [chartImageCopied, setChartImageCopied] = useState(false);
     const chartExportCanvasRef = React.useRef(null);
 
+    // Last t-konto-script tidlig slik at getTKontoDagensÅrslønn m.m. finnes for Pensjonsgapet/Formuesskatt
+    useEffect(() => {
+        if (typeof window.getTKontoDagensÅrslønn === 'function' && document.querySelector('script[src*="t-konto script"]')) return;
+        const script = document.createElement('script');
+        script.src = 't-konto script.js';
+        script.async = true;
+        document.body.appendChild(script);
+    }, []);
+
     // Lagre state til global state holder når den endres
     useEffect(() => {
         MaalOgBehovState.appState = { ...state };

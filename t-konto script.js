@@ -2,11 +2,17 @@
 let __nextId = 1;
 function genId() { return __nextId++; }
 
+// Default eiendeler: navn er låst (noRename), men kan slettes. Unntak: "Investeringer Mål og behov" kan ikke slettes og henter beløp fra Mål og behov.
+const DEFAULT_ASSET_NAMES = ["Bank", "Fast eiendom", "Fritidseiendom", "Sekundæreiendom", "Tomt"];
+
 const AppState = {
   assets: [
-    { id: genId(), name: "BANK", amount: 2000000 },
-    { id: genId(), name: "FAST EIENDOM", amount: 15000000 },
-    { id: genId(), name: "Investeringer Mål og behov", amount: 8000000, assetType: "investeringer", noDelete: true }
+    { id: genId(), name: "Bank", amount: 2000000, noRename: true },
+    { id: genId(), name: "Fast eiendom", amount: 10000000, noRename: true },
+    { id: genId(), name: "Fritidseiendom", amount: 2000000, assetType: "eiendom", noRename: true },
+    { id: genId(), name: "Sekundæreiendom", amount: 3000000, assetType: "eiendom", noRename: true },
+    { id: genId(), name: "Tomt", amount: 3000000, assetType: "eiendom", noRename: true },
+    { id: genId(), name: "Investeringer Mål og behov", amount: 0, assetType: "investeringer", noDelete: true }
   ],
   debts: [
     { id: genId(), name: "BOLIGLÅN", amount: 10000000, debtParams: { type: "Annuitetslån", years: 25, rate: 0.04 } }
@@ -607,33 +613,70 @@ window.getTKontoFormuesskatt = function () {
   }
 };
 
-/** Returnerer data fra T-konto Eiendeler og Gjeld for Formuesskatt-fanen. */
+/** Returnerer data fra T-konto Eiendeler og Gjeld for Formuesskatt-fanen.
+ *  Mapping: Fast eiendom → primærbolig, Fritidseiendom → Fritidseiendom, Tomt → Tomt,
+ *  Bil/båt → bil/båt. Investeringer mål og behov: eid Privat → Privat portefølje (ASK), eid via Holding AS → Aksjeselskap (AS).
+ *  Sekundæreiendom → Sekundærbolig, Bank → Bankinnskudd, sum gjeld → Privat gjeld.
+ */
 window.getTKontoDataForFormuesskatt = function () {
   try {
     var assets = AppState.assets || [];
     var debts = AppState.debts || [];
     var gjeld = debts.reduce(function (s, d) { return s + (d.amount || 0); }, 0);
-    var primærbolig = assets
-      .filter(function (a) { return /^FAST\s*EIENDOM$/i.test(a.name || "") || a.assetType === "eiendom"; })
-      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
-    var bilBåt = assets
-      .filter(function (a) { return /^BIL\/BÅT$/i.test(a.name || "") || /^BIL\s*BÅT$/i.test(a.name || "") || a.assetType === "bilbat"; })
-      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
-    var privatPorteføljeASK = assets
-      .filter(function (a) { return /Investeringer\s*Mål\s*og\s*behov/i.test(a.name || "") || a.assetType === "investeringer"; })
-      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
-    var bankinnskudd = assets
-      .filter(function (a) { return /^BANK$/i.test(a.name || ""); })
-      .reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    function sumByName(re) {
+      return assets.filter(function (a) { return re.test(String(a.name || "").trim()); }).reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    }
+    function sumByType(type) {
+      return assets.filter(function (a) { return a.assetType === type; }).reduce(function (s, a) { return s + (a.amount || 0); }, 0);
+    }
+    var primærbolig = sumByName(/^Fast\s*eiendom$/i);
+    var fritidseiendom = sumByName(/^Fritidseiendom$/i);
+    var tomt = sumByName(/^Tomt$/i);
+    var bilBåt = sumByName(/^Bil\s*\/\s*Båt$/i) + sumByName(/^Bil\s*Båt$/i) + sumByType("bilbat");
+    var maalOgBehovAssets = assets.filter(function (a) { return a.noDelete || /investeringer\s*mål\s*og\s*behov/i.test(a.name || ""); });
+    var totalMaalOgBehov = getMaalOgBehovSum2026();
+    var privatPorteføljeASK = 0;
+    var aksjeselskapAS = 0;
+    if (maalOgBehovAssets.length > 0) {
+      var entity = maalOgBehovAssets[0].entity || "privat";
+      if (isPrivatEntity(entity)) {
+        privatPorteføljeASK = totalMaalOgBehov;
+      } else {
+        aksjeselskapAS = totalMaalOgBehov;
+      }
+    }
+    var sekundærbolig = sumByName(/^Sekundæreiendom$/i);
+    var bankinnskudd = sumByName(/^Bank$/i);
     return {
       gjeld: Math.round(gjeld),
       primærbolig: Math.round(primærbolig),
+      fritidseiendom: Math.round(fritidseiendom),
+      tomt: Math.round(tomt),
       bilBåt: Math.round(bilBåt),
       privatPorteføljeASK: Math.round(privatPorteføljeASK),
+      aksjeselskapAS: Math.round(aksjeselskapAS),
+      sekundærbolig: Math.round(sekundærbolig),
       bankinnskudd: Math.round(bankinnskudd)
     };
   } catch (e) {
-    return { gjeld: 0, primærbolig: 0, bilBåt: 0, privatPorteføljeASK: 0, bankinnskudd: 0 };
+    return { gjeld: 0, primærbolig: 0, fritidseiendom: 0, tomt: 0, bilBåt: 0, privatPorteføljeASK: 0, aksjeselskapAS: 0, sekundærbolig: 0, bankinnskudd: 0 };
+  }
+};
+
+/** Returnerer dagens årslønn (Lønnsinntekt) fra T-konto for Pensjonsgapet-fanen. */
+window.getTKontoDagensÅrslønn = function () {
+  try {
+    var incomes = AppState.incomes || [];
+    function isLonn(item) {
+      var n = String(item.name || "").trim().replace(/\s/g, "");
+      if (!n) return false;
+      var u = n.toUpperCase();
+      return u === "LØNNSINNTEKT" || u === "LONNSINNTEKT" || /^L[OØÖ]NNSINNTEKT$/i.test(n);
+    }
+    var item = incomes.find(isLonn);
+    return item && item.amount != null ? Number(item.amount) : 0;
+  } catch (e) {
+    return 0;
   }
 };
 
@@ -1371,6 +1414,7 @@ function getAssetColorByName(name, assetType) {
   // Deretter sjekk navn (for bakoverkompatibilitet)
   if (/^BANK$/i.test(U)) return "#5A8BA2"; // Bank
   if (/^FAST\s*EIENDOM$/i.test(U)) return "#85ACED"; // Fast eiendom
+  if (/^FRITIDSEIENDOM$/i.test(U) || /^SEKUNDÆREIENDOM$/i.test(U) || /^TOMT$/i.test(U)) return "#85ACED"; // Fritidseiendom, Sekundæreiendom, Tomt = Fast eiendom
   if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#85ACED";
   if (/^INVESTERINGER$/i.test(U) || /MÅL\s*OG\s*BEHOV/i.test(U)) return "#B4C6F4"; // Investeringer
   if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#00ACEC"; // Bil/Båt
@@ -5176,7 +5220,8 @@ var TKONTO_CHART_COLORS = {
 function getTKontoColorForAsset(name) {
   var k = String(name || "").toUpperCase();
   if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
-  if (/^FAST\s*EIENDOM$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
+  // Fast eiendom inkluderer: Fast eiendom, Fritidseiendom, Sekundæreiendom, Tomt (samme farge og forventet avkastning)
+  if (/^FAST\s*EIENDOM$/i.test(k) || /^FRITIDSEIENDOM$/i.test(k) || /^SEKUNDÆREIENDOM$/i.test(k) || /^TOMT$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
   if (/INVESTERINGER|MÅL\s*OG\s*BEHOV/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
   if (/^BIL\/BÅT$/i.test(k) || /^BIL\s*BÅT$/i.test(k)) return TKONTO_CHART_COLORS["BIL/BÅT"];
   if (/^ANDRE\s*EIENDELER$/i.test(k)) return TKONTO_CHART_COLORS["ANDRE EIENDELER"];
@@ -5229,7 +5274,7 @@ function getTKontoAssetSegments(yearVal) {
     return {
       key: item.key,
       value: item.value || 0,
-      color: getTKontoColorForAsset(item.key)
+      color: item.color || getTKontoColorForAsset(item.key)
     };
   });
 }
@@ -7021,12 +7066,19 @@ function createItemRow(collectionName, item) {
   name.type = "text";
   name.value = item.name || "";
   name.setAttribute("aria-label", `Navn på ${collectionName.slice(0, -1)}`);
-  name.addEventListener("input", () => { 
-    item.name = name.value; 
-    markCostIfNeeded(name.value); 
-    if (range) setRangeBounds(); 
-    // Bevar assetType når navnet endres - ikke endre det basert på nytt navn
-  });
+  const isNameLocked = collectionName === "assets" && item.noRename;
+  if (isNameLocked) {
+    name.readOnly = true;
+    name.title = "Default-eiendel: navn kan ikke endres";
+    name.classList.add("asset-name-readonly");
+  } else {
+    name.addEventListener("input", () => { 
+      item.name = name.value; 
+      markCostIfNeeded(name.value); 
+      if (range) setRangeBounds(); 
+      // Bevar assetType når navnet endres - ikke endre det basert på nytt navn
+    });
+  }
 
   // Legg til nedtrekksmeny for assets
   let entitySelect = null;
@@ -8914,12 +8966,18 @@ function parseInputText(text) {
         name: a.name,
         amount: a.amount
       };
+      // Default-eiendeler: navn skal ikke kunne endres
+      if (DEFAULT_ASSET_NAMES.includes(a.name)) {
+        asset.noRename = true;
+      }
       // Bruk assetType fra output hvis den er lagret, ellers sett basert på navn
       if (assetTypeMap.has(a.name)) {
         asset.assetType = assetTypeMap.get(a.name);
       } else {
         // Fallback: Sett assetType basert på navn (for bakoverkompatibilitet)
         if (/^EIENDOM$/i.test(a.name) && !/FAST/i.test(a.name)) {
+          asset.assetType = "eiendom";
+        } else if (/^FRITIDSEIENDOM$/i.test(upperName) || /^SEKUNDÆREIENDOM$/i.test(upperName) || /^TOMT$/i.test(upperName)) {
           asset.assetType = "eiendom";
         } else if (/^INVESTERINGER$/i.test(upperName)) {
           asset.assetType = "investeringer";

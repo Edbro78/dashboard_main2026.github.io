@@ -1206,6 +1206,13 @@ p { /* Avsnitt */
   padding: 8px 10px; /* Redusert fra 10px 12px (20% mindre) */
 }
 
+/* Default-eiendeler: navn er låst, ikke redigerbart */
+.panel-assets .asset-name-readonly {
+  background: var(--BORDER_LIGHT, #e5e7eb);
+  cursor: default;
+  color: var(--GRAY_TEXT_DARK, #1c2a3a);
+}
+
 .panel-assets .asset-amount {
   padding: 8px 13px; /* Redusert fra 10px 16px (20% mindre) */
   font-size: 1.1rem; /* Redusert fra 1.25rem (ca 20% mindre) */

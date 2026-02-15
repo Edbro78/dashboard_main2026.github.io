@@ -36,55 +36,68 @@
     font-display: swap;
 }
 body {
-    font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-family: 'Whitney', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
     font-weight: 400;
     line-height: 1.5;
-    background-color: #0f172a; /* slate-900 */
-    color: #E5E7EB; /* light-text */
+    background-color: #f0f2f5;
+    color: #333333;
 }
 .page {
-    display: none; /* Pages are hidden by default */
+    display: none;
 }
 .page.active {
-    display: block; /* The active page is shown */
+    display: block;
 }
 
-/* --- Typography: samme nivå som Formuesskatt, 15 % mindre --- */
+/* --- Typography: samme som Formuesskatt (--heading-scale 0.42) --- */
 :root {
-    --heading-scale: 0.357;   /* 0.42 × 0.85 */
-    --label-scale: 0.595;    /* 0.7 × 0.85 */
+    --heading-scale: 0.42;
+    --label-scale: 0.595;
+    --primary-btn: #3388CC;
+    --primary-btn-hover: #005599;
+    --text-primary: #333333;
+    --text-secondary: rgba(51, 51, 51, 0.8);
+    --text-muted: #666666;
+    --bg-white: #ffffff;
+    --bg-light: #f9f9f9;
+    --border-color: #DDDDDD;
+    --panel-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
 }
-.typo-h1 { font-family: 'Whitney', sans-serif; font-weight: 900; font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale))); line-height: 1.1; letter-spacing: 0; }
-.typo-h2 { font-family: 'Whitney', sans-serif; font-weight: 900; font-size: clamp(calc(1.125rem * var(--heading-scale)), calc(3.5vw * var(--heading-scale)), calc(5rem * var(--heading-scale))); line-height: 1.15; letter-spacing: 0; }
-.typo-h3 { font-family: 'Whitney', sans-serif; font-weight: 700; font-size: clamp(calc(0.875rem * var(--heading-scale)), calc(1.3vw * var(--heading-scale)), calc(1.375rem * var(--heading-scale))); line-height: 1.25; letter-spacing: 0; }
-.typo-h4 { font-family: 'Whitney', sans-serif; font-weight: 700; font-size: calc(1rem * var(--heading-scale)); line-height: 1.35; letter-spacing: 0; }
-.typo-label { font-family: 'Whitney', sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(1rem * var(--label-scale)); }
-.typo-paragraph { font-family: 'Whitney', sans-serif; font-weight: 400; font-size: clamp(0.875rem, 1vw, 1rem); }
+.typo-h1 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 900; font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale))); line-height: 1.1; letter-spacing: 0; }
+.typo-h2 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 900; font-size: clamp(calc(1.125rem * var(--heading-scale)), calc(3.5vw * var(--heading-scale)), calc(5rem * var(--heading-scale))); line-height: 1.15; letter-spacing: 0; }
+.typo-h3 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 700; font-size: clamp(calc(0.875rem * var(--heading-scale)), calc(1.3vw * var(--heading-scale)), calc(1.375rem * var(--heading-scale))); line-height: 1.25; letter-spacing: 0; }
+.typo-h4 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 700; font-size: calc(1rem * var(--heading-scale)); line-height: 1.35; letter-spacing: 0; }
+.typo-label { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(1rem * var(--label-scale)); }
+.typo-paragraph { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 400; font-size: clamp(0.875rem, 1vw, 1rem); }
 
-/* --- Dashboard Specific Styles (Part 1) --- */
+/* --- Dashboard: samme lys tema som Formuesskatt --- */
 #dashboardPage {
-    --dark-blue: #1A2A47;
-    --accent-blue-light: #66CCDD; /* Teal/aksent per Mål og behov */
-    --accent-blue-vibrant: #66CCDD;
-    --heading-blue: #4A6D8C; /* Overskrift/blå per Mål og behov */
-    --card-bg: #24385B;
-    --light-text: #E5E7EB;
-    --medium-text: #CBD5E1;
-    --border-color: #364A6E;
-    --success-green: #4ade80;
-    background-color: var(--dark-blue);
+    --accent-blue-light: #3388CC;
+    --accent-blue-vibrant: #3388CC;
+    --card-bg: #ffffff;
+    --light-text: #333333;
+    --medium-text: #666666;
+    --border-color: #DDDDDD;
+    --success-green: #16a34a;
+    background-color: #f0f2f5;
 }
-/* Headings mapping per typography spec - dark mode: light text */
-#dashboardPage h1, #dashboardPage .typo-h1 { font-weight: 900; color: var(--light-text); }
-#dashboardPage h2, #dashboardPage .typo-h2 { font-weight: 900; color: var(--light-text); }
-#dashboardPage h3, #dashboardPage .typo-h3 { font-weight: 700; color: var(--light-text); }
-#dashboardPage h4, #dashboardPage .typo-h4 { font-weight: 700; color: var(--light-text); }
+#dashboardPage h1, #dashboardPage .typo-h1 { color: #516d84; }
+#dashboardPage h2, #dashboardPage .typo-h2,
+#dashboardPage h3, #dashboardPage .typo-h3,
+#dashboardPage h4, #dashboardPage .typo-h4 { color: #333333; }
 
-/* Labels: Whitney Medium, uppercase – stor til liten skrift (første slider størst) */
+/* Tall og tekst over inputslidere: samme som Formuesskatt (typo-label + verdier i primær blå) */
 #dashboardPage .input-group label {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.1em;
+    color: #333333 !important;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
+}
+#dashboardPage .input-group [id$="-value"] {
+    color: var(--primary-btn) !important;
+    font-weight: 700;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
 }
 #dashboardPage #input-container .input-group:nth-child(1) { font-size: 0.95rem; }
 #dashboardPage #input-container .input-group:nth-child(2) { font-size: 0.92rem; }
@@ -113,12 +126,12 @@ body {
 #dashboardPage .output-value {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--accent-blue-vibrant);
+    color: var(--primary-btn);
     word-break: break-word;
 }
 #dashboardPage .output-label {
     font-size: 0.85rem;
-    color: var(--medium-text);
+    color: var(--text-muted);
 }
 
 /* Slightly smaller numbers inside combo result cards to fit nicely */
@@ -162,7 +175,11 @@ body {
     margin-bottom: 0.26rem !important;
 }
 #dashboardPage .card-panel {
-    padding: 0.78rem !important;
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: var(--panel-shadow);
 }
 #dashboardPage .card-panel.space-y-6 > * + * {
     margin-top: 0.78rem !important;
@@ -205,6 +222,140 @@ body {
 #dashboardPage .asset-input.mt-2 {
     margin-top: 0.26rem !important;
 }
+
+/* Containere med outputtall: mørk bakgrunn #232c37, tall #5cc8eb (som referansebildet) */
+#dashboardPage .summary-panel {
+    background-color: #232c37 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: var(--panel-shadow);
+    color: #333333 !important;
+}
+#dashboardPage .summary-panel .output-value {
+    color: #5cc8eb !important;
+    font-weight: 900 !important;
+    font-size: 1.5rem !important;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+    background: transparent !important;
+}
+#dashboardPage .summary-panel .output-label {
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-size: 0.85rem !important;
+    margin-top: 0.25rem !important;
+}
+/* Combo-output (Engangsinnskudd / Månedlig sparing) – samme outputdesign */
+#dashboardPage .combo-output {
+    background-color: #232c37 !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: var(--panel-shadow);
+}
+#dashboardPage .combo-output .output-value {
+    color: #5cc8eb !important;
+    font-weight: 900 !important;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+}
+#dashboardPage .combo-output .output-label {
+    color: rgba(255, 255, 255, 0.85) !important;
+}
+#dashboardPage .metrics-panel {
+    background-color: var(--bg-light) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    padding: 1rem !important;
+    color: #333333 !important;
+}
+#dashboardPage .metrics-panel .text-slate-300,
+#dashboardPage .metrics-panel .text-white,
+#dashboardPage .metrics-panel span.font-semibold { color: #333333 !important; }
+#dashboardPage .metrics-panel hr { border-color: var(--border-color) !important; }
+#dashboardPage #pension-gap-summary.metrics-panel {
+    background-color: #232c37 !important;
+    border: none !important;
+}
+#dashboardPage #pension-gap-summary .output-label { color: rgba(255, 255, 255, 0.85) !important; }
+#dashboardPage #pension-gap-details {
+    color: #5cc8eb !important;
+    font-weight: 900 !important;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+}
+#dashboardPage #goal-met-message { color: var(--success-green) !important; }
+#dashboardPage .text-slate-500,
+#dashboardPage #goal-explainer { color: var(--text-muted) !important; }
+
+/* Knapper: samme som Formuesskatt – primær #3388CC, sekundær hvit */
+#dashboardPage #disclaimerBtn {
+    background-color: var(--bg-white) !important;
+    color: #333333 !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--panel-shadow);
+}
+/* Liten diskret «Hent fra T-konto» ved Dagens årslønn */
+#dashboardPage .hent-fra-tkonto-mini {
+    background-color: var(--bg-white) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-color) !important;
+    font-size: 0.7rem !important;
+    padding: 0.2rem 0.5rem !important;
+    border-radius: 4px !important;
+    white-space: nowrap;
+}
+#dashboardPage .hent-fra-tkonto-mini:hover {
+    color: var(--primary-btn) !important;
+    border-color: var(--primary-btn) !important;
+}
+#dashboardPage #disclaimerBtn:hover {
+    border-color: var(--primary-btn) !important;
+    transform: translateY(-2px);
+}
+#dashboardPage .text-slate-400,
+#dashboardPage #toggleDetailedViewBtn,
+#dashboardPage #togglePensionGapBtn {
+    color: var(--text-muted) !important;
+}
+#dashboardPage #toggleDetailedViewBtn:hover,
+#dashboardPage #togglePensionGapBtn:hover {
+    color: var(--primary-btn) !important;
+    background-color: var(--bg-light) !important;
+}
+#dashboardPage .combo-btn {
+    background-color: var(--bg-white) !important;
+    color: #333333 !important;
+    border: 1px solid var(--border-color) !important;
+    transition: all 0.2s;
+}
+#dashboardPage .combo-btn:hover {
+    border-color: var(--primary-btn) !important;
+    transform: translateY(-2px);
+}
+#dashboardPage .combo-btn[data-combo-selected="true"],
+#dashboardPage .combo-btn.bg-\[var\(--accent-blue-light\)\] {
+    background-color: var(--primary-btn) !important;
+    color: white !important;
+    border: none !important;
+}
+
+/* Input-felter: hvit, kant #DDDDDD, focus #3388CC */
+#dashboardPage .asset-input,
+#dashboardPage input[type="number"].asset-input,
+#dashboardPage #input-container input {
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #333333 !important;
+    border-radius: 6px !important;
+}
+#dashboardPage .asset-input:focus,
+#dashboardPage #input-container input:focus {
+    outline: none !important;
+    border-color: var(--primary-btn) !important;
+    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25) !important;
+}
+#dashboardPage [id$="-value"] { color: var(--primary-btn) !important; }
+#dashboardPage header .text-slate-400,
+#dashboardPage .text-slate-400 { color: var(--text-muted) !important; }
+#dashboardPage .text-xs.text-slate-400 { color: var(--text-muted) !important; }
 #dashboardPage .pb-2 {
     padding-bottom: 0.26rem !important;
 }
@@ -239,52 +390,56 @@ input[type="range"] {
     transition: background 0.3s, opacity 0.2s;
 }
 
-/* Dashboard Slider */
+/* Dashboard Slider: samme som Formuesskatt – track #DDDDDD, thumb #3388CC, 2px white */
 #dashboardPage input[type="range"] {
     background: var(--border-color);
+    height: 8px;
+    border-radius: 999px;
 }
 #dashboardPage input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--accent-blue-light);
+    background: var(--primary-btn);
     cursor: pointer;
     border-radius: 50%;
-    border: 2px solid var(--dark-blue);
+    border: 2px solid white;
+    box-shadow: var(--panel-shadow);
 }
 #dashboardPage input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--accent-blue-light);
+    background: var(--primary-btn);
     cursor: pointer;
     border-radius: 50%;
-    border: 2px solid var(--dark-blue);
+    border: 2px solid white;
+    box-shadow: var(--panel-shadow);
 }
 
-/* Prognosis Tool Slider */
+/* Prognosis Tool Slider: samme som Formuesskatt */
 #prognosisPage input[type="range"] {
-    background: #334155; /* slate-700 */
-    opacity: 0.7;
-}
-#prognosisPage input[type="range"]:hover {
-    opacity: 1;
+    background: var(--border-color);
+    height: 8px;
+    border-radius: 999px;
 }
 #prognosisPage input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #2563eb; /* blue-600 */
+    background: var(--primary-btn);
     cursor: pointer;
     border-radius: 50%;
+    border: 2px solid white;
 }
 #prognosisPage input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #2563eb; /* blue-600 */
+    background: var(--primary-btn);
     cursor: pointer;
     border-radius: 50%;
+    border: 2px solid white;
 }
 
 /* Common Number Input Style */
@@ -333,34 +488,41 @@ input[type="number"] {
 }
 #outputTextArea:focus {
     outline: none;
-    border-color: #66CCDD;
-    box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
+    border-color: var(--primary-btn);
+    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
 }
 #outputTextArea::placeholder {
     color: #94a3b8;
     font-style: italic;
 }
 
-/* Copy Button Styling */
+/* Copy Button: primær som Formuesskatt */
 #copyButton {
-    font-family: 'Whitney', 'Inter', sans-serif;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
     font-weight: 500;
     transition: all 0.2s ease-in-out;
+    background-color: var(--primary-btn) !important;
+    color: white !important;
 }
 #copyButton:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background-color: var(--primary-btn-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--panel-shadow);
 }
 #copyButton:active {
     transform: translateY(0);
 }
 
-/* Custom Combo Input Styling */
+/* Custom Combo Input: samme som Formuesskatt */
 #customComboPercent {
-    font-family: 'Whitney', 'Inter', sans-serif;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
     font-weight: 500;
     text-align: center;
     padding-right: 1.5rem;
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #333333 !important;
+    border-radius: 6px !important;
 }
 #customComboPercent::-webkit-outer-spin-button,
 #customComboPercent::-webkit-inner-spin-button {
@@ -373,16 +535,20 @@ input[type="number"] {
 }
 #customComboPercent:focus {
     outline: none;
-    border-color: #66CCDD;
-    box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
+    border-color: var(--primary-btn);
+    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
 }
 
-/* Custom Desired Pension Level Input Styling */
+/* Custom Desired Pension Level Input */
 #customDesiredPensionLevel {
-    font-family: 'Whitney', 'Inter', sans-serif;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
     font-weight: 500;
     text-align: center;
     padding-right: 1.5rem;
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    color: #333333 !important;
+    border-radius: 6px !important;
 }
 #customDesiredPensionLevel::-webkit-outer-spin-button,
 #customDesiredPensionLevel::-webkit-inner-spin-button {
@@ -395,7 +561,7 @@ input[type="number"] {
 }
 #customDesiredPensionLevel:focus {
     outline: none;
-    border-color: #66CCDD;
-    box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
+    border-color: var(--primary-btn);
+    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
 }
 

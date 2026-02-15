@@ -392,25 +392,58 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             const data = getData();
             const fmt = WealthTaxApp.formatNumber;
+            // Sum gjeld → Privat gjeld (NOK)
             document.getElementById('private-debt').value = fmt(data.gjeld || 0);
+            // Fast eiendom → Primærbolig
             const primarySlider = document.getElementById('primary-residence');
             if (primarySlider) {
                 primarySlider.value = data.primærbolig || 0;
                 const primarySpan = document.getElementById('primary-residence-value');
                 if (primarySpan) primarySpan.textContent = WealthTaxApp.formatCurrency(data.primærbolig || 0);
             }
+            // Fritidseiendom → Fritidseiendom
+            const holidaySlider = document.getElementById('holiday-home');
+            if (holidaySlider) {
+                holidaySlider.value = data.fritidseiendom || 0;
+                const holidaySpan = document.getElementById('holiday-home-value');
+                if (holidaySpan) holidaySpan.textContent = WealthTaxApp.formatCurrency(data.fritidseiendom || 0);
+            }
+            // Tomt → Tomt
+            const landSlider = document.getElementById('land-plot');
+            if (landSlider) {
+                landSlider.value = data.tomt || 0;
+                const landSpan = document.getElementById('land-plot-value');
+                if (landSpan) landSpan.textContent = WealthTaxApp.formatCurrency(data.tomt || 0);
+            }
+            // Bil/båt → Bil / Båt
             const carBoatSlider = document.getElementById('car-boat');
             if (carBoatSlider) {
                 carBoatSlider.value = data.bilBåt || 0;
                 const carBoatSpan = document.getElementById('car-boat-value');
                 if (carBoatSpan) carBoatSpan.textContent = WealthTaxApp.formatCurrency(data.bilBåt || 0);
             }
+            // Investeringer mål og behov: eid Privat → Privat portefølje (ASK)
             const portfolioSlider = document.getElementById('private-portfolio');
             if (portfolioSlider) {
                 portfolioSlider.value = data.privatPorteføljeASK || 0;
                 const portfolioSpan = document.getElementById('private-portfolio-value');
                 if (portfolioSpan) portfolioSpan.textContent = WealthTaxApp.formatCurrency(data.privatPorteføljeASK || 0);
             }
+            // Investeringer mål og behov: eid via Holding AS → Aksjeselskap (AS)
+            const limitedCompanySlider = document.getElementById('limited-company');
+            if (limitedCompanySlider) {
+                limitedCompanySlider.value = data.aksjeselskapAS || 0;
+                const limitedCompanySpan = document.getElementById('limited-company-value');
+                if (limitedCompanySpan) limitedCompanySpan.textContent = WealthTaxApp.formatCurrency(data.aksjeselskapAS || 0);
+            }
+            // Sekundæreiendom → Sekundærbolig
+            const secondarySlider = document.getElementById('secondary-residence');
+            if (secondarySlider) {
+                secondarySlider.value = data.sekundærbolig || 0;
+                const secondarySpan = document.getElementById('secondary-residence-value');
+                if (secondarySpan) secondarySpan.textContent = WealthTaxApp.formatCurrency(data.sekundærbolig || 0);
+            }
+            // Bank → Bankinnskudd
             const bankSlider = document.getElementById('bank-deposits');
             if (bankSlider) {
                 bankSlider.value = data.bankinnskudd || 0;

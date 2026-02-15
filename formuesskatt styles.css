@@ -1,109 +1,110 @@
 
-
-/* --- Generelle Stiler --- */
-/* Samme zoom-vennlige oppsett som Pensjonsgapet: ingen fast viewport-bredde/høyde
-   eller overflow:hidden på html/body, slik at ved inn/ut-zooming reflyter alt og
-   teksten holder seg på plass. */
+/* --- Generelle Stiler (Mål og behov-design) --- */
 html {
     margin: 0;
 }
 body {
     margin: 0;
-    font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-family: 'Whitney', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
     font-weight: 400;
     line-height: 1.5;
-    background-color: #0f172a;
-    color: #E5E7EB;
+    background-color: #f0f2f5;
+    color: #333333;
 }
 
 /* --- Sidenavigasjon --- */
 .page {
     display: none;
-    height: 100%; /* Sikrer at hver side tar full høyde */
+    height: 100%;
 }
 .page.active {
     display: block;
 }
 
-/* --- CSS Variabler (Pensjonsgapet-design) --- */
+/* --- CSS Variabler (Mål og behov-design) --- */
 :root {
-    --dark-blue: #1A2A47;
-    --accent-blue-light: #66CCDD;
-    --accent-blue-vibrant: #66CCDD;
-    --heading-blue: #4A6D8C;
-    --card-bg: #24385B;
-    --light-text: #E5E7EB;
-    --medium-text: #CBD5E1;
-    --border-color: #364A6E;
-    --body-bg: #0F172A;
-    --success-green: #4ade80;
-    --heading-scale: 0.357; /* samme som Pensjonsgapet typo-h1 */
+    --accent-teal: #66CCDD;
+    --accent-blue-light: #3388CC; /* brukes av script.js – primær blå på slidere/verdier */
+    --primary-btn: #3388CC;
+    --primary-btn-hover: #005599;
+    --active-tab-start: #5d87a8;
+    --active-tab-end: #527A9B;
+    --text-primary: #333333;
+    --text-secondary: rgba(51, 51, 51, 0.8);
+    --text-muted: #666666;
+    --text-tabs: #4a5568;
+    --bg-white: #ffffff;
+    --bg-light: #f9f9f9;
+    --bg-page: #f0f2f5;
+    --border-color: #DDDDDD;
+    --heading-scale: 0.42;
+    --panel-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
+    --panel-shadow-hover: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
+    --tab-active-shadow: 0 -2px 0 0 #527A9B, 0 4px 20px -4px rgba(82,122,155,0.45), 0 8px 32px -8px rgba(82,122,155,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 /* --- Dashboard Spesifikke Stiler --- */
-        .dashboard-container {
-            background-color: var(--dark-blue);
-            min-height: 100%;
-            width: 100%;
-            flex-grow: 1; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: flex-start; 
-            height: 100%;
-        }
-@media (min-width: 1024px) { /* lg breakpoint */
+.dashboard-container {
+    background-color: var(--bg-page);
+    min-height: 100%;
+    width: 100%;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    height: 100%;
+}
+@media (min-width: 1024px) {
     .dashboard-container {
-        padding-top: 2.5rem; 
-        padding-bottom: 3.5rem; /* økt bunnmargin for bedre visuell luft */
+        padding-top: 2.5rem;
+        padding-bottom: 3.5rem;
     }
 }
-/* Formuesskatt: samme topp- og bunnmargin som Pensjonsgapet (fasit) */
 #page1 .dashboard-container.formuesskatt-dashboard {
     padding-top: 0.78rem !important;
     padding-bottom: 0.78rem !important;
 }
 
-/* Stil for hovedresultatverdiene */
-        .output-value {
-            font-size: 2rem !important;
-            font-weight: 700;
-            color: var(--accent-blue-vibrant);
-            word-break: break-word;
-            line-height: 1.2;
-        }
-
-        .output-label {
-            font-size: 1rem;
-            color: var(--medium-text);
-            letter-spacing: 0.02em;
-        }
-
-/* Felles stil for nummerinput */
-        input[type="text"].asset-input {
-            -webkit-appearance: textfield;
-            -moz-appearance: textfield;
-            appearance: textfield;
-            background-color: #1e293b; /* slate-800 */
-            border: 1px solid var(--border-color);
-            border-radius: 0.375rem; 
-            padding: 0.5rem 0.75rem; /* Y=8px, X=12px */
-            color: var(--light-text);
-            width: 100%;
-            font-size: 1rem;
-            height: 2.5rem; /* ~40px */
-            line-height: 1.2;
-        }
-        input[type="text"].asset-input:focus {
-            outline: none;
-            border-color: #66CCDD;
-            box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
-        }
-input[type="text"].asset-input::placeholder {
-    color: #475569; /* slate-600 */
+/* Stil for hovedresultatverdiene (primær blå #3388CC) */
+.output-value {
+    font-size: 2rem !important;
+    font-weight: 700;
+    color: var(--primary-btn);
+    word-break: break-word;
+    line-height: 1.2;
+}
+.output-label {
+    font-size: 1rem;
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
 }
 
-/* --- Slider stiler --- */
+/* Input: hvit, kant #DDDDDD, border-radius 6px; focus: border og ring primær blå #3388CC */
+input[type="text"].asset-input {
+    -webkit-appearance: textfield;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-primary);
+    width: 100%;
+    font-size: 1rem;
+    height: 2.5rem;
+    line-height: 1.2;
+}
+input[type="text"].asset-input:focus {
+    outline: none;
+    border-color: var(--primary-btn);
+    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
+}
+input[type="text"].asset-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Slidere: track 6–8px #DDDDDD rounded; thumb 20×20px primær blå #3388CC, 2px solid white */
 input[type="range"] {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -111,169 +112,152 @@ input[type="range"] {
     width: 100%;
     height: 8px;
     background: var(--border-color);
-    border-radius: 5px;
+    border-radius: 999px;
     outline: none;
     transition: background 0.3s, opacity 0.2s;
 }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            width: 20px; 
-            height: 20px; 
-            background: var(--accent-blue-light);
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid var(--dark-blue);
-            margin-top: -6px; /* Sentrer på spor (8px) */
-        }
-        input[type="range"]::-moz-range-thumb {
-            width: 20px; 
-            height: 20px; 
-            background: var(--accent-blue-light);
-            cursor: pointer;
-            border-radius: 50%;
-            border: 2px solid var(--dark-blue);
-        }
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: var(--primary-btn);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+    margin-top: -6px;
+    box-shadow: var(--panel-shadow);
+}
+input[type="range"]::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: var(--primary-btn);
+    cursor: pointer;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: var(--panel-shadow);
+}
 
-/* Side 2 Tabellstiler */
-        .rate-table-container {
-            background-color: #24385B;
-            padding: 0.4rem; 
-            border-radius: 0.75rem;
-            margin: 20px 0;
-            min-height: 100px; /* Sikrer at tabellene har en minimum høyde */
-        }
+/* Side 2 Tabellstiler (event-rader: bg #f9f9f9, kant #DDDDDD, border-radius 8px) */
+.rate-table-container {
+    background-color: var(--bg-light);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 20px 0;
+    min-height: 100px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--panel-shadow);
+}
 .rate-table-as {
-    background-color: #1e3a8a; 
+    background-color: var(--bg-light);
+    border: 1px solid var(--border-color);
 }
-        .rate-table-header {
-            display: grid;
-            /* Justerer grid-kolonner for bedre passform på mindre effektive oppløsninger */
-            grid-template-columns: minmax(65px, 1.5fr) repeat(4, minmax(40px, 1fr)); 
-            gap: 0.2rem; 
-            color: #CBD5E1;
-            font-weight: 600;
-            padding-bottom: 0.2rem; 
-            border-bottom: 1px solid #364A6E;
-            font-size: 0.65rem; 
-            text-align: right; 
-        }
-.rate-table-header > div:first-child {
-    text-align: left; 
-}
-        .rate-table-row {
-            display: grid;
-            /* Justerer grid-kolonner for bedre passform på mindre effektive oppløsninger */
-            grid-template-columns: minmax(65px, 1.5fr) repeat(4, minmax(40px, 1fr)); 
-            gap: 0.2rem; 
-            padding: 0.25rem 0; 
-            border-bottom: 1px solid #364A6E;
-            font-size: 0.65rem; 
-        }
-        .rate-table-row:last-child {
-            border-bottom: none;
-        }
-        .rate-table-row-label {
-            font-weight: 500;
-            color: #E5E7EB;
-            text-align: left; 
-        }
-.rate-table-cell {
+.rate-table-header {
+    display: grid;
+    grid-template-columns: minmax(65px, 1.5fr) repeat(4, minmax(40px, 1fr));
+    gap: 0.2rem;
+    color: var(--text-tabs);
+    font-weight: 600;
+    padding-bottom: 0.2rem;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.65rem;
     text-align: right;
 }
+.rate-table-header > div:first-child {
+    text-align: left;
+}
+.rate-table-row {
+    display: grid;
+    grid-template-columns: minmax(65px, 1.5fr) repeat(4, minmax(40px, 1fr));
+    gap: 0.2rem;
+    padding: 0.25rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.65rem;
+}
+.rate-table-row:last-child {
+    border-bottom: none;
+}
+.rate-table-row-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
+}
+.rate-table-cell {
+    text-align: right;
+    color: var(--text-primary);
+}
 .rate-table-final-row {
-    font-size: 0.7rem; 
+    font-size: 0.7rem;
     font-weight: 700;
-    color: white;
-    background-color: rgba(0, 0, 0, 0.2);
-    margin: 0 -0.4rem; 
-    padding: 0.3rem 0.4rem; 
+    color: var(--text-primary);
+    background-color: rgba(0, 0, 0, 0.06);
+    margin: 0 -0.4rem;
+    padding: 0.3rem 0.4rem;
 }
 
-/* Custom scrollbar for better appearance on overflow content */
+/* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: var(--bg-light);
     border-radius: 10px;
 }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #66CCDD;
-            border-radius: 10px;
-        }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--primary-btn);
+    border-radius: 10px;
+}
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #52b8c9;
+    background: var(--primary-btn-hover);
 }
 
 
-/* --- Typografi i henhold til kravspesifikasjonen --- */
-/* Merk: For full Whitney-støtte må lisensierte fontfiler leveres og kobles inn. */
-
-/* Basisklasse for enkel bruk av Whitney-snittet */
+/* --- Typografi (Mål og behov: Whitney, typo-h1/h2/h3, typo-label, typo-paragraph) --- */
 .font-whitney {
-    font-family: 'Whitney', 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Whitney', system-ui, -apple-system, Segoe UI, Arial, sans-serif;
 }
 
-/* Overskrifter */
+/* typo-h1 (900), typo-h2 (900), typo-h3/h4 (700); skala --heading-scale: 0.42 */
 .heading-xl {
-    /* H1 (Whitney Black, >80pt) – responsivt skalert */
-    font-weight: 900; /* Black */
-    font-size: clamp(3rem, 6vw + 1rem, 6.25rem); /* ~48px–100px */
+    font-weight: 900;
+    font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.25rem * var(--heading-scale)));
     line-height: 1.1;
 }
-
 .heading-l {
-    /* H1: 30px mob, 36px ≥768px */
     font-weight: 900;
-    font-size: 1.875rem;
+    font-size: clamp(1.2rem, 2vw + 0.5rem, 2.25rem);
     line-height: 1.2;
 }
-@media (min-width: 768px) {
-    .heading-l { font-size: 2.25rem; }
-}
-
 .heading-m {
-    /* H2: 24px */
     font-weight: 900;
     font-size: 1.5rem;
     line-height: 1.25;
 }
-
 .heading-s {
-    /* H3: 20px */
     font-weight: 700;
     font-size: 1.25rem;
     line-height: 1.35;
 }
 
-/* Tekstelementer */
-.label-text {
-    /* Etikett (Whitney Medium, versaler, 10% tracking, 16–24px) */
-    font-weight: 500; /* Medium */
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    font-size: clamp(1rem, 1.2vw + 0.5rem, 1.5rem);
-}
-
-/* Kompakt UI-variant for små felter/etiketter (Pensjonsgapet typo-label) */
+/* typo-label: Whitney 500, uppercase, letter-spacing 0.1em */
+.label-text,
 .label-ui {
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    font-size: 0.7rem;
 }
+.label-text { font-size: clamp(1rem, 1.2vw + 0.5rem, 1.5rem); }
+.label-ui { font-size: 0.7rem; }
 
 .preamble-text {
-    /* Innledning (Whitney Book, 16–20px, med innrykk) */
-    font-weight: 400; /* Book */
+    font-weight: 400;
     font-size: clamp(1rem, 0.8vw + 0.75rem, 1.25rem);
     text-indent: 1.25rem;
 }
 
+/* typo-paragraph: Whitney 400 */
 .paragraph-text {
-    /* Avsnitt (Whitney Book, 14–16px) */
     font-weight: 400;
     font-size: 1rem;
     line-height: 1.5;
@@ -331,39 +315,42 @@ header.text-center.mb-1.relative {
     margin-bottom: 1.75rem !important; /* ~28px */
 }
 
-/* --- Formuesskatt: Samme avstand og skriftstørrelse som Pensjonsgapet --- */
+/* --- Formuesskatt: Panel hvit, 1px solid #DDDDDD, border-radius 12px, padding 24px, panel-skygge --- */
 .formuesskatt-dashboard {
     padding-top: 0.78rem !important;
     padding-bottom: 0.78rem !important;
 }
-/* Samme headermargin som Pensjonsgapet (header.mb-8 = 1.56rem) */
 .formuesskatt-header {
     margin-bottom: 1.56rem !important;
 }
-/* H1 overskrift: identisk med Pensjonsgapet typo-h1 (fasit) */
+/* Overskrifter: Tekst #333333 (hoved) iflg design-prompt */
 .formuesskatt-title {
-    font-family: 'Whitney', sans-serif;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
     font-weight: 900;
     font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale)));
     line-height: 1.1;
     letter-spacing: 0;
-    color: var(--light-text);
+    color: #516d84;
     margin-bottom: 0.43rem !important;
 }
-/* Venstre og høyre container: samme høyde som hverandre og samme oppførsel som Pensjonsgapet (grid stretch) */
-.formuesskatt-grid {
-    gap: 1.05rem !important; /* samme som Pensjonsgapet gap-8 */
-    min-height: 0;
-    align-items: stretch; /* begge kolonner får lik høyde som i Pensjonsgapet */
+.formuesskatt-dashboard .heading-m,
+.formuesskatt-dashboard .heading-s,
+.formuesskatt-panel .heading-m,
+.formuesskatt-panel .heading-s {
+    color: #333333 !important;
 }
-@media (min-width: 1024px) {
+.formuesskatt-grid {
+    gap: 24px !important;
+    min-height: 0;
+    align-items: stretch;
+}
+@media (min-width: 1280px) {
     .formuesskatt-grid {
         grid-template-columns: 1fr 1fr;
     }
     .formuesskatt-col {
         min-width: 0;
         min-height: 0;
-        /* Grid-item strekkes til radhøyde; panel fyller kolonnen under */
     }
     .formuesskatt-col .formuesskatt-panel {
         flex: 1;
@@ -372,22 +359,34 @@ header.text-center.mb-1.relative {
         flex-direction: column;
     }
 }
+@media (min-width: 1024px) and (max-width: 1279px) {
+    .formuesskatt-grid { grid-template-columns: 1fr 1fr; }
+}
 .formuesskatt-col {
     gap: 0.78rem !important;
     display: flex;
     flex-direction: column;
 }
+/* Panel: hvit, 1px solid #DDDDDD, border-radius 12px, padding 24px */
 .formuesskatt-panel {
-    padding: 0.78rem !important;
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: var(--panel-shadow);
 }
 .formuesskatt-h2 {
     padding-bottom: 0.78rem !important;
     margin-bottom: 0.78rem !important;
+    border-color: var(--border-color) !important;
+    color: #333333 !important;
 }
 .formuesskatt-h3 {
     padding-bottom: 0.78rem !important;
     margin-top: 0.78rem !important;
     margin-bottom: 0.65rem !important;
+    border-color: var(--border-color) !important;
+    color: #333333 !important;
 }
 /* Samme avstand mellom felt som Pensjonsgapet (0.65rem mellom slidere) */
 .formuesskatt-input-group > * + * {
@@ -398,6 +397,7 @@ header.text-center.mb-1.relative {
 }
 .formuesskatt-label {
     margin-bottom: 0.26rem !important;
+    color: var(--text-primary) !important;
 }
 .formuesskatt-input {
     margin-top: 0.26rem !important;
@@ -408,14 +408,70 @@ header.text-center.mb-1.relative {
 .formuesskatt-assets .asset-slider-group + .asset-slider-group {
     margin-top: 0.65rem !important;
 }
+/* Total Formuesskatt-felt: hvit boks, mørk blå bak tallet, lys blå tall */
 .formuesskatt-summary {
     margin-bottom: 0.78rem !important;
+    background-color: #FFFFFF !important;
+    border: 1px solid #DDDDDD !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06) !important;
+    color: #333333 !important;
+    text-align: center !important;
+}
+/* Outputtall-container: mørk bakgrunn #232c37, tall i lys blå #5cc8eb */
+.formuesskatt-summary .output-value {
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+    font-weight: 900 !important;
+    font-size: 2rem !important;
+    color: #5cc8eb !important;
+    background-color: #232c37 !important;
+    padding: 16px 24px !important;
+    border-radius: 8px !important;
+    line-height: 1.2 !important;
+    margin-bottom: 0.5rem !important;
+}
+.formuesskatt-summary .output-label {
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    color: #333333 !important;
+    letter-spacing: 0.02em !important;
+    margin-top: 0 !important;
+}
+.formuesskatt-metrics {
+    background-color: var(--bg-light) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    color: var(--text-primary) !important;
 }
 .formuesskatt-metrics > * + * {
     margin-top: 0.65rem !important;
 }
 .formuesskatt-metrics .flex {
     padding: 0.15rem 0 !important;
+}
+.formuesskatt-metrics hr {
+    border-color: var(--border-color) !important;
+}
+.formuesskatt-metrics .paragraph-text,
+.formuesskatt-metrics span:not([class*="heading-"]) {
+    color: var(--text-secondary) !important;
+}
+.formuesskatt-metrics .heading-s,
+.formuesskatt-metrics .heading-m {
+    color: var(--text-primary) !important;
+}
+/* Overstyr Tailwind mørke tekster til lys-tema */
+.formuesskatt-panel .text-white {
+    color: var(--text-primary) !important;
+}
+.formuesskatt-panel .text-slate-300,
+.formuesskatt-panel .text-slate-400 {
+    color: var(--text-secondary) !important;
+}
+.formuesskatt-header .paragraph-text {
+    color: var(--text-muted);
 }
 
 /* Samme skriftstørrelse som Pensjonsgapet – stor til liten over slidere */
@@ -473,22 +529,131 @@ header.text-center.mb-1.relative {
 .formuesskatt-input-group > .formuesskatt-field .label-ui {
     font-size: inherit;
 }
+/* Primær knapp: #3388CC, hover #005599 */
+.formuesskatt-panel .person-btn {
+    background-color: var(--primary-btn) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: var(--panel-shadow);
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+.formuesskatt-panel .person-btn:hover {
+    background-color: var(--primary-btn-hover) !important;
+    transform: translateY(-2px);
+}
+/* Hent fra T-konto: default hvit, ved trykk (tkonto-active) grønn, toggle av/på */
+#hent-fra-tkonto-btn {
+    background-color: var(--bg-white) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--panel-shadow);
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+#hent-fra-tkonto-btn:hover {
+    border-color: var(--text-muted) !important;
+    transform: translateY(-2px);
+}
 #hent-fra-tkonto-btn.tkonto-active {
     background-color: #16a34a !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 20px -4px rgba(22, 163, 74, 0.45);
 }
 #hent-fra-tkonto-btn.tkonto-active:hover {
     background-color: #15803d !important;
+}
+/* Sekundær/valg person-knapper: uvalgt hvit, valgt primær blå */
+.formuesskatt-panel .person-btn.bg-slate-700 {
+    background-color: var(--bg-white) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+}
+.formuesskatt-panel .person-btn.bg-blue-600 {
+    background-color: var(--primary-btn) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0 4px 20px -4px rgba(51, 136, 204, 0.45);
+}
+/* Nullstill: sekundær stil */
+.formuesskatt-reset-btn {
+    background-color: var(--bg-white) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--panel-shadow);
+}
+.formuesskatt-reset-btn:hover {
+    border-color: var(--primary-btn) !important;
+    transform: translateY(-2px);
+}
+#page1 {
+    background-color: var(--bg-page) !important;
 }
 #page1 .formuesskatt-dashboard {
     min-height: 100vh;
     min-height: 100dvh;
 }
 
-/* --- Modaler (Pensjonsgapet-design) --- */
+/* Disclaimer-knapp: sekundær stil */
+#disclaimerBtn {
+    background-color: var(--bg-white) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: var(--panel-shadow);
+}
+#disclaimerBtn:hover {
+    border-color: var(--primary-btn) !important;
+    transform: translateY(-2px);
+}
+
+/* --- Modaler (panel: hvit, kant #DDDDDD, skygge) --- */
 #disclaimerModal > div {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    border: 1px solid #DDDDDD;
+    box-shadow: var(--panel-shadow);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
 }
 #disclaimerModal h2 {
-    color: #4A6D8C;
+    color: var(--text-primary);
+}
+#disclaimerModal .text-gray-700 {
+    color: var(--text-primary) !important;
+}
+#disclaimerModal .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+/* Side 2 (kjøpekraft): lys tema */
+#page2 {
+    background-color: var(--bg-page) !important;
+}
+#page2 .dashboard-container {
+    background-color: var(--bg-page);
+}
+#page2 h1 {
+    color: var(--text-primary) !important;
+}
+#page2 .bg-\[\#24385B\] {
+    background-color: var(--bg-white) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 12px !important;
+    box-shadow: var(--panel-shadow);
+}
+#page2 .label-ui,
+#page2 .text-slate-300 {
+    color: var(--text-primary) !important;
+}
+#page2 .asset-input {
+    background-color: var(--bg-white);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+/* Tilbake-knapp: primær #3388CC */
+#goToPage1Btn {
+    background-color: var(--primary-btn) !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: var(--panel-shadow);
+}
+#goToPage1Btn:hover {
+    background-color: var(--primary-btn-hover) !important;
+    transform: translateY(-2px);
 }

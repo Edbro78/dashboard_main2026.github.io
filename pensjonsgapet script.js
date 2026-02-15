@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 { id: 'age', label: 'Din alder', type: 'range', min: 18, max: 70, step: 1, value: 45, unit: 'år' },
                 { id: 'retirementAge', label: 'Pensjonsalder', type: 'range', min: 62, max: 72, step: 1, value: 67, unit: 'år' },
                 { id: 'grunnbelop', label: 'Grunnbeløp (1G)', type: 'number', value: 130160, unit: 'kr' },
-                { id: 'currentSalary', label: 'Dagens årslønn', type: 'range', min: 0, max: 10000000, step: 10000, value: 1000000, unit: 'kr' },
+                { id: 'currentSalary', label: 'Dagens årslønn', type: 'range', min: 0, max: 10000000, step: 10000, value: 0, unit: 'kr' },
                 { id: 'currentOTPSaldo', label: 'OTP Saldo i dag', type: 'range', min: 0, max: 3000000, step: 10000, value: 500000, unit: 'kr' },
                 { id: 'otpRate', label: 'OTP-sats', type: 'range', min: 2, max: 8, step: 0.1, value: 5, unit: '%' },
                 { id: 'currentIPSBalance', label: 'IPS Saldo i dag', type: 'range', min: 0, max: 1000000, step: 10000, value: 0, unit: 'kr' },
@@ -322,6 +322,41 @@ document.addEventListener('DOMContentLoaded', function() {
                             wrapper.appendChild(otpContent);
                             inputContainer.appendChild(wrapper);
                             return; // Skip the normal append logic
+                        }
+                        
+                        // For "Dagens årslønn": liten diskret knapp "Hent fra T-konto" til høyre for label
+                        if (config.id === 'currentSalary') {
+                            input.className = 'w-full';
+                            input.min = config.min;
+                            input.max = config.max;
+                            input.step = config.step;
+                            input.value = config.value;
+                            const leftPart = document.createElement('div');
+                            leftPart.className = 'flex items-center gap-2 flex-wrap';
+                            leftPart.appendChild(label);
+                            const tkontoBtn = document.createElement('button');
+                            tkontoBtn.type = 'button';
+                            tkontoBtn.id = 'hent-arslonn-fra-tkonto-btn';
+                            tkontoBtn.className = 'hent-fra-tkonto-mini text-xs font-medium py-1 px-2 rounded border border-[var(--border-color)] bg-[var(--bg-white)] text-[var(--text-primary)] hover:border-[var(--primary-btn)] transition-colors';
+                            tkontoBtn.textContent = 'Hent fra T-konto';
+                            leftPart.appendChild(tkontoBtn);
+                            labelWrapper.appendChild(leftPart);
+                            labelWrapper.appendChild(valueSpan);
+                            wrapper.appendChild(labelWrapper);
+                            wrapper.appendChild(input);
+                            inputContainer.appendChild(wrapper);
+                            // Klikk: hent årslønn fra T-konto og oppdater slider
+                            tkontoBtn.addEventListener('click', () => {
+                                const getLonn = (window.parent && window.parent.getTKontoDagensÅrslønn) || window.getTKontoDagensÅrslønn;
+                                if (typeof getLonn !== 'function') return;
+                                const lonn = Number(getLonn()) || 0;
+                                const clamped = Math.max(config.min, Math.min(config.max, lonn));
+                                input.value = clamped;
+                                const span = document.getElementById(config.id + '-value');
+                                if (span) span.textContent = DashboardApp.formatCurrency(clamped);
+                                DashboardApp.calculatePension();
+                            });
+                            return;
                         }
                         
                         labelWrapper.appendChild(label);
