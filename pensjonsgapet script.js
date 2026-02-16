@@ -41,7 +41,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Input fields (16 stk)
             const inputLabels = {
                 'age': 'Din alder',
-                'retirementAge': 'Pensjonsalder', 
+                'retirementAge': 'Pensjonsalder',
+                'grunnbelop': 'Grunnbeløp (1G)',
                 'currentSalary': 'Dagens årslønn',
                 'currentOTPSaldo': 'OTP Saldo i dag',
                 'otpRate': 'OTP-sats',
@@ -72,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (hasValue) {
                         if (id === 'age' || id === 'retirementAge') {
                             displayValue = `${value} år`;
-                        } else if (id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
+                        } else if (id === 'grunnbelop' || id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
                             displayValue = `${parseFloat(value).toLocaleString('nb-NO')} kr`;
                         } else if (id === 'otpRate' || id === 'desiredPensionLevel' || id === 'cpiRate') {
                             displayValue = `${parseFloat(value).toFixed(1)} %`;
@@ -142,10 +143,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const labelToId = {
                 'Din alder': 'age', 'Pensjonsalder': 'retirementAge', 'Grunnbeløp (1G)': 'grunnbelop',
                 'Dagens årslønn': 'currentSalary', 'OTP Saldo i dag': 'currentOTPSaldo', 'OTP-sats': 'otpRate',
-                'IPS Saldo i dag': 'currentIPSBalance', 'Årlig sparing IPS': 'ipsAnnualSaving',
-                'Årlig utbetaling fra Fripoliser': 'annualFripoliserPayout', 'Aksjeandel': 'expectedReturn',
-                'Utbetalingsperiode OTP': 'payoutYears', 'Forventet årlig KPI': 'cpiRate',
-                'Årlig utbetaling Folketrygden': 'socialSecurityEstimate', 'Ønsket pensjonsnivå': 'desiredPensionLevel'
+                'IPS Saldo i dag': 'currentIPSBalance', 'IPS saldo i dag': 'currentIPSBalance', 'Årlig sparing IPS': 'ipsAnnualSaving',
+                'Årlig utbetaling fra Fripoliser': 'annualFripoliserPayout', 'Årlig utbetaling fra fripoliser': 'annualFripoliserPayout',
+                'Aksjeandel': 'expectedReturn', 'Utbetalingsperiode OTP': 'payoutYears', 'Forventet årlig KPI': 'cpiRate',
+                'Årlig utbetaling Folketrygden': 'socialSecurityEstimate', 'Årlig utbetaling fra folketrygden': 'socialSecurityEstimate',
+                'Ønsket pensjonsnivå': 'desiredPensionLevel'
             };
             const stockToReturn = { 0: 5, 20: 5.6, 45: 6.3, 55: 6.7, 65: 7, 85: 7.5, 100: 8 };
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
@@ -245,8 +247,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 { id: 'age', label: 'Din alder', type: 'range', min: 18, max: 70, step: 1, value: 45, unit: 'år' },
                 { id: 'retirementAge', label: 'Pensjonsalder', type: 'range', min: 62, max: 72, step: 1, value: 67, unit: 'år' },
                 { id: 'grunnbelop', label: 'Grunnbeløp (1G)', type: 'number', value: 130160, unit: 'kr' },
-                { id: 'currentSalary', label: 'Dagens årslønn', type: 'range', min: 0, max: 10000000, step: 10000, value: 0, unit: 'kr' },
-                { id: 'currentOTPSaldo', label: 'OTP Saldo i dag', type: 'range', min: 0, max: 3000000, step: 10000, value: 500000, unit: 'kr' },
+                { id: 'currentSalary', label: 'Dagens årslønn', type: 'range', min: 0, max: 15000000, step: 10000, value: 0, unit: 'kr' },
+                { id: 'currentOTPSaldo', label: 'OTP Saldo i dag', type: 'range', min: 0, max: 10000000, step: 10000, value: 500000, unit: 'kr' },
                 { id: 'otpRate', label: 'OTP-sats', type: 'range', min: 2, max: 8, step: 0.1, value: 5, unit: '%' },
                 { id: 'currentIPSBalance', label: 'IPS Saldo i dag', type: 'range', min: 0, max: 1000000, step: 10000, value: 0, unit: 'kr' },
                 { id: 'ipsAnnualSaving', label: 'Årlig sparing IPS', type: 'range', min: 0, max: 40000, step: 1000, value: 0, unit: 'kr' },

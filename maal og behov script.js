@@ -186,7 +186,7 @@ const createGlowColor = (baseColor, opacity = 0.6) => {
 };
 
 // Maks antall hendelser som kan legges til
-const MAX_EVENTS = 4;
+const MAX_EVENTS = 5;
 
 const LEGEND_DATA = [
     { label: 'Hovedstol', color: CHART_COLORS.hovedstol },
@@ -3110,16 +3110,31 @@ if (state.events && state.events.length > 3 && state.events[3]) {
     lines.push(`22c Hendelse 4 påvirker innskutt kapital : Ja`);
     lines.push(`22d Hendelse 4 type : Hendelse`);
 }
-// 23. Målsøk utbetaling resultat
-lines.push(`23 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSeekPayoutResult || 0)}`);
-// 24. Målsøk Portefølje I resultat
-lines.push(`24 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
-// 25. Investortype
-lines.push(`25 Investortype : ${orIngenData(state.investorType)}`);
-// 26. utsatt skatt på renter
-lines.push(`26 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
-// 27. Skatteberegning
-lines.push(`27 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
+// 23. Hendelse 5
+if (state.events && state.events.length > 4 && state.events[4]) {
+    const e5 = state.events[4];
+    lines.push(`23 Hendelse 5 beløp : ${formatCurrencyValue(e5.belop || 0)}`);
+    lines.push(`23a Hendelse 5 startår : ${e5.startAar || START_YEAR}`);
+    lines.push(`23b Hendelse 5 sluttår : ${e5.sluttAar || START_YEAR}`);
+    lines.push(`23c Hendelse 5 påvirker innskutt kapital : ${e5.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
+    lines.push(`23d Hendelse 5 type : ${orIngenData(e5.type) || 'Hendelse'}`);
+} else {
+    lines.push(`23 Hendelse 5 beløp : 0`);
+    lines.push(`23a Hendelse 5 startår : ${START_YEAR}`);
+    lines.push(`23b Hendelse 5 sluttår : ${START_YEAR}`);
+    lines.push(`23c Hendelse 5 påvirker innskutt kapital : Ja`);
+    lines.push(`23d Hendelse 5 type : Hendelse`);
+}
+// 24. Målsøk utbetaling resultat
+lines.push(`24 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSeekPayoutResult || 0)}`);
+// 25. Målsøk Portefølje I resultat
+lines.push(`25 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
+// 26. Investortype
+lines.push(`26 Investortype : ${orIngenData(state.investorType)}`);
+// 27. utsatt skatt på renter
+lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
+// 28. Skatteberegning
+lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
 
 return lines.join('\n');
 }, [state, prognosis]);
@@ -3184,9 +3199,11 @@ const suffix = match[2] || '';
 const label = match[3].trim();
 const value = match[4].trim();
             
-// Helper to parse number (remove spaces and parse)
+// Helper to parse number (mellomrom, komma, "kr", minus – robust for eksport/import)
 const parseNumber = (str) => {
-const cleaned = str.replace(/\s/g, '');
+const s = String(str).replace(/\s/g, '').replace(/\u202F/g, '').replace(',', '.')
+  .replace(/\u2212/g, '-').replace(/\u2013/g, '-'); // Unicode minus/en-dash → ASCII minus
+const cleaned = s.replace(/[^\d.-]/g, '');
 return parseFloat(cleaned) || 0;
 };
 
@@ -3396,19 +3413,68 @@ updates.events[3] = { ...updates.events[3], belop: 0 };
 }
 }
 break;
-case 23: // Målsøk utbetaling resultat
+case 23: // Hendelse 5 (eller gammel 23 = Målsøk utbetaling ved bakoverkompatibilitet)
+if (suffix === '' && label.indexOf('Målsøk utbetaling') !== -1) {
 updates.goalSeekPayoutResult = parseNumber(value);
 break;
-case 24: // Målsøk Portefølje I resultat
+}
+if (!updates.events) {
+updates.events = [...(state.events || [])];
+}
+while (updates.events.length < 5) {
+updates.events.push({ id: `event-${Date.now()}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
+}
+if (suffix === 'a') {
+updates.events[4] = { ...updates.events[4], startAar: parseNumber(value) || START_YEAR };
+} else if (suffix === 'b') {
+updates.events[4] = { ...updates.events[4], sluttAar: parseNumber(value) || START_YEAR };
+} else if (suffix === 'c') {
+updates.events[4] = { ...updates.events[4], addToInvestedCapital: parseBoolean(value) };
+} else if (suffix === 'd') {
+updates.events[4] = { ...updates.events[4], type: value || 'Hendelse' };
+} else {
+const event5Amount = parseNumber(value);
+if (event5Amount !== 0) {
+updates.events[4] = { ...updates.events[4], belop: event5Amount };
+} else {
+const event = updates.events[4];
+if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
+updates.events = updates.events.filter((_, idx) => idx !== 4);
+} else {
+updates.events[4] = { ...updates.events[4], belop: 0 };
+}
+}
+}
+break;
+case 24: // Målsøk utbetaling resultat (gammel 23) eller Målsøk Portefølje I (gammel 24)
+if (label.indexOf('utbetaling') !== -1) {
+updates.goalSeekPayoutResult = parseNumber(value);
+} else {
 updates.goalSeekPortfolio1Result = parseNumber(value);
+}
 break;
-case 25: // Investortype
+case 25: // Målsøk Portefølje I resultat (gammel 24) eller Investortype (gammel 25)
+if (label.indexOf('Portefølje I') !== -1) {
+updates.goalSeekPortfolio1Result = parseNumber(value);
+} else {
 updates.investorType = value;
+}
 break;
-case 26: // utsatt skatt på renter
+case 26: // Investortype (gammel 25 = samme) eller utsatt skatt (gammel 26)
+if (label.indexOf('Investortype') !== -1) {
+updates.investorType = value;
+} else {
 updates.deferredInterestTax = parseBoolean(value);
+}
 break;
-case 27: // Skatteberegning
+case 27: // utsatt skatt på renter (gammel 26) eller Skatteberegning (gammel 27)
+if (label.indexOf('Skatteberegning') !== -1) {
+updates.taxCalculationEnabled = parseBoolean(value);
+} else {
+updates.deferredInterestTax = parseBoolean(value);
+}
+break;
+case 28: // Skatteberegning
 updates.taxCalculationEnabled = parseBoolean(value);
 break;
 }
