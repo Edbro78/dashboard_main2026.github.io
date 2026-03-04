@@ -6526,6 +6526,9 @@ function initializeMoneyValueCalculations() {
     initializeHistoricalKPIModal();
     initializeDisclaimerModal();
     
+    // Initialize double-click editing for present amount
+    initializePresentAmountEditing();
+    
     // Update all calculations
     updateAllMoneyCalculations(historicalAmount, futureAmount, presentAmount, amountDisplay);
 }
@@ -6617,7 +6620,63 @@ function initializeKPIButtons() {
 function updateAmountDisplay(amountDisplay, presentAmount) {
     const formattedAmount = formatMoneyNumber(currentAmount);
     if (amountDisplay) amountDisplay.textContent = '2026';
-    if (presentAmount) presentAmount.textContent = formattedAmount + ',-';
+    if (presentAmount && !presentAmount.querySelector('.money-edit-input')) {
+        presentAmount.textContent = formattedAmount + ',-';
+    }
+}
+
+// Double-click editing for "Dagens kronebeløp"
+function initializePresentAmountEditing() {
+    const presentAmountEl = document.getElementById('present-amount');
+    if (!presentAmountEl) return;
+
+    presentAmountEl.style.cursor = 'default';
+
+    presentAmountEl.addEventListener('dblclick', function () {
+        if (presentAmountEl.querySelector('.money-edit-input')) return;
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'money-edit-input';
+        input.value = formatMoneyNumber(currentAmount);
+        input.style.cssText =
+            'width:100%;border:none;outline:none;background:transparent;' +
+            'font-family:inherit;font-size:inherit;font-weight:inherit;color:inherit;' +
+            'text-align:center;padding:0;margin:0;';
+
+        presentAmountEl.textContent = '';
+        presentAmountEl.appendChild(input);
+        input.focus();
+        input.select();
+
+        function commitValue() {
+            const raw = input.value.replace(/[^0-9]/g, '');
+            const parsed = parseInt(raw, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+                currentAmount = parsed;
+                const amountSlider = document.getElementById('amount-slider');
+                if (amountSlider) {
+                    const clampedForSlider = Math.max(parseInt(amountSlider.min), Math.min(parseInt(amountSlider.max), currentAmount));
+                    amountSlider.value = clampedForSlider;
+                    updateSliderProgress(amountSlider, parseInt(amountSlider.min), parseInt(amountSlider.max));
+                }
+            }
+            presentAmountEl.textContent = formatMoneyNumber(currentAmount) + ',-';
+            const historicalAmount = document.getElementById('historical-amount');
+            const futureAmount = document.getElementById('future-amount');
+            const amountDisplay = document.getElementById('amount-display');
+            updateAllMoneyCalculations(historicalAmount, futureAmount, presentAmountEl, amountDisplay);
+        }
+
+        input.addEventListener('blur', commitValue);
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+            if (e.key === 'Escape') {
+                input.removeEventListener('blur', commitValue);
+                presentAmountEl.textContent = formatMoneyNumber(currentAmount) + ',-';
+            }
+        });
+    });
 }
 
 // Update historical year display
