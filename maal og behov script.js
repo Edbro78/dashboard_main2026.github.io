@@ -351,16 +351,16 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
        
         // --- START OF YEAR ---
 
-        // 1. Pay deferred tax from LAST year, split between event tax and bond tax (if enabled)
+        // 1. Lagre utsatt skatt fra forrige år (betales ETTER avkastning er beregnet)
         const eventTaxToPayThisYear = taxesEnabled ? deferredEventTax : 0;
         const bondTaxToPayThisYear = taxesEnabled ? deferredBondTax : 0;
-        if (taxesEnabled) {
-            currentPortfolioValue -= (eventTaxToPayThisYear + bondTaxToPayThisYear);
-        }
-        deferredEventTax = 0; // Reset for the current year's calculation.
-        deferredBondTax = 0; // Reset for the current year's calculation.
+        deferredEventTax = 0;
+        deferredBondTax = 0;
 
-        // 2. Grow tax-free capital with shielding rate
+        // Tilgjengelig skattefri kvote ved uttak = innskutt kapital etter forrige årets utbetaling (vist tall for forrige år)
+        let availableForWithdrawal = taxFreeCapitalRemaining;
+
+        // 2. Innskutt kapital: forrige år × (1 + skjermingsrente) (skjermingsfradrag legges til senere med innskudd/uttak)
         taxFreeCapitalRemaining *= (1 + shieldingRate);
 
         // 3. Handle inflows (savings and positive events)
@@ -415,42 +415,43 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         let savingsPart = 0;
         if (isInvestmentYear && state.annualSavings > 0) {
             if (state.investorType === 'Privat') {
-                // Privat: Only stock portion of annual savings is added to invested capital
-                // Savings are placed in Portefølje I, so use Portefølje I's stock allocation
                 const portfolio1StockPercentage = state.row1StockAllocation || 0;
                 savingsPart = state.annualSavings * (portfolio1StockPercentage / 100);
             } else {
-                // AS: All annual savings are added to invested capital
                 savingsPart = state.annualSavings;
             }
         }
        
         // Sum only positive event amounts flagged to increase invested capital
         let addToInvestedFromEvents = 0;
-        if (totalInflow > 0) {
-            state.events.forEach(event => {
-                if (year >= event.startAar && year <= event.sluttAar) {
-                    if (event.belop > 0 && event.addToInvestedCapital !== false) {
-                        addToInvestedFromEvents += event.belop;
-                    }
+        state.events.forEach(event => {
+            if (year >= event.startAar && year <= event.sluttAar) {
+                if (event.belop > 0 && event.addToInvestedCapital !== false) {
+                    addToInvestedFromEvents += event.belop;
                 }
-            });
-        }
+            }
+        });
        
-        // Add both savings and events to invested capital
-        taxFreeCapitalRemaining += (savingsPart + addToInvestedFromEvents);
+        // Innskutt kapital: Privat = (innskudd × aksjeandel fra Portefølje I), AS = hele innskuddet.
+        // Bruk Portefølje I sin aksjeandel (der hendelser og sparing plasseres), ikke totalporteføljens dynamiske andel.
+        const stockShareForCap = (annualStockPercentage || 0) / 100;
+        const portfolio1StockPctForCap = (state.row1StockAllocation || 0) / 100;
+        if (state.investorType === 'Privat') {
+            taxFreeCapitalRemaining += savingsPart + addToInvestedFromEvents * portfolio1StockPctForCap;
+        } else {
+            taxFreeCapitalRemaining += (isInvestmentYear ? state.annualSavings : 0) + addToInvestedFromEvents;
+        }
 
-        // 4. Calculate investment growth and running bond tax
+        // 4. Calculate investment growth FIRST (FØR skatt trekkes fra)
         const annualBondPercentage = 100 - annualStockPercentage;
         let totalGrossReturn = 0;
-        let totalNetReturnBeforeTax = 0; // Brutto avkastning minus KPI og honorar (før skatt)
-        let annualBondTaxAmount = 0; // Bond tax paid for the CURRENT year (ikke utsatt)
+        let totalNetReturnBeforeTax = 0;
+        let annualBondTaxAmount = 0;
 
         if (currentPortfolioValue > 0) {
             const stockValue = currentPortfolioValue * (annualStockPercentage / 100);
             const bondValue = currentPortfolioValue * (annualBondPercentage / 100);
             
-            // Bruk simulerte avkastninger hvis aktivert, ellers bruk forventet avkastning
             let stockReturnRateForYear, bondReturnRateForYear;
             if (useSimulatedReturns && i < simulatedReturns.stockReturns.length) {
                 stockReturnRateForYear = simulatedReturns.stockReturns[i] / 100;
@@ -464,7 +465,6 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             const grossBondReturn = bondValue * bondReturnRateForYear;
             totalGrossReturn = grossStockReturn + grossBondReturn;
 
-            // Fordel KPI og rådgivningshonorar proporsjonalt mellom aksjer og renter
             const stockKpiReduction = stockValue * kpiRate;
             const bondKpiReduction = bondValue * kpiRate;
             const stockFeeReduction = stockValue * advisoryFeeRate;
@@ -473,48 +473,48 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             const netBondReturnBeforeTax = grossBondReturn - bondKpiReduction - bondFeeReduction;
             totalNetReturnBeforeTax = netStockReturn + netBondReturnBeforeTax;
 
-            // Utsatt rente-skatt: Ikke betal løpende renteskatt; legg i pool og skatt neste år ved uttak
             const useDeferredBondTax = taxesEnabled && state.deferredInterestTax === true;
             let portfolioReturn = 0;
             if (useDeferredBondTax) {
                 untaxedBondReturnPool += grossBondReturn;
-                annualBondTaxAmount = 0; // ingen direkte skatt i år
-                // Legg til bruttoavkastning fratrukket KPI og honorar
+                annualBondTaxAmount = 0;
                 portfolioReturn = netStockReturn + netBondReturnBeforeTax;
                 currentPortfolioValue += portfolioReturn;
             } else {
-                // Standard: betal løpende renteskatt samme år (på nominell renteavkastning)
                 annualBondTaxAmount = taxesEnabled ? (grossBondReturn * bondTaxRate) : 0;
                 portfolioReturn = netStockReturn + (netBondReturnBeforeTax - annualBondTaxAmount);
                 currentPortfolioValue += portfolioReturn;
             }
            
-            // Update individual portfolio values proportionally based on their share and returns
-            // Each portfolio grows based on its stock/bond allocation and return rates
             if (totalPortfolioValue > 0) {
-                const p1Share = portfolio1Value / totalPortfolioValue;
-                const p2Share = portfolio2Value / totalPortfolioValue;
-                const p3Share = portfolio3Value / totalPortfolioValue;
-               
-                // Calculate return for each portfolio based on its stock allocation
                 const p1StockPct = state.row1StockAllocation || 0;
                 const p2StockPct = state.row2StockAllocation || 0;
-                const p3StockPct = 0; // Likviditetsfond
+                const p3StockPct = 0;
+                const useDef = useDeferredBondTax;
                
                 const p1Return = portfolio1Value * ((p1StockPct / 100) * stockReturnRateForYear + ((100 - p1StockPct) / 100) * bondReturnRateForYear) -
                                  portfolio1Value * kpiRate - portfolio1Value * advisoryFeeRate -
-                                 (portfolio1Value * ((100 - p1StockPct) / 100) * bondReturnRateForYear * (useDeferredBondTax ? 0 : (taxesEnabled ? bondTaxRate : 0)));
+                                 (portfolio1Value * ((100 - p1StockPct) / 100) * bondReturnRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
                 const p2Return = portfolio2Value * ((p2StockPct / 100) * stockReturnRateForYear + ((100 - p2StockPct) / 100) * bondReturnRateForYear) -
                                  portfolio2Value * kpiRate - portfolio2Value * advisoryFeeRate -
-                                 (portfolio2Value * ((100 - p2StockPct) / 100) * bondReturnRateForYear * (useDeferredBondTax ? 0 : (taxesEnabled ? bondTaxRate : 0)));
+                                 (portfolio2Value * ((100 - p2StockPct) / 100) * bondReturnRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
                 const p3Return = portfolio3Value * bondReturnRateForYear - portfolio3Value * kpiRate - portfolio3Value * advisoryFeeRate -
-                                 (portfolio3Value * bondReturnRateForYear * (useDeferredBondTax ? 0 : (taxesEnabled ? bondTaxRate : 0)));
+                                 (portfolio3Value * bondReturnRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
                
                 portfolio1Value += p1Return;
                 portfolio2Value += p2Return;
                 portfolio3Value += p3Return;
             }
         }
+
+        // 5. Betal utsatt skatt fra forrige år ETTER avkastning er beregnet
+        if (taxesEnabled) {
+            currentPortfolioValue -= (eventTaxToPayThisYear + bondTaxToPayThisYear);
+        }
+
+        // Innskutt kapital ved uttakstidspunktet (før årets uttak) – brukes til skatteberegning (fromTaxFree). Sluttverdi = denne - (uttak × aksjeandel).
+        const investedCapitalAtWithdrawal = taxFreeCapitalRemaining;
+        let totalUttakThisYear = 0;
 
         // 5. Handle outflows and calculate taxes
         let annualNetWithdrawalAmountForChart = 0;
@@ -529,22 +529,22 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             
             let fromTaxFree;
             let remainingDesiredNet;
-            let grossWithdrawal;
+            let grossWithdrawal = 0;
             
             if (state.investorType === 'AS') {
                 // AS: Full withdrawal amount reduces contributed capital first
-                fromTaxFree = Math.min(desiredNet, taxFreeCapitalRemaining);
-                taxFreeCapitalRemaining -= fromTaxFree;
+                fromTaxFree = Math.min(desiredNet, availableForWithdrawal);
                 remainingDesiredNet = desiredNet - fromTaxFree;
                 grossWithdrawal = fromTaxFree;
             } else {
                 // Privat: Only the stock portion of the withdrawal reduces invested capital
                 const stockPortionOfNet = desiredNet * stockShare;
-                fromTaxFree = Math.min(stockPortionOfNet, taxFreeCapitalRemaining);
-                taxFreeCapitalRemaining -= fromTaxFree;
+                fromTaxFree = Math.min(stockPortionOfNet, availableForWithdrawal);
                 remainingDesiredNet = desiredNet - fromTaxFree;
                 grossWithdrawal = fromTaxFree;
             }
+            // Reduser tilgjengelig skattefri kvote for ev. event-uttak i samme år
+            availableForWithdrawal -= fromTaxFree;
 
             if (remainingDesiredNet > 0) {
                 let grossNeededFromTaxable;
@@ -603,11 +603,13 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             }
             currentPortfolioValue -= grossWithdrawal;
             annualNetWithdrawalAmountForChart += desiredNet;
+            totalUttakThisYear += grossWithdrawal;
         }
 
         // 5b. Event withdrawals (tax is DEFERRED to next year)
         if (eventWithdrawal < 0) {
             const withdrawalAmount = Math.abs(eventWithdrawal);
+            totalUttakThisYear += withdrawalAmount;
             // Bruk porteføljeverdi FØR uttaket til å beregne proporsjoner
             const preWithdrawalPortfolioValue = currentPortfolioValue;
             const stockShare = (annualStockPercentage / 100);
@@ -619,18 +621,17 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             
             if (state.investorType === 'AS') {
                 // AS: Full withdrawal amount reduces contributed capital first
-                coveredAmount = Math.min(withdrawalAmount, taxFreeCapitalRemaining);
-                taxFreeCapitalRemaining -= coveredAmount;
+                coveredAmount = Math.min(withdrawalAmount, availableForWithdrawal);
                 taxableFromStock = 0; // Not used for AS
                 taxableFromBond = 0; // Not used for AS
             } else {
                 // Privat: Only the stock portion of the withdrawal reduces invested capital
                 const stockPortionGross = withdrawalAmount * stockShare;
-                coveredAmount = Math.min(stockPortionGross, taxFreeCapitalRemaining);
-                taxFreeCapitalRemaining -= coveredAmount;
+                coveredAmount = Math.min(stockPortionGross, availableForWithdrawal);
                 taxableFromStock = Math.max(0, stockPortionGross - coveredAmount);
                 taxableFromBond = withdrawalAmount * bondShare;
             }
+            availableForWithdrawal -= coveredAmount;
            
             if (taxesEnabled) {
                 if (state.investorType === 'Privat') {
@@ -672,6 +673,9 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             // Til slutt trekkes selve uttaket fra porteføljen
             currentPortfolioValue = preWithdrawalPortfolioValue - withdrawalAmount;
         }
+
+        // Innskutt kapital etter året: ved uttakstidspunkt - (uttak samme år × aksjeandel)
+        taxFreeCapitalRemaining = Math.max(0, investedCapitalAtWithdrawal - totalUttakThisYear * stockShareForCap);
        
         // --- END OF YEAR ---
        
@@ -710,6 +714,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         data.renteskatt.push(Math.round(-bondTaxPaidThisYear));
         data.annualStockPercentages.push(Math.round(annualStockPercentage));
         data.annualBondPercentages.push(Math.round(annualBondPercentage));
+        // Innskutt kapital sluttsum: forrige×(1+skjerming) + (innskudd×aksjeandel) - (uttak×aksjeandel)
         data.investedCapitalHistory.push(Math.round(taxFreeCapitalRemaining));
     }
 
@@ -1654,6 +1659,9 @@ function App() {
     const [showInvestedCapitalGraphic, setShowInvestedCapitalGraphic] = useState(MaalOgBehovState.showInvestedCapitalGraphic);
     const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
     const [showDisclaimer, setShowDisclaimer] = useState(MaalOgBehovState.showDisclaimer);
+    const [panelTitle, setPanelTitle] = useState(MaalOgBehovState.panelTitle || 'Mål og behov');
+    const [editingTitle, setEditingTitle] = useState(false);
+    const titleInputRef = React.useRef(null);
     const [showOutputModal, setShowOutputModal] = useState(MaalOgBehovState.showOutputModal);
     const [outputText, setOutputText] = useState(MaalOgBehovState.outputText);
     const [copied, setCopied] = useState(MaalOgBehovState.copied);
@@ -1720,6 +1728,17 @@ function App() {
     useEffect(() => {
         MaalOgBehovState.showDisclaimer = showDisclaimer;
     }, [showDisclaimer]);
+
+    useEffect(() => {
+        MaalOgBehovState.panelTitle = panelTitle;
+    }, [panelTitle]);
+
+    useEffect(() => {
+        if (editingTitle && titleInputRef.current) {
+            titleInputRef.current.focus();
+            titleInputRef.current.select();
+        }
+    }, [editingTitle]);
 
     useEffect(() => {
         MaalOgBehovState.showOutputModal = showOutputModal;
@@ -3580,25 +3599,18 @@ return () => document.removeEventListener('keydown', onKey);
         if (last < 0) return;
 
         // Binærsøk etter minste årlige sparing som gir finalPortfolioValue = 0 i siste år
-        for (let i = 0; i < 50; i++) {
-            const mid = (low + high) / 2;
+        for (let i = 0; i < 100; i++) {
+            const mid = Math.round((low + high) / 2);
+            if (mid === low || mid === high) break;
             const v = simulateFinalPortfolio(mid);
-            if (Math.abs(v) < 1000) {
-                // Når vi er nær null (innenfor 1000 kr), stopp
-                low = mid;
-                break;
-            }
             if (v >= 0) {
                 high = mid;
             } else {
                 low = mid;
             }
         }
-
-        // Rund av til nærmeste slider-steg (10 000)
-        const step = 10000;
-        const rounded = Math.ceil(low / step) * step;
-        setState(s => ({ ...s, annualSavings: rounded }));
+        // high er minste heltall som gir finalPortfolioValue >= 0
+        setState(s => ({ ...s, annualSavings: Math.round(high) }));
     }, [state, prognosis.data.hovedstol]);
 
     // Målsøk: finn årlig utbetaling som får porteføljen til å gå akkurat i null i siste utbetalingsår
@@ -3634,14 +3646,10 @@ return () => document.removeEventListener('keydown', onKey);
             high = 10000000; // Maks 10MNOK
         } else {
             // Binærsøk etter største årlige utbetaling som gir ikke-negativ hovedstol i siste år
-            for (let i = 0; i < 50; i++) {
-                const mid = (low + high) / 2;
+            for (let i = 0; i < 100; i++) {
+                const mid = Math.round((low + high) / 2);
+                if (mid === low || mid === high) break;
                 const v = simulateLastPrincipal(mid);
-                if (Math.abs(v) < 1000) {
-                    // Når vi er nær null (innenfor 1000 kr), stopp
-                    low = mid;
-                    break;
-                }
                 if (v >= 0) {
                     low = mid;
                 } else {
@@ -3649,15 +3657,13 @@ return () => document.removeEventListener('keydown', onKey);
                 }
             }
         }
-
-        // Rund av til nærmeste slider-steg for forbruksutbetaling (100000)
-        const step = 100000;
-        const rounded = Math.round(low / step) * step;
+        // low er største heltall som gir finalPortfolioValue >= 0
+        const rounded = Math.round(low);
         setState(s => ({ 
             ...s, 
             desiredAnnualConsumptionPayout: rounded,
-            desiredAnnualWealthTaxPayout: 0,  // Overstyr eventuelt eksisterende verdi
-            goalSeekPayoutResult: rounded  // Lagre resultatet for visning
+            desiredAnnualWealthTaxPayout: 0,
+            goalSeekPayoutResult: rounded
         }));
     }, [state, prognosis.data.hovedstol]);
 
@@ -3693,14 +3699,10 @@ return () => document.removeEventListener('keydown', onKey);
             high = 100000000; // Maks 100MNOK
         } else {
             // Binærsøk etter minste Portefølje I størrelse som gir ikke-negativ hovedstol i siste år
-            for (let i = 0; i < 50; i++) {
-                const mid = (low + high) / 2;
+            for (let i = 0; i < 100; i++) {
+                const mid = Math.round((low + high) / 2);
+                if (mid === low || mid === high) break;
                 const v = simulateLastPrincipal(mid);
-                if (Math.abs(v) < 1000) {
-                    // Når vi er nær null (innenfor 1000 kr), stopp
-                    low = mid;
-                    break;
-                }
                 if (v >= 0) {
                     high = mid;
                 } else {
@@ -3708,14 +3710,12 @@ return () => document.removeEventListener('keydown', onKey);
                 }
             }
         }
-
-        // Rund av til nærmeste 10000
-        const step = 10000;
-        const rounded = Math.round(low / step) * step;
+        // high er minste heltall som gir finalPortfolioValue >= 0
+        const rounded = Math.round(high);
         setState(s => ({ 
             ...s, 
             initialPortfolioSize: rounded,
-            goalSeekPortfolio1Result: rounded  // Lagre resultatet for visning
+            goalSeekPortfolio1Result: rounded
         }));
     }, [state, prognosis.data.hovedstol]);
 
@@ -3818,7 +3818,7 @@ return () => document.removeEventListener('keydown', onKey);
                     tooltip: { enabled: false },
                     title: {
                         display: true,
-                        text: 'Mål og behov',
+                        text: panelTitle,
                         font: { size: 48, weight: 'bold' },
                         color: '#4A6D8C',
                         padding: { top: 10, bottom: 20 }
@@ -3881,7 +3881,7 @@ return () => document.removeEventListener('keydown', onKey);
         [startValuesAllYears, stockPctAllYears]
     );
 
-    // Fordeling: Uttak skal først redusere avkastning, deretter hovedstol. Aksjer kan ikke bli negativ.
+    // Fordeling: Uttak skal først redusere hovedstol (aksjer/renter), deretter avkastning. Avkastningen utbetales til slutt.
     const {
         principalStockSeries,
         principalBondSeries,
@@ -3896,6 +3896,8 @@ return () => document.removeEventListener('keydown', onKey);
         const sparing = prognosis.data.sparing;
         const events = prognosis.data.event_total;
         const netPayout = prognosis.data.nettoUtbetaling; // negative when outflow happens
+        const eventTax = prognosis.data.skatt2 || [];   // negativ (skatt på hendelser)
+        const bondTax = prognosis.data.renteskatt || []; // negativ (løpende renteskatt)
 
         const inflowArr = new Array(len).fill(0);
         const outflowArr = new Array(len).fill(0);
@@ -3903,6 +3905,7 @@ return () => document.removeEventListener('keydown', onKey);
             inflowArr[i] = Math.max(0, (sparing[i] || 0)) + Math.max(0, (events[i] || 0));
             outflowArr[i] = (-Math.min(0, (events[i] || 0))) + (-Math.min(0, (netPayout[i] || 0)));
         }
+        // Skatt betales ved årets start (som i Mål og behov). Kun uttak (hendelser + netto utbetaling) trekkes ved årets slutt.
 
         // Årlig bruttoavkastning pr aktivaklasse
         // Beregn avkastning individuelt for hver portefølje basert på deres faktiske verdi og aksjeandel
@@ -3921,7 +3924,7 @@ return () => document.removeEventListener('keydown', onKey);
         const renteAvkastningAnnual = new Array(len).fill(0);
        
         for (let i = 1; i < len; i++) {
-            // Add savings to Portefølje I (if investment year) - this is the value at start of year
+            // Add savings to Portefølje I (if investment year)
             const isInvestmentYear = (i - 1) < (state.investmentYears || 0);
             if (isInvestmentYear && sparing[i] > 0) {
                 portfolio1Val += sparing[i];
@@ -3933,7 +3936,7 @@ return () => document.removeEventListener('keydown', onKey);
                 portfolio1Val += eventInflow;
             }
            
-            // Bruk simulerte avkastninger for dette året hvis aktivert
+            // Beregn avkastning FØR skatt (som i hovedprognosen)
             let stockRetRateForYear, bondRetRateForYear;
             if (useSimulated && (i - 1) < activeSimulatedReturns.stockReturns.length) {
                 stockRetRateForYear = activeSimulatedReturns.stockReturns[i - 1] / 100;
@@ -3943,36 +3946,39 @@ return () => document.removeEventListener('keydown', onKey);
                 bondRetRateForYear = state.bondReturnRate / 100;
             }
            
-            // Calculate returns individually for each portfolio based on their values at start of year
             const p1StockPct = state.row1StockAllocation || 0;
             const p2StockPct = state.row2StockAllocation || 0;
-            const p3StockPct = 0; // Likviditetsfond is always 0% stocks
            
-            // Portfolio 1 returns (based on value at start of year)
             const p1StockValue = portfolio1Val * (p1StockPct / 100);
             const p1BondValue = portfolio1Val * ((100 - p1StockPct) / 100);
             const p1StockReturn = p1StockValue * (stockRetRateForYear - kpi - fee);
             const p1BondReturn = p1BondValue * (bondRetRateForYear - kpi - fee);
            
-            // Portfolio 2 returns
             const p2StockValue = portfolio2Val * (p2StockPct / 100);
             const p2BondValue = portfolio2Val * ((100 - p2StockPct) / 100);
             const p2StockReturn = p2StockValue * (stockRetRateForYear - kpi - fee);
             const p2BondReturn = p2BondValue * (bondRetRateForYear - kpi - fee);
            
-            // Portfolio 3 returns (Likviditetsfond - always bonds)
             const p3BondReturn = portfolio3Val * (bondRetRateForYear - kpi - fee);
            
-            // Sum up returns
             aksjeAvkastningAnnual[i] = Math.round(p1StockReturn + p2StockReturn);
             renteAvkastningAnnual[i] = Math.round(p1BondReturn + p2BondReturn + p3BondReturn);
            
-            // Update portfolio values with returns for next year's start value
+            // Oppdater porteføljeverdier med avkastning
             portfolio1Val += p1StockReturn + p1BondReturn;
             portfolio2Val += p2StockReturn + p2BondReturn;
             portfolio3Val += p3BondReturn;
            
-            // Handle withdrawals proportionally
+            // Betal skatt ETTER avkastning (som i hovedprognosen)
+            const taxThisYear = Math.abs(eventTax[i] || 0) + Math.abs(bondTax[i] || 0);
+            if (taxThisYear > 0 && (portfolio1Val + portfolio2Val + portfolio3Val) > 0) {
+                const tot = portfolio1Val + portfolio2Val + portfolio3Val;
+                portfolio1Val = Math.max(0, portfolio1Val - taxThisYear * (portfolio1Val / tot));
+                portfolio2Val = Math.max(0, portfolio2Val - taxThisYear * (portfolio2Val / tot));
+                portfolio3Val = Math.max(0, portfolio3Val - taxThisYear * (portfolio3Val / tot));
+            }
+           
+            // Handle withdrawals etter skatt
             const totalOut = outflowArr[i];
             if (totalOut > 0 && (portfolio1Val + portfolio2Val + portfolio3Val) > 0) {
                 const totalPortfolio = portfolio1Val + portfolio2Val + portfolio3Val;
@@ -4021,47 +4027,58 @@ return () => document.removeEventListener('keydown', onKey);
         };
 
         for (let i = 1; i < len; i++) {
-            // 1) Legg til årlig bruttoavkastning på eksisterende avkastning
-            let sRet = stockReturn[i - 1] + (aksjeAvkastningAnnual[i] || 0);
-            let bRet = bondReturn[i - 1] + (renteAvkastningAnnual[i] || 0);
+            let sPrin = Math.max(0, stockPrincipal[i - 1]);
+            let bPrin = Math.max(0, bondPrincipal[i - 1]);
+            let sRet = Math.max(0, stockReturn[i - 1]);
+            let bRet = Math.max(0, bondReturn[i - 1]);
 
-            // 2) Legg til innskudd (inflow) i hovedstol
-            // Sparing skal fordeles iht. Portefølje I sin aksjeandel, ikke totalporteføljens
+            // 1) Legg til innskudd (inflow) i hovedstol
             const savingsAmount = sparing[i] || 0;
             const eventInflow = Math.max(0, (events[i] || 0));
-            const totalInflow = inflowArr[i];
-           
-            // Calculate how much of savings goes to stocks based on Portefølje I allocation
             const portfolio1StockPct = state.row1StockAllocation || 0;
             const savingsToStocks = savingsAmount * (portfolio1StockPct / 100);
             const savingsToBonds = savingsAmount - savingsToStocks;
-           
-            // Events use Portefølje I allocation (same as savings)
             const eventToStocks = eventInflow * (portfolio1StockPct / 100);
             const eventToBonds = eventInflow * ((100 - portfolio1StockPct) / 100);
-           
-            let sPrin = stockPrincipal[i - 1] + savingsToStocks + eventToStocks;
-            let bPrin = bondPrincipal[i - 1] + savingsToBonds + eventToBonds;
+            sPrin += savingsToStocks + eventToStocks;
+            bPrin += savingsToBonds + eventToBonds;
 
-            // 3) Trekk ut uttak: først fra avkastning, deretter fra hovedstol
-            const totalOut = outflowArr[i];
-            // Fra avkastning først
-            const [takeFromSRet, takeFromBRet] = allocateFromTwo(totalOut, sRet, bRet);
-            sRet -= takeFromSRet;
-            bRet -= takeFromBRet;
-            let remainder = totalOut - (takeFromSRet + takeFromBRet);
+            // 2) Legg til årlig bruttoavkastning FØR skatt (som i hovedprognosen)
+            sRet += (aksjeAvkastningAnnual[i] || 0);
+            bRet += (renteAvkastningAnnual[i] || 0);
 
-            if (remainder > 0) {
-                // Deretter fra hovedstol (kan ikke bli negativ)
-                const [takeFromSPrin, takeFromBPrin] = allocateFromTwo(remainder, sPrin, bPrin);
-                sPrin = Math.max(0, sPrin - takeFromSPrin);
-                bPrin = Math.max(0, bPrin - takeFromBPrin);
+            // 3) Betal skatt ETTER avkastning: skatt på hendelser fra aksje, løpende renteskatt fra renter (først hovedstol, deretter avkastning)
+            const eventTaxAmt = Math.abs(eventTax[i] || 0);
+            const bondTaxAmt = Math.abs(bondTax[i] || 0);
+            if (eventTaxAmt > 0) {
+                const takeS = Math.min(sPrin, eventTaxAmt);
+                const takeR = Math.min(sRet, eventTaxAmt - takeS);
+                sPrin -= takeS;
+                sRet -= takeR;
+            }
+            if (bondTaxAmt > 0) {
+                const takeB = Math.min(bPrin, bondTaxAmt);
+                const takeR = Math.min(bRet, bondTaxAmt - takeB);
+                bPrin -= takeB;
+                bRet -= takeR;
             }
 
-            stockReturn[i] = Math.round(Math.max(0, sRet));
-            bondReturn[i] = Math.round(Math.max(0, bRet));
-            stockPrincipal[i] = Math.round(Math.max(0, sPrin));
-            bondPrincipal[i] = Math.round(Math.max(0, bPrin));
+            // 4) Trekk ut uttak (hendelser + netto utbetaling) – etter skatt
+            const totalOut = outflowArr[i];
+            const [takeFromSPrin, takeFromBPrin] = allocateFromTwo(totalOut, sPrin, bPrin);
+            sPrin = Math.max(0, sPrin - takeFromSPrin);
+            bPrin = Math.max(0, bPrin - takeFromBPrin);
+            let remainder = totalOut - (takeFromSPrin + takeFromBPrin);
+            if (remainder > 0) {
+                const [takeFromSRet, takeFromBRet] = allocateFromTwo(remainder, sRet, bRet);
+                sRet = Math.max(0, sRet - takeFromSRet);
+                bRet = Math.max(0, bRet - takeFromBRet);
+            }
+
+            stockReturn[i] = Math.round(sRet);
+            bondReturn[i] = Math.round(bRet);
+            stockPrincipal[i] = Math.round(sPrin);
+            bondPrincipal[i] = Math.round(bPrin);
         }
 
         return {
@@ -4070,7 +4087,7 @@ return () => document.removeEventListener('keydown', onKey);
             stockReturnSeries: stockReturn,
             bondReturnSeries: bondReturn,
         };
-    }, [startValuesAllYears.length, stockPctAllYears, prognosis.data.sparing, prognosis.data.event_total, prognosis.data.nettoUtbetaling, startOfYearStockValues, startOfYearBondValues, state.stockReturnRate, state.bondReturnRate, state.initialPortfolioSize, simButtonActive, activeSimulatedReturns]);
+    }, [startValuesAllYears.length, stockPctAllYears, prognosis.data.sparing, prognosis.data.event_total, prognosis.data.nettoUtbetaling, prognosis.data.skatt2, prognosis.data.renteskatt, startOfYearStockValues, startOfYearBondValues, state.stockReturnRate, state.bondReturnRate, state.initialPortfolioSize, simButtonActive, activeSimulatedReturns]);
 
     // Beregn akkumulert avkastning basert på simulerte avkastninger og aksjeandel
     const accumulatedReturnData = useMemo(() => {
@@ -4145,6 +4162,18 @@ return () => document.removeEventListener('keydown', onKey);
             y: { ...chartOptions.scales.y, stacked: true },
         },
     }), [chartOptions]);
+
+    // Kontroll: Sum Mål og behov = Sum Fordeling (Aksjer + Aksjeavkastning + Renter + Renteavkastning) per år
+    const sumControl2028 = useMemo(() => {
+        const yearStr = '2028';
+        const idx = prognosis.labels ? prognosis.labels.indexOf(yearStr) : -1;
+        if (idx < 0) return null;
+        const d = prognosis.data;
+        const sumMaal = (d.hovedstol[idx] || 0) + (d.avkastning[idx] || 0) + (d.sparing[idx] || 0) + (d.event_total[idx] || 0) + (d.nettoUtbetaling[idx] || 0) + (d.skatt2[idx] || 0) + (d.renteskatt[idx] || 0);
+        const sumFordeling = (principalStockSeries[idx] || 0) + (stockReturnSeries[idx] || 0) + (principalBondSeries[idx] || 0) + (bondReturnSeries[idx] || 0);
+        const aksjerPlusAvk = (principalStockSeries[idx] || 0) + (stockReturnSeries[idx] || 0);
+        return { year: yearStr, sumMaal, sumFordeling, aksjerPlusAvk, match: Math.abs(sumMaal - sumFordeling) < 1 };
+    }, [prognosis.labels, prognosis.data, principalStockSeries, stockReturnSeries, principalBondSeries, bondReturnSeries]);
 
     // Calculate stock portion percentage year by year
     const stockPortionPercentageData = useMemo(() => {
@@ -4363,7 +4392,23 @@ return () => document.removeEventListener('keydown', onKey);
 
                 <div className="relative">
                     <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full">
-                    <h1 className="typo-h1 text-center text-[#4A6D8C] mb-4">Mål og behov</h1>
+                    {editingTitle ? (
+                        <input
+                            ref={titleInputRef}
+                            type="text"
+                            value={panelTitle}
+                            onChange={e => setPanelTitle(e.target.value)}
+                            onBlur={() => setEditingTitle(false)}
+                            onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); if (e.key === 'Escape') { setPanelTitle(MaalOgBehovState.panelTitle || 'Mål og behov'); setEditingTitle(false); } }}
+                            className="typo-h1 text-center text-[#4A6D8C] mb-4 w-full bg-transparent border-b-2 border-[#4A6D8C] outline-none"
+                        />
+                    ) : (
+                        <h1
+                            className="typo-h1 text-center text-[#4A6D8C] mb-4 cursor-pointer hover:opacity-70 transition-opacity"
+                            onDoubleClick={() => setEditingTitle(true)}
+                            title="Dobbelklikk for å endre tittel"
+                        >{panelTitle}</h1>
+                    )}
                     <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
                         <button
                             onClick={() => setShowDisclaimer(true)}
@@ -4684,6 +4729,15 @@ return () => document.removeEventListener('keydown', onKey);
                             <div className={`relative h-[260px]`}>
                                 <Bar options={stackedAllYearsOptions} data={stackedAllYearsData} />
                             </div>
+                            {sumControl2028 != null && (
+                                <div className="mt-4 pt-4 border-t border-[#DDDDDD] text-sm text-[#333333]">
+                                    <div className="font-medium text-[#4A6D8C] mb-1">Kontroll {sumControl2028.year}</div>
+                                    <div>Sum Mål og behov (Hovedstol + Avkastning + Sparing + Hendelser + Netto utbetaling + Skatt på hendelser + Løpende renteskatt) = {new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(sumControl2028.sumMaal)} kr</div>
+                                    <div>Sum Fordeling (Aksjer + Aksjeavkastning + Renter + Renteavkastning) = {new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(sumControl2028.sumFordeling)} kr</div>
+                                    <div>Aksjer + Aksjeavkastning = {new Intl.NumberFormat('nb-NO', { maximumFractionDigits: 0 }).format(sumControl2028.aksjerPlusAvk)} kr</div>
+                                    {sumControl2028.match ? <div className="text-[#66CC99] font-medium mt-1">✓ Summene er like</div> : <div className="text-[#E06B6B] mt-1">Summene avviker</div>}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
