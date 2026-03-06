@@ -19,6 +19,7 @@ const AppState = {
   ],
   incomes: [
     { id: genId(), name: "LØNNSINNTEKT", amount: 1500000 },
+    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
     { id: genId(), name: "UTBYTTER", amount: 0 },
     { id: genId(), name: "Skattefrie inntekter", amount: 0 },
     { id: genId(), name: "Inntektsskatt", amount: 0 },
@@ -118,8 +119,10 @@ function updateAutoTax() {
   const taxItem = AppState.incomes.find(i => i.name === "Inntektsskatt");
   if (taxItem && taxItem._autoTaxEnabled) {
     const wageIncome = AppState.incomes.find(i => i.name === "LØNNSINNTEKT");
-    if (wageIncome) {
-      const calculatedTax = calculateTax(wageIncome.amount);
+    const pensionIncome = AppState.incomes.find(i => i.name === "PENSJONSINNTEKT");
+    const taxableIncome = (wageIncome ? wageIncome.amount : 0) + (pensionIncome ? pensionIncome.amount : 0);
+    if (taxableIncome > 0) {
+      const calculatedTax = calculateTax(taxableIncome);
       taxItem.amount = calculatedTax;
       
       // Oppdater UI hvis elementet eksisterer
@@ -169,8 +172,8 @@ function updateAutoTax() {
     const assets = AppState.assets || [];
     const sumAssets = assets.reduce((s, x) => s + (x.amount || 0), 0);
     
-    // Eierkostnader = sum eiendeler × 4%
-    const calculatedCosts = Math.round(sumAssets * 0.04);
+    // Eierkostnader = sum eiendeler × 2%
+    const calculatedCosts = Math.round(sumAssets * 0.02);
     annualCostsItem.amount = calculatedCosts;
     
     // Oppdater UI hvis elementet eksisterer
@@ -4408,16 +4411,48 @@ function renderWaterfallModule(root) {
   `;
   svg.appendChild(style);
 
+  const defs = document.createElementNS(svgNS, "defs");
+
+  const wfBarShadow = document.createElementNS(svgNS, "filter");
+  wfBarShadow.setAttribute("id", "wfBarShadow");
+  wfBarShadow.setAttribute("x", "-12%"); wfBarShadow.setAttribute("y", "-10%");
+  wfBarShadow.setAttribute("width", "130%"); wfBarShadow.setAttribute("height", "140%");
+  const feSh1 = document.createElementNS(svgNS, "feDropShadow");
+  feSh1.setAttribute("dx", "0"); feSh1.setAttribute("dy", "6");
+  feSh1.setAttribute("stdDeviation", "8");
+  feSh1.setAttribute("flood-color", "#1C2A3A"); feSh1.setAttribute("flood-opacity", "0.12");
+  wfBarShadow.appendChild(feSh1);
+  const feSh2 = document.createElementNS(svgNS, "feDropShadow");
+  feSh2.setAttribute("dx", "0"); feSh2.setAttribute("dy", "2");
+  feSh2.setAttribute("stdDeviation", "3");
+  feSh2.setAttribute("flood-color", "#1C2A3A"); feSh2.setAttribute("flood-opacity", "0.06");
+  wfBarShadow.appendChild(feSh2);
+  defs.appendChild(wfBarShadow);
+
+  const wfPanelShadow = document.createElementNS(svgNS, "filter");
+  wfPanelShadow.setAttribute("id", "wfPanelShadow");
+  wfPanelShadow.setAttribute("x", "-2%"); wfPanelShadow.setAttribute("y", "-2%");
+  wfPanelShadow.setAttribute("width", "104%"); wfPanelShadow.setAttribute("height", "108%");
+  const feP1 = document.createElementNS(svgNS, "feDropShadow");
+  feP1.setAttribute("dx", "0"); feP1.setAttribute("dy", "4");
+  feP1.setAttribute("stdDeviation", "10");
+  feP1.setAttribute("flood-color", "#1C2A3A"); feP1.setAttribute("flood-opacity", "0.06");
+  wfPanelShadow.appendChild(feP1);
+  defs.appendChild(wfPanelShadow);
+
+  svg.appendChild(defs);
+
   const bg = document.createElementNS(svgNS, "rect");
   bg.setAttribute("x", "0"); bg.setAttribute("y", "0");
   bg.setAttribute("width", String(vbW)); bg.setAttribute("height", String(vbH));
-  bg.setAttribute("fill", "#F2F4F7");
+  bg.setAttribute("fill", "#F4F6FA");
   svg.appendChild(bg);
 
   const panel = document.createElementNS(svgNS, "rect");
   panel.setAttribute("x", "12"); panel.setAttribute("y", "12");
   panel.setAttribute("width", String(vbW - 24)); panel.setAttribute("height", String(vbH - 24));
-  panel.setAttribute("rx", "12"); panel.setAttribute("fill", "#FFFFFF"); panel.setAttribute("stroke", "#E8EBF3");
+  panel.setAttribute("rx", "14"); panel.setAttribute("fill", "#FFFFFF"); panel.setAttribute("stroke", "#E2E7F0");
+  panel.setAttribute("filter", "url(#wfPanelShadow)");
   svg.appendChild(panel);
 
   const container = document.createElement("div");
@@ -4638,12 +4673,7 @@ function renderWaterfallModule(root) {
   wrapper.appendChild(container);
   wrapper.appendChild(strip);
 
-  const panelWidthRatio = (vbW - 24) / vbW;
-  const syncStripWidth = () => {
-    const bounds = svg.getBoundingClientRect();
-    if (!bounds.width) return;
-    strip.style.width = `${Math.round(bounds.width * panelWidthRatio)}px`;
-  };
+  const syncStripWidth = () => {};
 
   function syncSliderToNet(netValue) {
     if (!customSlider || !customSliderValue) return;
@@ -4684,23 +4714,23 @@ function renderWaterfallModule(root) {
 
     const state = ensureCashflowRoutingState();
     const previousAllocated = Math.round(state.customAmount || 0);
-    const { totalIncome, costs, net, wage, dividends, otherIncome } = computeAnnualCashflowBreakdown();
+    const { totalIncome, costs, net, wage, pension, dividends, otherIncome } = computeAnnualCashflowBreakdown();
     currentNet = net;
 
-    const padX = 80; const padTop = 70; const padBottom = net < 0 ? 96 : 64; // ekstra plass under baseline ved negativ netto
+    const padX = 80; const padTop = 70; const padBottom = net < 0 ? 96 : 64;
     const chartW = vbW - padX * 2; const chartH = vbH - padTop - padBottom;
 
-    // Bygg trinn, utelat nullverdier
     const steps = [];
     if (wage > 0) steps.push({ type: "up", key: "Lønnsinntekt", value: wage });
+    if (pension > 0) steps.push({ type: "up", key: "Pensjonsinntekt", value: pension });
     if (dividends > 0) steps.push({ type: "up", key: "Utbytter", value: dividends });
     if (otherIncome > 0) steps.push({ type: "up", key: "Skattefrie inntekter", value: otherIncome });
     costs.forEach(c => { if (c.value > 0) steps.push({ type: "down", key: c.key, value: -c.value }); });
     steps.push({ type: "end", key: "Årlig kontantstrøm", value: net });
 
-    // Skaler etter hele spennvidden i den kumulative serien (topp til bunn)
     const tempSteps = [];
     if (wage > 0) tempSteps.push({ type: "up", value: wage, key: "Lønnsinntekt" });
+    if (pension > 0) tempSteps.push({ type: "up", value: pension, key: "Pensjonsinntekt" });
     if (dividends > 0) tempSteps.push({ type: "up", value: dividends, key: "Utbytter" });
     if (otherIncome > 0) tempSteps.push({ type: "up", value: otherIncome, key: "Skattefrie inntekter" });
     (costs || []).forEach(c => { if (c.value > 0) tempSteps.push({ type: "down", value: -c.value, key: c.key }); });
@@ -4718,16 +4748,13 @@ function renderWaterfallModule(root) {
       return { yTop, h: Math.max(2, hRaw) };
     };
 
-    // Farger
-    const cashflowPositive = (getComputedStyle(document.documentElement).getPropertyValue('--BLUE_200') || '#E0EDFF').trim();
+    // Farger – myke, behagelige nyanser
+    const cashflowPositive = '#D6E6F2';
     const blue = "#0A5EDC";
-    // Rødfarger for kostnadssøyler i lys tema
-    const redPalette = ["#F5B5B1", "#F1998F", "#EC7E73", "#E36258", "#D84F47"]; // lys -> dyp
-    const redEnd = "#D84F47"; // sluttstolpe ved negativ kontantstrøm
-    // Grønnpalett for inntekter
-    const greenPalette = ["#B5ECD0", "#7AD9A9", "#34C185", "#0C8F4A"]; // varierte grønntoner
-    // Egen farge for Årlig kontantstrøm (uavhengig av tegn)
-    const netBarColor = (getComputedStyle(document.documentElement).getPropertyValue('--WF_NET_COLOR') || '#DBEAFE').trim();
+    const redPalette = ["#EDCACA", "#E2B3B3", "#D69C9C", "#C98888", "#BD7676"];
+    const redEnd = "#BD7676";
+    const greenPalette = ["#C4E6D4", "#A5D9BC", "#84CCA5", "#68BF90"];
+    const netBarColor = '#D5E2F5';
 
     const colW = Math.max(60, Math.floor(chartW / steps.length) - 10);
     let cursorX = padX;
@@ -4770,11 +4797,9 @@ function renderWaterfallModule(root) {
       rect.setAttribute("y", String(y));
       rect.setAttribute("width", String(colW));
       rect.setAttribute("height", String(Math.max(2, h)));
-      rect.setAttribute("rx", "6");
+      rect.setAttribute("rx", "8");
       rect.setAttribute("fill", fill);
-      rect.setAttribute("fill-opacity", "0.9");
-      rect.setAttribute("stroke", "#E8EBF3");
-      rect.setAttribute("stroke-opacity", "1");
+      rect.setAttribute("filter", "url(#wfBarShadow)");
       svg.appendChild(rect);
 
       const lab = document.createElementNS(svgNS, "text");
@@ -4843,6 +4868,7 @@ function aggregateCashflowBase() {
 
   let incomeTotal = 0;
   let wage = 0;
+  let pension = 0;
   let dividends = 0;
   let otherIncome = 0;
   let annualTax = 0;
@@ -4853,7 +4879,6 @@ function aggregateCashflowBase() {
   incomeItems.forEach((item) => {
     const amount = Number(item.amount) || 0;
     const name = upper(item.name);
-    // Skattefrie inntekter er inntekt, ikke skatt – tell som inntekt i kontantstrømmen
     if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
       annualTax += amount;
       if (amount > 0) {
@@ -4867,7 +4892,8 @@ function aggregateCashflowBase() {
     } else {
       if (amount > 0) {
         incomeTotal += amount;
-        if (/L[ØO]NN/.test(name)) wage += amount;
+        if (/PENSJON/.test(name)) pension += amount;
+        else if (/L[ØO]NN/.test(name)) wage += amount;
         else if (/UTBYT/.test(name)) dividends += amount;
         else otherIncome += amount;
       }
@@ -4876,6 +4902,7 @@ function aggregateCashflowBase() {
 
   return {
     wage,
+    pension,
     dividends,
     otherIncome,
     incomeTotal,
@@ -4908,6 +4935,7 @@ function computeAnnualCashflowBreakdown() {
   const net = base.incomeTotal - totalCosts;
   return {
     wage: base.wage,
+    pension: base.pension,
     dividends: base.dividends,
     otherIncome: base.otherIncome,
     totalIncome: base.incomeTotal,
@@ -6974,7 +7002,7 @@ function getMaalOgBehovSum2026() {
   }
 }
 
-/** Hovedstolen for et gitt år fra Mål og behov-fanen (Hovedstolen i mål og behov). Array: [start/2026, start 2026, start 2027, ...]. Hvis året er utenfor prognosen, returneres 0. */
+/** Total porteføljeverdi for et gitt år fra Mål og behov-fanen (sum av hovedstol, avkastning, sparing, hendelser, netto utbetaling, skatt på hendelser, løpende renteskatt). Array: [start, 2026, 2027, ...]. */
 function getMaalOgBehovHovedstolForYear(yearVal) {
   try {
     const raw = localStorage.getItem("maalOgBehovHovedstolPerYear");
@@ -6982,8 +7010,8 @@ function getMaalOgBehovHovedstolForYear(yearVal) {
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr) || arr.length === 0) return getMaalOgBehovSum2026();
     const year = Number(yearVal);
-    const idx = year === 2026 ? 0 : (year - 2026 + 1);
-    if (idx < 0) return arr[0];
+    const idx = year - 2026 + 1;
+    if (idx < 1) return arr[0];
     if (idx >= arr.length) return 0;
     return Number(arr[idx]) || 0;
   } catch (e) {
@@ -7196,7 +7224,7 @@ function createItemRow(collectionName, item) {
     setRangeBounds = function () {
       if (collectionName === "incomes") {
         const label = String(item.name || name.value || "").toUpperCase();
-        if (/L[ØO]NN|SKATT|UTBYT|SKATTEFRIE\s*INNTEKTER|KOSTNAD/.test(label)) range.max = "10000000";
+        if (/L[ØO]NN|PENSJON|SKATT|UTBYT|SKATTEFRIE\s*INNTEKTER|KOSTNAD/.test(label)) range.max = "10000000";
         else range.max = "50000000";
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
@@ -7241,7 +7269,7 @@ function createItemRow(collectionName, item) {
         // Eksporter manuell justering til Mål og behov (tallet helt til høyre)
         setFormuesskattForMaalOgBehov(item.amount);
       }
-      if (collectionName === "incomes" && (item.name === "LØNNSINNTEKT" || item.name === "UTBYTTER")) updateAutoTax();
+      if (collectionName === "incomes" && (item.name === "LØNNSINNTEKT" || item.name === "PENSJONSINNTEKT" || item.name === "UTBYTTER")) updateAutoTax();
       if (collectionName === "assets") updateAutoTax();
       updateTopSummaries();
     });
@@ -7299,7 +7327,7 @@ function createItemRow(collectionName, item) {
   // For inntekter: legg til wrapper med toggle-knapp, ellers bare legg til amount direkte
   if (collectionName === "incomes") {
     const itemNameUpper = String(item.name || "").toUpperCase();
-    const shouldShowToggle = !["LØNNSINNTEKT", "UTBYTTER", "SKATTEFRIE INNTEKTER"].includes(itemNameUpper);
+    const shouldShowToggle = !["LØNNSINNTEKT", "PENSJONSINNTEKT", "UTBYTTER", "SKATTEFRIE INNTEKTER"].includes(itemNameUpper);
     
     if (shouldShowToggle) {
       // Wrapper for amount og toggle-knapp
@@ -7325,10 +7353,11 @@ function createItemRow(collectionName, item) {
       if (item.name === "Inntektsskatt") {
         toggleInput.addEventListener("change", () => {
           if (toggleInput.checked) {
-            // Beregn skatt basert på lønnsinntekt
             const wageIncome = AppState.incomes.find(i => i.name === "LØNNSINNTEKT");
-            if (wageIncome) {
-              const calculatedTax = calculateTax(wageIncome.amount);
+            const pensionIncome = AppState.incomes.find(i => i.name === "PENSJONSINNTEKT");
+            const taxableIncome = (wageIncome ? wageIncome.amount : 0) + (pensionIncome ? pensionIncome.amount : 0);
+            if (taxableIncome > 0) {
+              const calculatedTax = calculateTax(taxableIncome);
               item.amount = calculatedTax;
               item._autoTaxEnabled = true;
               
@@ -7395,10 +7424,9 @@ function createItemRow(collectionName, item) {
       } else if (item.name === "ÅRLIGE KOSTNADER") {
         toggleInput.addEventListener("change", () => {
           if (toggleInput.checked) {
-            // Beregn eierkostnader basert på sum av alle eiendeler (4%)
             const assets = AppState.assets || [];
             const sumAssets = assets.reduce((s, x) => s + (x.amount || 0), 0);
-            const calculatedCosts = Math.round(sumAssets * 0.04);
+            const calculatedCosts = Math.round(sumAssets * 0.02);
             item.amount = calculatedCosts;
             item._autoTaxEnabled = true;
             
@@ -8849,7 +8877,7 @@ function parseInputText(text) {
             amount: value,
             debtParams: { type: "Annuitetslån", years: 25, rate: 0.04 }
           });
-        } else if (/L[ØO]NN|UTBYT|SKATTEFRIE\s*INNTEKTER|SKATT|KOSTNAD/i.test(upperName)) {
+        } else if (/L[ØO]NN|PENSJON|UTBYT|SKATTEFRIE\s*INNTEKTER|SKATT|KOSTNAD/i.test(upperName)) {
           // Inntekt - sjekk først for å unngå feilklassifisering
           const value = parseValue(valueStr);
           incomes.push({ name: name, amount: value });

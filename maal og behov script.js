@@ -1406,9 +1406,24 @@ function TabContainer() {
     const [showInputModal, setShowInputModal] = useState(false);
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
+    const [isFullscreen, setIsFullscreen] = useState(false);
     const risikoIframeRef = React.useRef(null);
     const pensjonsgapetIframeRef = React.useRef(null);
     const formuesskattIframeRef = React.useRef(null);
+
+    useEffect(() => {
+        const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+        document.addEventListener('fullscreenchange', onFsChange);
+        return () => document.removeEventListener('fullscreenchange', onFsChange);
+    }, []);
+
+    const toggleFullscreen = useCallback(() => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+            document.exitFullscreen().catch(() => {});
+        }
+    }, []);
 
     const tabs = [
         { name: 'Mål og behov', content: <App /> },
@@ -1613,6 +1628,24 @@ function TabContainer() {
                 aria-label="Output"
             >
                 Output
+            </button>
+            <button
+                type="button"
+                className="fixed top-3 z-[100] w-8 h-8 flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
+                style={{ right: '1rem' }}
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
+                title={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
+            >
+                {isFullscreen ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                )}
             </button>
             {showInputModal && (
                 <div className="fixed inset-0 z-[101] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowInputModal(false)}>
@@ -3018,10 +3051,20 @@ function App() {
     
     const prognosis = useMemo(() => calculatePrognosis(state, simButtonActive, activeSimulatedReturns), [state, simButtonActive, activeSimulatedReturns]);
 
-    // Lagre hovedstol per år (Hovedstolen i mål og behov) til T-konto – brukes for «Investeringer Mål og behov» per år
+    // Lagre total porteføljeverdi per år til T-konto – sum av alle komponenter (hovedstol, avkastning, sparing, hendelser, netto utbetaling, skatt på hendelser, løpende renteskatt)
     useEffect(() => {
-        const hovedstol = (prognosis && prognosis.data && prognosis.data.hovedstol) ? prognosis.data.hovedstol : [];
-        try { localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(hovedstol)); } catch (e) {}
+        const d = (prognosis && prognosis.data) ? prognosis.data : {};
+        const hovedstol = d.hovedstol || [];
+        const avkastning = d.avkastning || [];
+        const sparing = d.sparing || [];
+        const event_total = d.event_total || [];
+        const nettoUtbetaling = d.nettoUtbetaling || [];
+        const skatt2 = d.skatt2 || [];
+        const renteskatt = d.renteskatt || [];
+        const totalPerYear = hovedstol.map((h, i) =>
+            Math.round((h || 0) + (avkastning[i] || 0) + (sparing[i] || 0) + (event_total[i] || 0) + (nettoUtbetaling[i] || 0) + (skatt2[i] || 0) + (renteskatt[i] || 0))
+        );
+        try { localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(totalPerYear)); } catch (e) {}
     }, [prognosis]);
 
 // --- Output generation & clipboard helpers --- //
@@ -3154,9 +3197,11 @@ lines.push(`26 Investortype : ${orIngenData(state.investorType)}`);
 lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
 // 28. Skatteberegning
 lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
+// 29. Overskrift
+lines.push(`29 Overskrift : ${panelTitle || 'Mål og behov'}`);
 
 return lines.join('\n');
-}, [state, prognosis]);
+}, [state, prognosis, panelTitle]);
 
 const copyTextToClipboard = useCallback(async (text) => {
 try {
@@ -3285,186 +3330,38 @@ case 18: // Kapitalskatt
 updates.manualBondTaxRate = parseNumber(value);
 break;
 case 19: // Hendelse 1
-if (!updates.events) {
-updates.events = [...(state.events || [])];
-}
-// Ensure event exists
-if (updates.events.length === 0) {
-updates.events[0] = { id: `event-${Date.now()}-1`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true };
-}
-if (suffix === 'a') {
-// Startår
-updates.events[0] = { ...updates.events[0], startAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'b') {
-// Sluttår
-updates.events[0] = { ...updates.events[0], sluttAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'c') {
-// Påvirker innskutt kapital
-updates.events[0] = { ...updates.events[0], addToInvestedCapital: parseBoolean(value) };
-} else if (suffix === 'd') {
-// Type
-updates.events[0] = { ...updates.events[0], type: value || 'Hendelse' };
-} else {
-// Beløp
-const event1Amount = parseNumber(value);
-if (event1Amount !== 0) {
-updates.events[0] = { ...updates.events[0], belop: event1Amount };
-} else {
-// Remove event if amount is 0 and no other meaningful data exists
-const event = updates.events[0];
-if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
-updates.events = updates.events.filter((_, idx) => idx !== 0);
-} else {
-// Keep event but set amount to 0
-updates.events[0] = { ...updates.events[0], belop: 0 };
-}
-}
-}
-break;
 case 20: // Hendelse 2
-if (!updates.events) {
-updates.events = [...(state.events || [])];
-}
-// Ensure event exists
-while (updates.events.length < 2) {
-updates.events.push({ id: `event-${Date.now()}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
-}
-if (suffix === 'a') {
-// Startår
-updates.events[1] = { ...updates.events[1], startAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'b') {
-// Sluttår
-updates.events[1] = { ...updates.events[1], sluttAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'c') {
-// Påvirker innskutt kapital
-updates.events[1] = { ...updates.events[1], addToInvestedCapital: parseBoolean(value) };
-} else if (suffix === 'd') {
-// Type
-updates.events[1] = { ...updates.events[1], type: value || 'Hendelse' };
-} else {
-// Beløp
-const event2Amount = parseNumber(value);
-if (event2Amount !== 0) {
-updates.events[1] = { ...updates.events[1], belop: event2Amount };
-} else {
-// Remove event if amount is 0 and no other meaningful data exists
-const event = updates.events[1];
-if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
-updates.events = updates.events.filter((_, idx) => idx !== 1);
-} else {
-// Keep event but set amount to 0
-updates.events[1] = { ...updates.events[1], belop: 0 };
-}
-}
-}
-break;
 case 21: // Hendelse 3
-if (!updates.events) {
-updates.events = [...(state.events || [])];
-}
-// Ensure event exists
-while (updates.events.length < 3) {
-updates.events.push({ id: `event-${Date.now()}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
-}
-if (suffix === 'a') {
-// Startår
-updates.events[2] = { ...updates.events[2], startAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'b') {
-// Sluttår
-updates.events[2] = { ...updates.events[2], sluttAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'c') {
-// Påvirker innskutt kapital
-updates.events[2] = { ...updates.events[2], addToInvestedCapital: parseBoolean(value) };
-} else if (suffix === 'd') {
-// Type
-updates.events[2] = { ...updates.events[2], type: value || 'Hendelse' };
-} else {
-// Beløp
-const event3Amount = parseNumber(value);
-if (event3Amount !== 0) {
-updates.events[2] = { ...updates.events[2], belop: event3Amount };
-} else {
-// Remove event if amount is 0 and no other meaningful data exists
-const event = updates.events[2];
-if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
-updates.events = updates.events.filter((_, idx) => idx !== 2);
-} else {
-// Keep event but set amount to 0
-updates.events[2] = { ...updates.events[2], belop: 0 };
-}
-}
-}
-break;
 case 22: // Hendelse 4
-if (!updates.events) {
-updates.events = [...(state.events || [])];
+case 23: { // Hendelse 5 (eller gammel 23 = Målsøk utbetaling ved bakoverkompatibilitet)
+if (num === 23 && suffix === '' && label.indexOf('Målsøk utbetaling') !== -1) {
+    updates.goalSeekPayoutResult = parseNumber(value);
+    break;
 }
-// Ensure event exists
-while (updates.events.length < 4) {
-updates.events.push({ id: `event-${Date.now()}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
+const evtIdx = num - 19;
+if (!updates.events) {
+    updates.events = [...(state.events || [])];
+}
+const evtTs = updates._eventParseTs || (updates._eventParseTs = Date.now());
+while (updates.events.length <= evtIdx) {
+    updates.events.push({ id: `event-${evtTs}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
+}
+if (!updates.events[evtIdx] || !updates.events[evtIdx].id) {
+    updates.events[evtIdx] = { id: `event-${evtTs}-${evtIdx}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true, ...(updates.events[evtIdx] || {}) };
 }
 if (suffix === 'a') {
-// Startår
-updates.events[3] = { ...updates.events[3], startAar: parseNumber(value) || START_YEAR };
+    updates.events[evtIdx] = { ...updates.events[evtIdx], startAar: parseNumber(value) || START_YEAR };
 } else if (suffix === 'b') {
-// Sluttår
-updates.events[3] = { ...updates.events[3], sluttAar: parseNumber(value) || START_YEAR };
+    updates.events[evtIdx] = { ...updates.events[evtIdx], sluttAar: parseNumber(value) || START_YEAR };
 } else if (suffix === 'c') {
-// Påvirker innskutt kapital
-updates.events[3] = { ...updates.events[3], addToInvestedCapital: parseBoolean(value) };
+    updates.events[evtIdx] = { ...updates.events[evtIdx], addToInvestedCapital: parseBoolean(value) };
 } else if (suffix === 'd') {
-// Type
-updates.events[3] = { ...updates.events[3], type: value || 'Hendelse' };
+    updates.events[evtIdx] = { ...updates.events[evtIdx], type: value || 'Hendelse' };
 } else {
-// Beløp
-const event4Amount = parseNumber(value);
-if (event4Amount !== 0) {
-updates.events[3] = { ...updates.events[3], belop: event4Amount };
-} else {
-// Remove event if amount is 0 and no other meaningful data exists
-const event = updates.events[3];
-if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
-updates.events = updates.events.filter((_, idx) => idx !== 3);
-} else {
-// Keep event but set amount to 0
-updates.events[3] = { ...updates.events[3], belop: 0 };
-}
-}
+    updates.events[evtIdx] = { ...updates.events[evtIdx], belop: parseNumber(value) };
 }
 break;
-case 23: // Hendelse 5 (eller gammel 23 = Målsøk utbetaling ved bakoverkompatibilitet)
-if (suffix === '' && label.indexOf('Målsøk utbetaling') !== -1) {
-updates.goalSeekPayoutResult = parseNumber(value);
-break;
 }
-if (!updates.events) {
-updates.events = [...(state.events || [])];
-}
-while (updates.events.length < 5) {
-updates.events.push({ id: `event-${Date.now()}-${updates.events.length}`, type: 'Hendelse', belop: 0, startAar: START_YEAR, sluttAar: START_YEAR, addToInvestedCapital: true });
-}
-if (suffix === 'a') {
-updates.events[4] = { ...updates.events[4], startAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'b') {
-updates.events[4] = { ...updates.events[4], sluttAar: parseNumber(value) || START_YEAR };
-} else if (suffix === 'c') {
-updates.events[4] = { ...updates.events[4], addToInvestedCapital: parseBoolean(value) };
-} else if (suffix === 'd') {
-updates.events[4] = { ...updates.events[4], type: value || 'Hendelse' };
-} else {
-const event5Amount = parseNumber(value);
-if (event5Amount !== 0) {
-updates.events[4] = { ...updates.events[4], belop: event5Amount };
-} else {
-const event = updates.events[4];
-if (event.belop === 0 && event.startAar === START_YEAR && event.sluttAar === START_YEAR) {
-updates.events = updates.events.filter((_, idx) => idx !== 4);
-} else {
-updates.events[4] = { ...updates.events[4], belop: 0 };
-}
-}
-}
-break;
 case 24: // Målsøk utbetaling resultat (gammel 23) eller Målsøk Portefølje I (gammel 24)
 if (label.indexOf('utbetaling') !== -1) {
 updates.goalSeekPayoutResult = parseNumber(value);
@@ -3496,13 +3393,19 @@ break;
 case 28: // Skatteberegning
 updates.taxCalculationEnabled = parseBoolean(value);
 break;
+case 29: // Overskrift
+updates._panelTitle = value || 'Mål og behov';
+break;
 }
 }
 });
 
-// Ensure events array is clean
+// Remove empty/placeholder events and clean up temporary parse properties
 if (updates.events) {
-updates.events = updates.events.filter(e => e !== null && e !== undefined);
+delete updates._eventParseTs;
+updates.events = updates.events.filter(e =>
+    e && e.id && (e.belop !== 0 || e.startAar !== START_YEAR || e.sluttAar !== START_YEAR || (e.type && e.type !== 'Hendelse'))
+);
 }
 
 return updates;
@@ -3516,9 +3419,9 @@ return;
 
 try {
 const updates = parseInputText(inputText);
+if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
 setState(prevState => {
 const newState = { ...prevState, ...updates };
-// Update advisoryInputValue if advisoryFeeRate changed
 if (updates.advisoryFeeRate !== undefined) {
 setAdvisoryInputValue(newState.advisoryFeeRate.toFixed(2).replace('.', ','));
 }
@@ -3539,6 +3442,7 @@ useEffect(() => {
         try {
             const updates = parseInputText(text);
             if (Object.keys(updates).length === 0) return false;
+            if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
             setState(prev => {
                 const newState = { ...prev, ...updates };
                 if (updates.advisoryFeeRate !== undefined) setAdvisoryInputValue(newState.advisoryFeeRate.toFixed(2).replace('.', ','));

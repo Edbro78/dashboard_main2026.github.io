@@ -1717,14 +1717,14 @@ p { /* Avsnitt */
 .waterfall-wrapper {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 18px;
   width: 100%;
 }
 .waterfall-canvas {
   position: relative;
   width: 100%;
-  max-width: 1180px;
+  max-width: none;
 }
 .waterfall-quick-action {
   position: absolute;
@@ -1764,19 +1764,21 @@ p { /* Avsnitt */
   border: 1px solid rgba(231, 235, 246, 0.9);
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: nowrap;
   gap: 6px;
   padding: 0 16px;
 }
+.waterfall-strip-label {
+  flex: 0 0 auto;
+  margin-right: auto;
+}
 .waterfall-strip-actions {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 12px;
   flex-wrap: nowrap;
-  flex: 0 0 auto;
-  margin-left: auto;
+  flex: 1 1 auto;
 }
 .waterfall-strip-button {
   appearance: none;
@@ -1871,7 +1873,6 @@ p { /* Avsnitt */
   font-size: 14px;
   font-weight: var(--weight-semibold);
   color: var(--GRAY_TEXT_DARK);
-  flex: 0 0 auto;
   white-space: nowrap;
 }
 .wsb-slider-wrap {
