@@ -279,7 +279,8 @@ const STOCK_ALLOCATION_OPTIONS = [
 
 // --- From services/prognosisCalculator.ts ---
 const populateAnnualStockPercentages = (state) => {
-    const totalSimulatedYears = state.investmentYears + state.payoutYears;
+    const extraDisplayYear = (state.payoutYears > 0) ? 1 : 0;
+    const totalSimulatedYears = state.investmentYears + state.payoutYears + extraDisplayYear;
     const annualStockPercentages = [];
 
     for (let index = 0; index < totalSimulatedYears; index++) {
@@ -327,7 +328,8 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
     const advisoryFeeRate = state.advisoryFeeRate / 100; // Rådgivningshonorar som skal fordeles proporsjonalt
 
     const annualStockPercentages = populateAnnualStockPercentages(state);
-    const totalSimulatedYears = state.investmentYears + state.payoutYears;
+    const extraDisplayYear = (state.payoutYears > 0) ? 1 : 0;
+    const totalSimulatedYears = state.investmentYears + state.payoutYears + extraDisplayYear;
 
     // --- START ROW ("start") BEFORE FIRST YEAR ---
     labels.push('start');
@@ -519,8 +521,8 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         // 5. Handle outflows and calculate taxes
         let annualNetWithdrawalAmountForChart = 0;
        
-        // 5a. Regular annual payouts (taxed in the same year)
-        const isOrdinaryPayoutYear = (i >= state.investmentYears);
+        // 5a. Regular annual payouts (taxed in the same year) - exclude extra display year
+        const isOrdinaryPayoutYear = (i >= state.investmentYears) && (i < state.investmentYears + state.payoutYears);
         const totalDesiredPayout = state.desiredAnnualConsumptionPayout + state.desiredAnnualWealthTaxPayout;
             if (isOrdinaryPayoutYear && totalDesiredPayout > 0) {
             let desiredNet = totalDesiredPayout;
@@ -2051,7 +2053,8 @@ function App() {
         if (simulationKey === 0) return { stockReturns: [], bondReturns: [] };
         
         // Bruk state-verdiene på tidspunktet når simuleringen genereres
-        const totalYears = (state.investmentYears || 0) + (state.payoutYears || 0);
+        const extraDisplayYear = ((state.payoutYears || 0) > 0) ? 1 : 0;
+        const totalYears = (state.investmentYears || 0) + (state.payoutYears || 0) + extraDisplayYear;
         if (totalYears === 0) return { stockReturns: [], bondReturns: [] };
         
         const stockReturns = [];
@@ -2061,7 +2064,7 @@ function App() {
         const stockMean = state.stockReturnRate || 8.0; // Forventet avkastning aksjer
         const bondMean = state.bondReturnRate || 5.0; // Forventet avkastning renter
         
-        // Simuler for nøyaktig totalYears antall år
+        // Simuler for nøyaktig totalYears antall år (inkl. ekstra visningsår)
         for (let i = 0; i < totalYears; i++) {
             // Simuler avkastning for aksjer og renter
             const simulatedStockReturn = generateNormalRandom(stockMean, stockStdDev);
@@ -3517,7 +3520,7 @@ return () => document.removeEventListener('keydown', onKey);
         setState(s => ({ ...s, annualSavings: Math.round(high) }));
     }, [state, prognosis.data.hovedstol]);
 
-    // Målsøk: finn årlig utbetaling som får porteføljen til å gå akkurat i null i siste utbetalingsår
+    // Målsøk: finn årlig utbetaling som får porteføljen til å gå akkurat i null i siste utbetalingsår (inkl. ekstra visningsår med skatt)
     const goalSeekAnnualPayout = useCallback(() => {
         // Hvis ingen utbetalingsår, gjør ingenting
         const hasPayoutYears = (state.payoutYears || 0) > 0;
@@ -3529,8 +3532,6 @@ return () => document.removeEventListener('keydown', onKey);
                 desiredAnnualConsumptionPayout: consumptionPayoutValue,
                 desiredAnnualWealthTaxPayout: 0  // Sett hele beløpet i forbruksutbetaling
             }, false, null);
-            // Bruk sluttverdien etter avkastning og uttak i siste utbetalingsår
-            // Dette sikrer at porteføljen går til null etter det spesifiserte antall år
             return p.finalPortfolioValue;
         };
 
@@ -3545,14 +3546,14 @@ return () => document.removeEventListener('keydown', onKey);
             attempts++;
         }
 
-        // Hvis selv enorme verdier holder, bruk det som øvre grense
         if (last >= 0) {
             high = 10000000; // Maks 10MNOK
         } else {
-            // Binærsøk etter største årlige utbetaling som gir ikke-negativ hovedstol i siste år
-            for (let i = 0; i < 100; i++) {
-                const mid = Math.round((low + high) / 2);
-                if (mid === low || mid === high) break;
+            // Binærsøk med flyttall for nøyaktig resultat (unngår at saldo blir negativ pga heltallsavrunding)
+            const tolerance = 0.01; // 1 øre
+            for (let i = 0; i < 150; i++) {
+                if (high - low <= tolerance) break;
+                const mid = (low + high) / 2;
                 const v = simulateLastPrincipal(mid);
                 if (v >= 0) {
                     low = mid;
@@ -3561,13 +3562,13 @@ return () => document.removeEventListener('keydown', onKey);
                 }
             }
         }
-        // low er største heltall som gir finalPortfolioValue >= 0
-        const rounded = Math.round(low);
+        // Bruk lav verdi avrundet til 2 desimaler slik at saldo ikke blir negativ
+        const result = Math.round(low * 100) / 100;
         setState(s => ({ 
             ...s, 
-            desiredAnnualConsumptionPayout: rounded,
+            desiredAnnualConsumptionPayout: result,
             desiredAnnualWealthTaxPayout: 0,
-            goalSeekPayoutResult: rounded
+            goalSeekPayoutResult: result
         }));
     }, [state, prognosis.data.hovedstol]);
 
@@ -3999,7 +4000,8 @@ return () => document.removeEventListener('keydown', onKey);
             return { labels: [], indexValues: [], percentValues: [], krValues: [] };
         }
 
-        const totalYears = state.investmentYears + state.payoutYears;
+        const extraDisplayYear = (state.payoutYears > 0) ? 1 : 0;
+        const totalYears = state.investmentYears + state.payoutYears + extraDisplayYear;
         const labels = ['start', ...Array.from({ length: totalYears }, (_, i) => START_YEAR + i)];
         const indexValues = [];
         const percentValues = [];
@@ -4997,7 +4999,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                             <div className="chart-container">
                                 <Bar 
                                     data={{
-                                        labels: Array.from({ length: (state.investmentYears || 0) + (state.payoutYears || 0) }, (_, i) => START_YEAR + i),
+                                        labels: Array.from({ length: (state.investmentYears || 0) + (state.payoutYears || 0) + ((state.payoutYears || 0) > 0 ? 1 : 0) }, (_, i) => START_YEAR + i),
                                         datasets: [
                                             {
                                                 label: 'Aksjer (Std.avv 12%)',
