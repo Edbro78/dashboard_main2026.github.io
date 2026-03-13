@@ -9,9 +9,9 @@ const AppState = {
   assets: [
     { id: genId(), name: "Bank", amount: 2000000, noRename: true },
     { id: genId(), name: "Fast eiendom", amount: 10000000, noRename: true },
-    { id: genId(), name: "Fritidseiendom", amount: 2000000, assetType: "eiendom", noRename: true },
-    { id: genId(), name: "Sekundæreiendom", amount: 3000000, assetType: "eiendom", noRename: true },
-    { id: genId(), name: "Tomt", amount: 3000000, assetType: "eiendom", noRename: true },
+    { id: genId(), name: "Fritidseiendom", amount: 2000000, assetType: "fritidseiendom", noRename: true },
+    { id: genId(), name: "Sekundæreiendom", amount: 3000000, assetType: "sekundaereiendom", noRename: true },
+    { id: genId(), name: "Tomt", amount: 3000000, assetType: "tomt", noRename: true },
     { id: genId(), name: "Investeringer Mål og behov", amount: 0, assetType: "investeringer", noDelete: true }
   ],
   debts: [
@@ -604,6 +604,43 @@ function initTKontoDashboard() {
 
 // Expose initTKontoDashboard globally so it can be called from React component
 window.initTKontoDashboard = initTKontoDashboard;
+// For Oppsummeringsrapport: eiendeler og finansiering per år
+window.getTKontoAssetSegments = getTKontoAssetSegments;
+window.getTKontoFinancingSegments = getTKontoFinancingSegments;
+/** Returnerer årlig kontantstrøm for et gitt år (brukes i Oppsummeringsrapport). */
+window.getTKontoCashflowForYear = function (yearVal) {
+  try {
+    var incomes = AppState.incomes || [];
+    var kpiRate = Number(AppState.expectations && AppState.expectations.kpi) || 0;
+    var inflation = Math.max(0, kpiRate) / 100;
+    var yearsFromStart = Math.max(0, Number(yearVal) - 2026);
+    var inflationFactor = Math.pow(1 + inflation, yearsFromStart);
+    var totalIncome = 0;
+    var totalCosts = 0;
+    var upper = function (s) { return String(s || "").toUpperCase(); };
+    incomes.forEach(function (item) {
+      var baseAmount = Number(item.amount) || 0;
+      if (baseAmount <= 0) return;
+      var adjustedAmount = baseAmount * inflationFactor;
+      var name = upper(item.name);
+      if ((/SKATT|KOSTNAD/.test(name)) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
+        totalCosts += adjustedAmount;
+      } else {
+        totalIncome += adjustedAmount;
+      }
+    });
+    var debts = AppState.debts || [];
+    var annualDebtPayment = 0;
+    var elapsed = Math.max(0, Number(yearVal) - 2026);
+    debts.forEach(function (debt) {
+      var debtProjection = projectDebtYear(debt, elapsed);
+      annualDebtPayment += debtProjection.payment || 0;
+    });
+    return Math.round(totalIncome - totalCosts - annualDebtPayment);
+  } catch (e) {
+    return 0;
+  }
+};
 
 /** Returnerer det konkrete tallet som står til høyre for Formuesskatt i T-konto (aldri finn på eget tall). */
 window.getTKontoFormuesskatt = function () {
@@ -1407,22 +1444,31 @@ function renderExpectationsModule(root) {
 // Dette sikrer konsistent fargebruk i både T-konto og Treemap (samme som TKONTO_CHART_COLORS)
 function getAssetColorByName(name, assetType) {
   const U = String(name || "").toUpperCase();
-  
-  // Sjekk først assetType (for eiendeler opprettet via knapper)
-  if (assetType === "eiendom") return "#85ACED"; // Fast eiendom
-  if (assetType === "investeringer") return "#B4C6F4"; // Investeringer
-  if (assetType === "bilbat") return "#00ACEC"; // Bil/Båt
-  if (assetType === "andre") return "#2C405B"; // Andre eiendeler
-  
-  // Deretter sjekk navn (for bakoverkompatibilitet)
+  const nameStr = String(name || "").trim();
+
+  // Spesifikt «Investeringer mål og behov» (standardraden) → egen farge #4E7C9D
+  if (/investeringer\s*mål\s*og\s*behov/i.test(nameStr)) return "#4E7C9D";
+
+  // Sjekk assetType (kategori lagres og brukes også etter navnendring, farger fra S&P-palett)
+  if (assetType === "fritidseiendom") return "#99D9F2";   // Cyan 40
+  if (assetType === "sekundaereiendom") return "#002D72"; // Blue
+  if (assetType === "tomt") return "#CCECF9";             // Cyan 20
+  if (assetType === "eiendom") return "#85ACED";          // Fast eiendom (og nye «Legg til Fast eiendom»)
+  if (assetType === "investeringer") return "#B4C6F4";     // Investeringer (øvrige)
+  if (assetType === "bilbat") return "#00ACEC";            // Bil/Båt
+  if (assetType === "andre") return "#2C405B";             // Andre eiendeler
+
+  // Deretter sjekk navn (for bakoverkompatibilitet når assetType mangler)
   if (/^BANK$/i.test(U)) return "#5A8BA2"; // Bank
   if (/^FAST\s*EIENDOM$/i.test(U)) return "#85ACED"; // Fast eiendom
-  if (/^FRITIDSEIENDOM$/i.test(U) || /^SEKUNDÆREIENDOM$/i.test(U) || /^TOMT$/i.test(U)) return "#85ACED"; // Fritidseiendom, Sekundæreiendom, Tomt = Fast eiendom
+  if (/^FRITIDSEIENDOM$/i.test(U)) return "#99D9F2";  // Fritidseiendom
+  if (/^SEKUNDÆREIENDOM$/i.test(U)) return "#002D72"; // Sekundæreiendom
+  if (/^TOMT$/i.test(U)) return "#CCECF9";             // Tomt
   if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#85ACED";
-  if (/^INVESTERINGER$/i.test(U) || /MÅL\s*OG\s*BEHOV/i.test(U)) return "#B4C6F4"; // Investeringer
+  if (/^INVESTERINGER$/i.test(U)) return "#B4C6F4"; // Andre investeringslinjer
   if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#00ACEC"; // Bil/Båt
   if (/^ANDRE\s*EIENDELER$/i.test(U)) return "#2C405B"; // Andre eiendeler
-  
+
   // Fallback
   return "#2C405B";
 }
@@ -1468,7 +1514,7 @@ function computeAssetProjection(yearVal) {
     // Sjekk først assetType (for eiendeler opprettet via knapper), deretter navn (for bakoverkompatibilitet)
     const isFastEiendom = /^FAST\s*EIENDOM$/i.test(name);
     const isEiendom = /^EIENDOM$/i.test(name);
-    const isEiendomByType = a.assetType === "eiendom";
+    const isEiendomByType = ["eiendom", "fritidseiendom", "sekundaereiendom", "tomt"].indexOf(a.assetType) >= 0;
     if (isLiquidity) rate = rLikv;
     else if (isFastEiendom || isEiendom || isEiendomByType) rate = rEiend;
     else if (isInvestment || a.assetType === "investeringer") rate = rInv;
@@ -5238,7 +5284,11 @@ function closeCashflowForecastModal() {
 var TKONTO_CHART_COLORS = {
   BANK: "#5A8BA2",
   "FAST EIENDOM": "#85ACED",
-  "INVESTERINGER MÅL OG BEHOV": "#B4C6F4",
+  FRITIDSEIENDOM: "#99D9F2",   // S&P Cyan 40
+  SEKUNDÆREIENDOM: "#002D72",  // S&P Blue
+  TOMT: "#CCECF9",             // S&P Cyan 20
+  "INVESTERINGER MÅL OG BEHOV": "#4E7C9D",  // Spesifikk farge for standardraden
+  "INVESTERINGER": "#B4C6F4",                // Øvrige investeringslinjer
   "BIL/BÅT": "#00ACEC",
   "ANDRE EIENDELER": "#2C405B",
   EGENKAPITAL: "#A7EDBD",
@@ -5247,10 +5297,14 @@ var TKONTO_CHART_COLORS = {
 
 function getTKontoColorForAsset(name) {
   var k = String(name || "").toUpperCase();
+  var nameStr = String(name || "").trim();
   if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
-  // Fast eiendom inkluderer: Fast eiendom, Fritidseiendom, Sekundæreiendom, Tomt (samme farge og forventet avkastning)
-  if (/^FAST\s*EIENDOM$/i.test(k) || /^FRITIDSEIENDOM$/i.test(k) || /^SEKUNDÆREIENDOM$/i.test(k) || /^TOMT$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
-  if (/INVESTERINGER|MÅL\s*OG\s*BEHOV/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
+  if (/^FAST\s*EIENDOM$/i.test(k)) return TKONTO_CHART_COLORS["FAST EIENDOM"];
+  if (/^FRITIDSEIENDOM$/i.test(k)) return TKONTO_CHART_COLORS.FRITIDSEIENDOM;
+  if (/^SEKUNDÆREIENDOM$/i.test(k)) return TKONTO_CHART_COLORS.SEKUNDÆREIENDOM;
+  if (/^TOMT$/i.test(k)) return TKONTO_CHART_COLORS.TOMT;
+  if (/investeringer\s*mål\s*og\s*behov/i.test(nameStr)) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
+  if (/INVESTERINGER/i.test(k)) return TKONTO_CHART_COLORS["INVESTERINGER"];
   if (/^BIL\/BÅT$/i.test(k) || /^BIL\s*BÅT$/i.test(k)) return TKONTO_CHART_COLORS["BIL/BÅT"];
   if (/^ANDRE\s*EIENDELER$/i.test(k)) return TKONTO_CHART_COLORS["ANDRE EIENDELER"];
   return TKONTO_CHART_COLORS["ANDRE EIENDELER"];
@@ -5350,12 +5404,15 @@ function buildTKontoBarChart(container, yearVal) {
   var wrap = document.createElement("div");
   wrap.className = "tkonto-chart-wrap";
 
+  var shy = "\u00AD"; // myk bindestrek – bryt som "Sekundær-eiendom", ikke midt i ordet
   function formatTKontoLabel(key) {
     var k = String(key || "").trim();
     var u = k.toUpperCase();
     if (/INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(u)) return "Investeringer<br>mål og behov";
     if (/^FAST\s*EIENDOM$/i.test(u)) return "Fast eiendom";
     if (/^BANK$/i.test(u)) return "Bank";
+    if (/^FRITIDSEIENDOM$/i.test(u)) return "Fritids" + shy + "eiendom";
+    if (/^SEKUNDÆREIENDOM$/i.test(u)) return "Sekundær" + shy + "eiendom";
     if (/^EGENKAPITAL$/i.test(u)) return "Egenkapital";
     if (/^GJELD$/i.test(u)) return "Gjeld";
     if (/^PRIVAT$/i.test(k)) return "Privat";
@@ -7058,7 +7115,15 @@ function createItemRow(collectionName, item) {
   // Sett assetType basert på navn hvis det ikke allerede er satt (for bakoverkompatibilitet)
   if (collectionName === "assets" && !item.assetType) {
     const nameUpper = String(item.name || "").toUpperCase();
-    if (/^EIENDOM$/i.test(item.name) && !/FAST/i.test(nameUpper)) {
+    if (/^FAST\s*EIENDOM$/i.test(nameUpper)) {
+      item.assetType = "eiendom";
+    } else if (/^FRITIDSEIENDOM$/i.test(nameUpper)) {
+      item.assetType = "fritidseiendom";
+    } else if (/^SEKUNDÆREIENDOM$/i.test(nameUpper)) {
+      item.assetType = "sekundaereiendom";
+    } else if (/^TOMT$/i.test(nameUpper)) {
+      item.assetType = "tomt";
+    } else if (/^EIENDOM$/i.test(item.name) && !/FAST/i.test(nameUpper)) {
       item.assetType = "eiendom";
     } else if (/^INVESTERINGER$/i.test(nameUpper) || /INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(nameUpper)) {
       item.assetType = "investeringer";
@@ -7235,7 +7300,7 @@ function createItemRow(collectionName, item) {
         const originalLabel = String(originalName || "").toUpperCase();
         const assetType = item.assetType;
         const isInvestment = assetType === "investeringer" || /^INVESTERINGER$/i.test(label) || /^INVESTERINGER$/i.test(originalLabel);
-        const isEiendom = assetType === "eiendom" || /^EIENDOM$/i.test(label) && !/FAST/i.test(label);
+        const isEiendom = assetType === "eiendom" || assetType === "fritidseiendom" || assetType === "sekundaereiendom" || assetType === "tomt" || (/^EIENDOM$/i.test(label) && !/FAST/i.test(label));
         const isFastEiendom = /^FAST\s*EIENDOM$/i.test(label);
         const isAndreEiendeler = assetType === "andre" || /^ANDRE\s*EIENDELER$/i.test(label);
         if (/^BANK$/i.test(label)) range.max = "100000000";
@@ -9003,9 +9068,15 @@ function parseInputText(text) {
         asset.assetType = assetTypeMap.get(a.name);
       } else {
         // Fallback: Sett assetType basert på navn (for bakoverkompatibilitet)
-        if (/^EIENDOM$/i.test(a.name) && !/FAST/i.test(a.name)) {
+        if (/^FAST\s*EIENDOM$/i.test(upperName)) {
           asset.assetType = "eiendom";
-        } else if (/^FRITIDSEIENDOM$/i.test(upperName) || /^SEKUNDÆREIENDOM$/i.test(upperName) || /^TOMT$/i.test(upperName)) {
+        } else if (/^FRITIDSEIENDOM$/i.test(upperName)) {
+          asset.assetType = "fritidseiendom";
+        } else if (/^SEKUNDÆREIENDOM$/i.test(upperName)) {
+          asset.assetType = "sekundaereiendom";
+        } else if (/^TOMT$/i.test(upperName)) {
+          asset.assetType = "tomt";
+        } else if (/^EIENDOM$/i.test(a.name) && !/FAST/i.test(a.name)) {
           asset.assetType = "eiendom";
         } else if (/^INVESTERINGER$/i.test(upperName)) {
           asset.assetType = "investeringer";

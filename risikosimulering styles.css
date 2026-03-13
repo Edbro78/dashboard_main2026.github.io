@@ -1,6 +1,6 @@
 /* ========================================
-   Portfolio Insight Dashboard
-   Design System - Mål og behov (Whitney, teal #66CCDD, heading #4A6D8C)
+   Portfolio Insight Dashboard – Risikosimulering
+   Design System: S&P Wealth Management (Whitney, Dark Blue #002359, Blue #002D72, Cyan 40 #99D9F2)
    ======================================== */
 
 /* Whitney @font-face (full set som Mål og behov) */
@@ -10,75 +10,79 @@
 @font-face { font-family: 'Whitney'; src: local('Whitney Book'), local('Whitney-Book'), local('Whitney Light'); font-style: normal; font-weight: 400; font-display: swap; }
 @font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
 
-/* CSS Variables - Mål og behov palette */
+/* CSS Variables - S&P Wealth Management palette */
 :root {
-  --background: #f5f5f5;
-  --foreground: #333333;
+  /* S&P offisiell palett */
+  --sp-background: #F5F3F3;
+  --sp-foreground: #333333;
+  --sp-dark-blue: #002359;
+  --sp-blue: #002D72;
+  --sp-cyan-40: #99D9F2;
+  --sp-cyan-20: #CCECF9;
+  --sp-border: #CECCCC;
+
+  --background: var(--sp-background);
+  --foreground: var(--sp-foreground);
   --card: #ffffff;
-  --card-foreground: #333333;
+  --card-foreground: var(--sp-foreground);
   --popover: #ffffff;
-  --popover-foreground: #333333;
-  --primary: #3388CC;
-  --primary-foreground: #ffffff;
+  --popover-foreground: var(--sp-foreground);
+  --primary: var(--sp-blue);
+  --primary-foreground: var(--sp-cyan-40);
   --secondary: #f9f9f9;
-  --secondary-foreground: #333333;
+  --secondary-foreground: var(--sp-foreground);
   --muted: #f9f9f9;
   --muted-foreground: #666666;
-  --accent: #f0f9fa;
-  --accent-foreground: #4A6D8C;
+  --accent: var(--sp-cyan-20);
+  --accent-foreground: var(--sp-blue);
   --destructive: #CC4B4B;
   --destructive-foreground: #ffffff;
-  --border: #DDDDDD;
-  --input: #DDDDDD;
-  --ring: #66CCDD;
-  --chart-1: #88CCEE;
-  --chart-2: #66CCDD;
-  --chart-3: #3388CC;
-  --chart-4: #4A6D8C;
-  --chart-5: #333333;
+  --border: var(--sp-border);
+  --input: var(--sp-border);
+  --ring: var(--sp-cyan-40);
+  --chart-1: var(--sp-cyan-40);
+  --chart-2: var(--sp-cyan-20);
+  --chart-3: var(--sp-blue);
+  --chart-4: var(--sp-dark-blue);
+  --chart-5: var(--sp-foreground);
   
-  /* Legacy color mappings */
-  --dark-blue: #4A6D8C;
-  --blue: #3388CC;
-  --cyan-40: #66CCDD;
-  --cyan-20: #f0f9fa;
-  --light-grey: #f5f5f5;
+  --dark-blue: var(--sp-blue);
+  --blue: var(--sp-blue);
+  --cyan-40: var(--sp-cyan-40);
+  --cyan-20: var(--sp-cyan-20);
+  --light-grey: var(--sp-background);
   --white: #ffffff;
-  --coal: #333333;
-  --blue-60: #3388CC;
-  --blue-15: #DDDDDD;
+  --coal: var(--sp-foreground);
+  --blue-60: var(--sp-blue);
+  --blue-15: var(--sp-border);
   --coral: #CC4B4B;
-  --cyan: #66CCDD;
+  --cyan: var(--sp-cyan-40);
   
-  /* Status colors */
   --success: #0C8F4A;
-  --success-light: #f0f9fa;
-  --warning: #88CCEE;
-  --warning-light: #f0f9fa;
+  --success-light: var(--sp-cyan-20);
+  --warning: var(--sp-cyan-40);
+  --warning-light: var(--sp-cyan-20);
   --danger: #CC4B4B;
   --danger-light: #FDE8E7;
   
-  /* Chart Colors - Mål og behov */
-  --chart-dark-blue: #4A6D8C;
-  --chart-yale-blue: #4A6D8C;
-  --chart-violet-blue: #3388CC;
-  --chart-crayola-blue: #66CCDD;
-  --chart-jordy-blue: #88CCEE;
-  --chart-lavender: #f0f9fa;
+  --chart-dark-blue: var(--sp-dark-blue);
+  --chart-yale-blue: var(--sp-blue);
+  --chart-violet-blue: var(--sp-blue);
+  --chart-crayola-blue: var(--sp-cyan-40);
+  --chart-jordy-blue: var(--sp-cyan-40);
+  --chart-lavender: var(--sp-cyan-20);
   
-  /* Asset class colors */
-  --stocks-color: #88CCEE;
-  --stocks-light: #f0f9fa;
-  --risikofri-color: #4A6D8C;
-  --risikofri-light: #f0f9fa;
-  --highyield-color: #66CCDD;
-  --highyield-light: #f0f9fa;
+  --stocks-color: var(--sp-cyan-40);
+  --stocks-light: var(--sp-cyan-20);
+  --risikofri-color: var(--sp-blue);
+  --risikofri-light: var(--sp-cyan-20);
+  --highyield-color: var(--sp-cyan-40);
+  --highyield-light: var(--sp-cyan-20);
   
-  /* Portfolio colors */
-  --current-color: #4A6D8C;
-  --current-light: #f0f9fa;
-  --new-color: #66CCDD;
-  --new-light: #f0f9fa;
+  --current-color: var(--sp-blue);
+  --current-light: var(--sp-cyan-20);
+  --new-color: var(--sp-cyan-40);
+  --new-light: var(--sp-cyan-20);
   
   /* Font families - Whitney som Mål og behov */
   --font-sans: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -230,8 +234,8 @@ body {
     font-size: clamp(1.5rem, 2.5vw, 2.25rem);
     line-height: 1.1;
     letter-spacing: 0;
-    color: #4A6D8C;
-    text-shadow: 0 0 24px rgba(74, 109, 140, 0.18);
+    color: var(--sp-blue);
+    text-shadow: 0 0 24px rgba(0, 45, 114, 0.18);
 }
 
 .header-info {
@@ -271,9 +275,9 @@ body {
 }
 
 .hent-portefolje-btn.active {
-    background: #66CCDD;
-    color: white;
-    border-color: #66CCDD;
+    background: var(--sp-cyan-40);
+    color: var(--sp-dark-blue);
+    border-color: var(--sp-cyan-40);
 }
 
 .info-badge {
@@ -424,7 +428,7 @@ body {
 .period-btn:hover {
     background: var(--accent);
     color: var(--accent-foreground);
-    border-color: #66CCDD;
+    border-color: var(--sp-cyan-40);
     box-shadow: var(--shadow-md);
 }
 
@@ -534,7 +538,7 @@ body {
 .input-card h3 {
     font-size: var(--text-sm);
     font-weight: 700;
-    color: var(--dark-blue);
+    color: var(--sp-blue);
 }
 
 .card-subtitle {
@@ -740,7 +744,7 @@ body {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #66CCDD;
+    background: var(--sp-cyan-40);
     border: 2px solid white;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
@@ -755,7 +759,7 @@ body {
     width: 20px;
     height: 20px;
     border-radius: 50%;
-    background: #66CCDD;
+    background: var(--sp-cyan-40);
     border: 2px solid white;
     cursor: pointer;
 }
@@ -1596,19 +1600,19 @@ body {
     align-items: center;
     gap: var(--space-xs);
     padding: var(--space-xs) var(--space-sm);
-    background: #f0f9fa;
-    border: 1px solid #66CCDD;
+    background: var(--sp-cyan-20);
+    border: 1px solid var(--sp-cyan-40);
     border-radius: var(--radius-md);
     cursor: pointer;
     font-family: inherit;
     font-size: var(--text-xs);
     font-weight: 500;
-    color: #4A6D8C;
+    color: var(--sp-blue);
     transition: all var(--transition-fast);
 }
 
 .reset-zoom-btn:hover {
-    background: rgba(102, 204, 221, 0.25);
+    background: rgba(153, 217, 242, 0.35);
 }
 
 .reset-zoom-btn svg {
@@ -1821,8 +1825,8 @@ body {
 }
 
 .info-card.highlight {
-    background: linear-gradient(135deg, #f0f9fa 0%, var(--secondary) 100%);
-    border: 2px solid #66CCDD;
+    background: linear-gradient(135deg, var(--sp-cyan-20) 0%, var(--secondary) 100%);
+    border: 2px solid var(--sp-cyan-40);
 }
 
 .info-icon {
@@ -2355,7 +2359,7 @@ body {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: #66CCDD;
+    background: var(--sp-cyan-40);
     border: 2px solid white;
     border-radius: 50%;
     cursor: pointer;
@@ -2368,7 +2372,7 @@ body {
 
 .year-slider::-webkit-slider-thumb:hover,
 .amount-slider::-webkit-slider-thumb:hover {
-    background: #3388CC;
+    background: var(--sp-blue);
     border-color: white;
     box-shadow: var(--shadow-lg);
     transform: scale(1.1);
@@ -2378,7 +2382,7 @@ body {
 .amount-slider::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: #66CCDD;
+    background: var(--sp-cyan-40);
     border: 2px solid white;
     border-radius: 50%;
     cursor: pointer;
@@ -2391,7 +2395,7 @@ body {
 
 .year-slider::-moz-range-thumb:hover,
 .amount-slider::-moz-range-thumb:hover {
-    background: #3388CC;
+    background: var(--sp-blue);
     border-color: white;
     box-shadow: var(--shadow-lg);
     transform: scale(1.1);
@@ -2808,15 +2812,15 @@ body {
 }
 
 .year-by-year-table tbody tr.negative-year-row {
-    background-color: #f0f9fa;
+    background-color: var(--sp-cyan-20);
 }
 
 .year-by-year-table tbody tr.negative-year-row:nth-child(even) {
-    background-color: #f0f9fa;
+    background-color: var(--sp-cyan-20);
 }
 
 .year-by-year-table tbody tr.negative-year-row:hover {
-    background-color: rgba(102, 204, 221, 0.25);
+    background-color: rgba(153, 217, 242, 0.35);
 }
 
 @media (max-width: 768px) {

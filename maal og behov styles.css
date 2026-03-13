@@ -1,5 +1,19 @@
     /* Custom styles for the investment prognosis calculator */
 
+    /* S&P Wealth Management fargevariabler (offisiell palett) */
+    :root {
+        --sp-background: #F5F3F3;   /* Light Grey */
+        --sp-foreground: #333333;   /* Coal */
+        --sp-dark-blue: #002359;    /* Dark Blue */
+        --sp-blue: #002D72;         /* Blue */
+        --sp-cyan-40: #99D9F2;      /* Cyan 40 */
+        --sp-cyan-20: #CCECF9;      /* Cyan 20 */
+        --sp-border: #CECCCC;       /* Outline border */
+        --thumb-color: #99D9F2;     /* Sliders og interaksjoner */
+        /* Samme farge som fanetekst (Risikosimulering m.fl.) og panel-tittel «Mål og behov» */
+        --tab-and-title-color: #4a5568;
+    }
+
     /* Typography: Whitney setup according to spec */
     @font-face { font-family: 'Whitney'; src: local('Whitney Black'), local('Whitney-Black'), local('Whitney Black Regular'); font-style: normal; font-weight: 900; font-display: swap; }
     @font-face { font-family: 'Whitney'; src: local('Whitney Bold'), local('Whitney-Bold'); font-style: normal; font-weight: 700; font-display: swap; }
@@ -8,7 +22,14 @@
     @font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
 
     /* Base font */
-    body, .font-sans { font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-weight: 400; line-height: 1.5; }
+    body,
+    .font-sans {
+        font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        font-weight: 400;
+        line-height: 1.5;
+        background-color: var(--sp-background);
+        color: var(--sp-foreground);
+    }
 
     /* Headings (Overskrifter) */
     :root { --heading-scale: 0.42; --label-scale: 0.7; }
@@ -23,8 +44,19 @@
     .panel .typo-h1,
     .panel .typo-h2 { margin-top: 0; }
 
+    /* Panel-tittel «Mål og behov» – samme farge som fanetekst (én kilde: --tab-and-title-color) */
+    .maal-panel-title,
+    .maal-panel-title.typo-h1 { color: var(--tab-and-title-color) !important; }
+    .maal-panel-title-editable { border-color: var(--tab-and-title-color) !important; color: var(--tab-and-title-color) !important; }
+
     /* Tekstelementer */
-    .typo-label { font-family: 'Whitney', sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(1rem * var(--label-scale)); }
+    .typo-label {
+        font-family: 'Whitney', sans-serif;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: calc(1rem * var(--label-scale));
+    }
     .typo-preamble { font-family: 'Whitney', sans-serif; font-weight: 400; font-size: clamp(1rem, 1.5vw, 1.25rem); text-indent: 1.5em; }
     .typo-paragraph { font-family: 'Whitney', sans-serif; font-weight: 400; font-size: clamp(0.875rem, 1vw, 1rem); }
     .typo-quote { font-family: 'Whitney', sans-serif; font-style: italic; font-weight: 500; font-size: clamp(1.125rem, 2vw, 1.5rem); }
@@ -36,7 +68,7 @@
         appearance: none;
         width: 20px;
         height: 20px;
-        background: var(--thumb-color, #66CCDD);
+        background: var(--thumb-color, #99D9F2);
         border-radius: 50%;
         border: 2px solid white;
         cursor: pointer;
@@ -55,7 +87,7 @@
     .event-slider::-webkit-slider-thumb {
         width: 16px;
         height: 16px;
-        background: #66CCDD;
+        background: var(--sp-cyan-40);
         border-radius: 50%;
         cursor: pointer;
         appearance: none;
@@ -64,7 +96,7 @@
     .event-slider::-moz-range-thumb {
         width: 16px;
         height: 16px;
-        background: #66CCDD;
+        background: var(--sp-cyan-40);
         border-radius: 50%;
         cursor: pointer;
     }
@@ -93,8 +125,8 @@
 
     /* Panel styles – lekker skygge på hvite containere */
     .panel {
-        background: white;
-        border: 1px solid #DDDDDD;
+        background: #ffffff;
+        border: 1px solid var(--sp-border);
         border-radius: 12px;
         padding: 24px;
         box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
@@ -134,62 +166,68 @@
 
     /* Form input styles – lekker skygge */
     .form-input {
-        background: white;
-        border: 1px solid #DDDDDD;
+        background: #ffffff;
+        border: 1px solid var(--sp-border);
         border-radius: 6px;
         padding: 6px 12px;
-        color: #333333;
+        color: var(--sp-foreground);
         box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
     }
 
     .form-input:focus {
         outline: none;
-        border-color: #66CCDD;
-        box-shadow: 0 0 0 2px rgba(102, 204, 221, 0.2);
+        border-color: var(--sp-cyan-40);
+        box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.25);
     }
 
-    /* Button styles */
+    /* Button styles – i tråd med manualen */
     .btn-primary {
-        background: #3388CC;
-        color: white;
-        font-weight: 500;
-        padding: 8px 16px;
+        background: var(--sp-blue);
+        color: var(--sp-cyan-40);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        padding: 8px 20px;
         border-radius: 8px;
+        border: none;
         transition: all 0.2s ease-in-out;
         transform: translateY(0);
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
     }
 
     .btn-primary:hover {
-        background: #005599;
+        background: var(--sp-dark-blue);
         transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
     }
 
+    /* Outline-variant iht. manual: 1px ramme, Coal tekst */
     .btn-secondary {
-        background: white;
-        border: 1px solid #DDDDDD;
-        color: #333333;
-        padding: 12px;
+        background: transparent;
+        border: 1px solid var(--sp-border);
+        color: var(--sp-foreground);
+        padding: 10px 18px;
         border-radius: 8px;
         transition: all 0.2s ease-in-out;
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+        box-shadow: none;
+        font-weight: 500;
     }
 
     .btn-secondary:hover {
-        background: #f9f9f9;
-        transform: translateY(-2px);
+        background: var(--sp-cyan-20);
+        transform: translateY(-1px);
     }
 
     .btn-secondary.active {
-        background: #66CCDD;
-        color: white;
+        background: var(--sp-cyan-40);
+        color: #ffffff;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
     }
 
     /* Event row styles – lekker skygge */
     .event-row {
-        background: #f9f9f9;
-        border: 1px solid #DDDDDD;
+        background: var(--sp-cyan-20);
+        border: 1px solid var(--sp-border);
         border-radius: 8px;
         padding: 12px;
         margin-bottom: 12px;
@@ -207,7 +245,7 @@
     .event-slider-highlight {
         position: absolute;
         height: 6px;
-        background: #66CCDD;
+        background: var(--sp-cyan-40);
         border-radius: 3px;
         top: 50%;
         transform: translateY(-50%);
@@ -269,8 +307,8 @@
     }
 
     .output-textarea:focus {
-        border-color: #3b82f6; /* Tailwind blue-500 */
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        border-color: var(--sp-cyan-40);
+        box-shadow: 0 0 0 3px rgba(153, 217, 242, 0.35);
     }
 
     .copy-btn {
@@ -401,7 +439,7 @@
     .tab-bar {
         display: flex;
         align-items: flex-end;
-        background: linear-gradient(180deg, #f0f2f5 0%, #e8eaee 100%);
+        background: linear-gradient(180deg, var(--sp-background) 0%, #E8EAEE 100%);
         border-bottom: 1px solid rgba(0, 0, 0, 0.06);
         padding: 0 12px 0 14px;
         gap: 4px;
@@ -415,7 +453,7 @@
         align-items: center;
         justify-content: center;
         padding: 10px 18px;
-        background: linear-gradient(180deg, #e4e6ea 0%, #d8dce2 100%);
+        background: linear-gradient(180deg, #E4E6EA 0%, #D8DCE2 100%);
         border: 1px solid rgba(0, 0, 0, 0.08);
         border-bottom: none;
         border-radius: 10px 10px 0 0;
@@ -427,7 +465,7 @@
         transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
         font-size: 14px;
         font-weight: 500;
-        color: #4a5568;
+        color: var(--tab-and-title-color);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -448,18 +486,18 @@
         margin-left: 0;
     }
 
-    /* Aktiv fane – lekker blå (#527A9B) */
+    /* Aktiv fane – bruker S&P blåtoner */
     .tab.active {
-        background: linear-gradient(180deg, #5d87a8 0%, #527A9B 100%);
-        border-color: rgba(82, 122, 155, 0.5);
+        background: linear-gradient(180deg, var(--sp-blue) 0%, var(--sp-dark-blue) 100%);
+        border-color: rgba(0, 35, 89, 0.65);
         border-bottom-color: transparent;
         z-index: 2;
-        color: #fff;
+        color: #ffffff;
         font-weight: 600;
         box-shadow:
-            0 -2px 0 0 #527A9B,
-            0 4px 20px -4px rgba(82, 122, 155, 0.45),
-            0 8px 32px -8px rgba(82, 122, 155, 0.25),
+            0 -2px 0 0 var(--sp-dark-blue),
+            0 4px 20px -4px rgba(0, 35, 89, 0.45),
+            0 8px 32px -8px rgba(0, 35, 89, 0.25),
             inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
 
@@ -470,15 +508,15 @@
 
     /* Inaktiv fane – hover-halo */
     .tab:not(.active) {
-        background: linear-gradient(180deg, #e4e6ea 0%, #d8dce2 100%);
+        background: linear-gradient(180deg, #E4E6EA 0%, #D8DCE2 100%);
     }
 
     .tab:not(.active):hover {
-        background: linear-gradient(180deg, #eef0f4 0%, #e2e6ec 100%);
+        background: linear-gradient(180deg, #F0F2F6 0%, #E2E6EC 100%);
         border-color: rgba(0, 0, 0, 0.1);
         box-shadow:
             0 2px 8px -2px rgba(0, 0, 0, 0.08),
-            0 4px 16px -4px rgba(82, 122, 155, 0.12);
+            0 4px 16px -4px rgba(0, 45, 114, 0.18);
     }
 
     .tab-content {

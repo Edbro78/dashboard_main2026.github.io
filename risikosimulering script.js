@@ -963,25 +963,25 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-/* Mål og behov fargepalett */
+/* S&P Wealth Management fargepalett */
 const chartColors = {
     current: {
-        main: '#4A6D8C',
-        light: '#f0f9fa',
-        border: '#4A6D8C'
+        main: '#002D72',
+        light: '#CCECF9',
+        border: '#002D72'
     },
     new: {
-        main: '#66CCDD',
-        light: '#f0f9fa',
-        border: '#66CCDD'
+        main: '#99D9F2',
+        light: '#CCECF9',
+        border: '#99D9F2'
     },
     drawdown: {
         main: '#CC4B4B',
-        light: '#f0f9fa'
+        light: '#FDE8E7'
     },
-    stocks: '#88CCEE',
-    riskFree: '#66CCDD',
-    highYield: '#3388CC',
+    stocks: '#99D9F2',
+    riskFree: '#002D72',
+    highYield: '#99D9F2',
     nurse: '#66CC99',
     gold: '#888888'
 };
@@ -1156,17 +1156,17 @@ function updateTreemapChart(type) {
     // Disable image smoothing for crisp edges
     ctx.imageSmoothingEnabled = false;
     
-    // Farger fra fanen Aktivaklasser (samme som .asset-cell-klassene)
+    // Farger – S&P Wealth Management palett
     const assetClassColors = {
-        'Likviditet/kontanter': '#88CCEE',   // chart-1
-        'Renter IG': '#4A6D8C',              // risikofri-color
-        'Renter High Yield': '#66CCDD',      // chart-crayola-blue
-        'Norske aksjer': '#4A6D8C',          // chart-4
-        'Nordiske aksjer': '#3388CC',        // chart-3
-        'Emerging markets aksjer': '#333333', // chart-5
-        'Globale aksjer': '#66CCDD',         // chart-crayola-blue
-        'Alternative strategier': '#4A6D8C', // chart-4
-        'Annet': '#333333'                   // chart-5
+        'Likviditet/kontanter': '#99D9F2',   // Cyan 40
+        'Renter IG': '#002D72',               // Blue
+        'Renter High Yield': '#99D9F2',      // Cyan 40
+        'Norske aksjer': '#002D72',           // Blue
+        'Nordiske aksjer': '#002D72',         // Blue
+        'Emerging markets aksjer': '#333333', // Coal
+        'Globale aksjer': '#99D9F2',          // Cyan 40
+        'Alternative strategier': '#002359', // Dark Blue
+        'Annet': '#333333'                   // Coal
     };
     // Alle aktivaklasser med andel > 0% (samme nivå som i Aktivaklasser-fanen)
     const aksjerWeights = { 'Norske aksjer': 10, 'Nordiske aksjer': 10, 'Emerging markets aksjer': 20, 'Globale aksjer': 60 };
@@ -1605,10 +1605,10 @@ function createAssetClassesChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: '#88CCEE' },
-        { key: 'riskFree', name: 'Renter', color: '#66CCDD' },
-        { key: 'highYield', name: 'Aksjer', color: '#3388CC' },
-        { key: 'nordicStocks', name: 'Alternative strategier', color: '#4A6D8C' },
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99D9F2' },
+        { key: 'riskFree', name: 'Renter', color: '#002D72' },
+        { key: 'highYield', name: 'Aksjer', color: '#99D9F2' },
+        { key: 'nordicStocks', name: 'Alternative strategier', color: '#002359' },
         { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
@@ -1831,10 +1831,10 @@ function createAllocationChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: '#88CCEE' },
-        { key: 'riskFree', name: 'Renter', color: '#66CCDD' },
-        { key: 'highYield', name: 'Aksjer', color: '#3388CC' },
-        { key: 'nordicStocks', name: 'Alternative strategier', color: '#4A6D8C' },
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99D9F2' },
+        { key: 'riskFree', name: 'Renter', color: '#002D72' },
+        { key: 'highYield', name: 'Aksjer', color: '#99D9F2' },
+        { key: 'nordicStocks', name: 'Alternative strategier', color: '#002359' },
         { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
@@ -3039,8 +3039,8 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'Porteføljeverdi',
                     data: portfolioValues.map(v => ({ x: v.date, y: v.value })),
-                    borderColor: '#3388CC',
-                    backgroundColor: 'rgba(102, 204, 221, 0.3)',
+                    borderColor: '#002D72',
+                    backgroundColor: 'rgba(153, 217, 242, 0.3)',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.3,
@@ -3050,7 +3050,7 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'All-Time High',
                     data: drawdowns.map(d => ({ x: d.date, y: d.peak })),
-                    borderColor: '#3388CC',
+                    borderColor: '#002D72',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
                     fill: false,

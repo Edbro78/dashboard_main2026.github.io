@@ -130,21 +130,21 @@ const Doughnut = ({ data, options, type = 'pie' }) => {
 const START_YEAR = 2026;
 
 const CHART_COLORS = {
-    hovedstol: '#4A6D8C', // Mørk, dempet blå/grå
-    avkastning: '#88CCEE', // Lysere blå
-    sparing: '#888888', // Lekker grå
-    utbetaling_netto: '#005599', // Mørkere blå for uttak
-    utbetaling_skatt: '#CC4B4B', // Behagelig rød for skatt (årlige utbetalinger)
-    event_total_color: '#66CC99', // Behagelig grønn for hendelser
-    renteskatt: '#B14444', // Behagelig rød nyanse for løpende renteskatt
-    skatt2: '#E06B6B', // Behagelig rød nyanse for skatt på hendelser
-    aksjeandel: '#66CCDD', // Teal
-    renteandel: '#A9BCCD', // Lys grå-blå
-    innskutt_kapital: '#3388CC', // Hovedblå
-    aksjer_principal: '#66CCDD', // Aksjer (hovedstol) – matchende blå/teal
-    aksjer_avkastning: '#88CCEE', // Aksjeavkastning – lys blå
-    renter_principal: '#A9BCCD', // Renter (hovedstol) – grå-blå
-    renter_avkastning: '#D1DCE7' // Renteavkastning – lys grå-blå
+    hovedstol: '#002359',             // Dark Blue – hovedstol
+    avkastning: '#99D9F2',            // Cyan 40 – avkastning
+    sparing: '#333333',               // Coal – årlig sparing
+    utbetaling_netto: '#002D72',      // Blue – netto utbetaling
+    utbetaling_skatt: '#CC4B4B',      // Rød for løpende skatt
+    event_total_color: '#CCECF9',     // Cyan 20 – hendelser
+    renteskatt: '#B14444',            // Renteskatt
+    skatt2: '#E06B6B',                // Skatt på hendelser
+    aksjeandel: '#99D9F2',            // Aksjeandel – Cyan 40
+    renteandel: '#CCECF9',            // Renteandel – Cyan 20
+    innskutt_kapital: '#002D72',      // Innskutt kapital – Blue
+    aksjer_principal: '#99D9F2',      // Aksjer (hovedstol)
+    aksjer_avkastning: '#CCECF9',     // Aksjeavkastning
+    renter_principal: '#A9BCCD',      // Renter (hovedstol) – grå-blå
+    renter_avkastning: '#D1DCE7'      // Renteavkastning – lys grå-blå
 };
 
 // Helper function to adjust color brightness
@@ -1420,6 +1420,209 @@ function TKontoDashboard() {
     );
 }
 
+// Oppsummeringsrapport: fire containere – Mål og behov, Eiendeler år for år, Finansiering år for år, Kontantstrøm år for år
+function OppsummeringsrapportContent() {
+    const appState = MaalOgBehovState.appState || {};
+    const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
+    const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
+    const extraDisplayYear = payoutYears > 0 ? 1 : 0;
+    const totalYears = investmentYears + payoutYears + extraDisplayYear;
+    const yearLabels = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
+
+    const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
+    useEffect(() => {
+        if (tkontoLoaded || typeof window === 'undefined') return;
+        if (window.getTKontoAssetSegments) {
+            setTkontoLoaded(true);
+            return;
+        }
+        const script = document.createElement('script');
+        script.src = 't-konto script.js';
+        script.onload = () => setTkontoLoaded(true);
+        script.onerror = () => setTkontoLoaded(false);
+        document.body.appendChild(script);
+    }, [tkontoLoaded]);
+
+    const chartOptionsBase = useMemo(() => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { stacked: true, grid: { display: false }, ticks: { color: '#333333', font: { size: 12 } } },
+            y: {
+                stacked: true,
+                grid: { color: 'rgba(221, 221, 221, 0.3)' },
+                ticks: {
+                    color: '#333333',
+                    callback: (value) => `${(value / 1000000).toLocaleString('nb-NO')} MNOK`,
+                    font: { size: 12 }
+                }
+            }
+        }
+    }), []);
+
+    const latestData = MaalOgBehovState.latestInvestmentChartData;
+    const latestOptions = MaalOgBehovState.latestChartOptions;
+
+    const assetsChartData = useMemo(() => {
+        if (!tkontoLoaded || typeof window.getTKontoAssetSegments !== 'function') return null;
+        const keys = [];
+        const keyColors = {};
+        yearLabels.forEach((y) => {
+            try {
+                const segs = window.getTKontoAssetSegments(y);
+                (segs || []).forEach((seg) => {
+                    if (seg.key && keys.indexOf(seg.key) === -1) {
+                        keys.push(seg.key);
+                        keyColors[seg.key] = seg.color || '#999';
+                    }
+                });
+            } catch (e) {}
+        });
+        const datasets = keys.map((key) => ({
+            label: key,
+            data: yearLabels.map((y) => {
+                try {
+                    const segs = window.getTKontoAssetSegments(y);
+                    const s = (segs || []).find((x) => x.key === key);
+                    return s ? s.value : 0;
+                } catch (e) {
+                    return 0;
+                }
+            }),
+            backgroundColor: keyColors[key],
+            stack: 'stack',
+            borderRadius: 4,
+            borderSkipped: false
+        }));
+        return { labels: yearLabels, datasets };
+    }, [tkontoLoaded, yearLabels.join(',')]);
+
+    const financingChartData = useMemo(() => {
+        if (!tkontoLoaded || typeof window.getTKontoFinancingSegments !== 'function') return null;
+        const keys = [];
+        const keyColors = {};
+        yearLabels.forEach((y) => {
+            try {
+                const res = window.getTKontoFinancingSegments(y);
+                (res.segments || []).forEach((seg) => {
+                    if (seg.key && keys.indexOf(seg.key) === -1) {
+                        keys.push(seg.key);
+                        keyColors[seg.key] = seg.color || '#999';
+                    }
+                });
+            } catch (e) {}
+        });
+        const datasets = keys.map((key) => ({
+            label: key,
+            data: yearLabels.map((y) => {
+                try {
+                    const res = window.getTKontoFinancingSegments(y);
+                    const s = (res.segments || []).find((x) => x.key === key);
+                    return s ? s.value : 0;
+                } catch (e) {
+                    return 0;
+                }
+            }),
+            backgroundColor: keyColors[key],
+            stack: 'stack',
+            borderRadius: 4,
+            borderSkipped: false
+        }));
+        return { labels: yearLabels, datasets };
+    }, [tkontoLoaded, yearLabels.join(',')]);
+
+    const cashflowChartData = useMemo(() => {
+        if (!tkontoLoaded || typeof window.getTKontoCashflowForYear !== 'function') return null;
+        const data = yearLabels.map((y) => {
+            try {
+                return window.getTKontoCashflowForYear(y) || 0;
+            } catch (e) {
+                return 0;
+            }
+        });
+        return {
+            labels: yearLabels,
+            datasets: [{
+                label: 'Kontantstrøm',
+                data,
+                backgroundColor: data.map((v) => v >= 0 ? 'rgba(0, 45, 114, 0.8)' : 'rgba(204, 75, 75, 0.8)'),
+                borderRadius: 4,
+                borderSkipped: false
+            }]
+        };
+    }, [tkontoLoaded, yearLabels.join(',')]);
+
+    const cashflowOptions = useMemo(() => ({
+        ...chartOptionsBase,
+        scales: {
+            ...chartOptionsBase.scales,
+            y: {
+                ...chartOptionsBase.scales.y,
+                stacked: false,
+                ticks: {
+                    ...chartOptionsBase.scales.y.ticks,
+                    callback: (value) => `${(value / 1000000).toLocaleString('nb-NO')} MNOK`
+                }
+            }
+        }
+    }), [chartOptionsBase]);
+
+    return (
+        <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ width: '100%', height: '100%', minHeight: 0, paddingRight: '2rem' }}>
+            <div className="relative">
+                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Mål og behov</h3>
+                    <div className="relative h-[280px]">
+                        {latestData && latestOptions ? (
+                            <Bar data={latestData} options={{ ...latestOptions, maintainAspectRatio: false }} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-[#999] text-sm">Ingen data. Åpne Mål og behov først.</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="relative">
+                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Eiendeler år for år</h3>
+                    <div className="relative h-[280px]">
+                        {assetsChartData ? (
+                            <Bar data={assetsChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen eiendeler' : 'Last T-konto for data'}</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="relative">
+                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Finansiering år for år</h3>
+                    <div className="relative h-[280px]">
+                        {financingChartData ? (
+                            <Bar data={financingChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen finansiering' : 'Last T-konto for data'}</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+            <div className="relative">
+                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Kontantstrøm år for år</h3>
+                    <div className="relative h-[280px]">
+                        {cashflowChartData ? (
+                            <Bar data={cashflowChartData} options={{ ...cashflowOptions, maintainAspectRatio: false }} />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen kontantstrøm' : 'Last T-konto for data'}</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // TabBar component for browser-like tabs
 function TabBar({ tabs, activeTab, onTabClick }) {
     return (
@@ -1468,9 +1671,9 @@ function TabContainer() {
         { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Pensjonsgapet', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjonsgapet" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Gradvis implementering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }} /> }
+        { name: 'Oppsummeringsrapport', content: <OppsummeringsrapportContent /> }
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -1510,7 +1713,7 @@ function TabContainer() {
             }
         } catch (_) {}
         let gradvis = INGEN_DATA;
-        // Gradvis implementering – placeholder for fremtidig innhold
+        // Oppsummeringsrapport – placeholder for fremtidig innhold
         return [
             '--- Mål og behov ---',
             maal,
@@ -1521,13 +1724,13 @@ function TabContainer() {
             '--- Risikosimulering ---',
             risiko,
             '',
-            '--- Pensjonsgapet ---',
+            '--- Pensjon ---',
             pensjonsgapet,
             '',
             '--- Formuesskatt ---',
             formuesskatt,
             '',
-            '--- Gradvis implementering ---',
+            '--- Oppsummeringsrapport ---',
             gradvis
         ].join('\n');
     }, []);
@@ -1574,10 +1777,10 @@ function TabContainer() {
         const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', gradvis: '' };
         const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*T-konto\s*---|$)/i;
         const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*Risikosimulering\s*---|$)/i;
-        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*Pensjonsgapet\s*---|$)/i;
-        const rePensjonsgapet = /---\s*Pensjonsgapet\s*---([\s\S]*?)(?=---\s*Formuesskatt\s*---|$)/i;
-        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*Gradvis implementering\s*---|$)/i;
-        const reGradvis = /---\s*Gradvis implementering\s*---([\s\S]*)$/i;
+        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:Pensjonsgapet|Pensjon)\s*---|$)/i;
+        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*Formuesskatt\s*---|$)/i;
+        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reGradvis = /---\s*(?:Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*)$/i;
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
@@ -1691,7 +1894,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjonsgapet ---, --- Formuesskatt ---, --- Gradvis implementering ---. Alle seksjoner lastes inn i respektive faner.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjon ---, --- Formuesskatt ---, --- Oppsummeringsrapport ---. Alle seksjoner lastes inn i respektive faner.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -1707,7 +1910,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjonsgapet, Formuesskatt, Gradvis implementering. Kopier og lim inn i Input for å laste tilbake.</p>
+                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjon, Formuesskatt, Oppsummeringsrapport. Kopier og lim inn i Input for å laste tilbake.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
@@ -3747,6 +3950,13 @@ return () => document.removeEventListener('keydown', onKey);
         ],
     };
 
+    // Persist for Oppsummeringsrapport-fanen (samme tidsakse og søylediagram)
+    if (prognosis && prognosis.labels && prognosis.labels.length) {
+        MaalOgBehovState.latestPrognosisLabels = prognosis.labels;
+        MaalOgBehovState.latestInvestmentChartData = investmentChartData;
+        MaalOgBehovState.latestChartOptions = chartOptions;
+    }
+
     // Høyoppløst eksport (1880×1450, 4:3) for PDF-modal – opprett chart når modal åpnes
     useEffect(() => {
         if (!showChartImageModal) return;
@@ -4359,11 +4569,11 @@ return () => document.removeEventListener('keydown', onKey);
                             onChange={e => setPanelTitle(e.target.value)}
                             onBlur={() => setEditingTitle(false)}
                             onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); if (e.key === 'Escape') { setPanelTitle(MaalOgBehovState.panelTitle || 'Mål og behov'); setEditingTitle(false); } }}
-                            className="typo-h1 text-center text-[#4A6D8C] mb-4 w-full bg-transparent border-b-2 border-[#4A6D8C] outline-none"
+                            className="typo-h1 text-center maal-panel-title maal-panel-title-editable mb-4 w-full bg-transparent border-b-2 outline-none"
                         />
                     ) : (
                         <h1
-                            className="typo-h1 text-center text-[#4A6D8C] mb-4 cursor-pointer hover:opacity-70 transition-opacity"
+                            className="typo-h1 text-center maal-panel-title mb-4 cursor-pointer hover:opacity-70 transition-opacity"
                             onDoubleClick={() => setEditingTitle(true)}
                             title="Dobbelklikk for å endre tittel"
                         >{panelTitle}</h1>
@@ -4386,10 +4596,10 @@ return () => document.removeEventListener('keydown', onKey);
                         {/* Sim */}
                         <button
                             type="button"
+                            title="Trykk her og aktiver en simulering knyttet til avkastning i hele perioden. Trykk en gang til og simuleringen skrus av"
                             onClick={() => {
                                 const newActive = !simButtonActive;
                                 setSimButtonActive(newActive);
-                                // Regenerer simulering når knappen aktiveres (blir grønn)
                                 if (newActive) {
                                     setSimulationKey(prev => prev + 1);
                                 }
@@ -4402,6 +4612,7 @@ return () => document.removeEventListener('keydown', onKey);
                         {/* Målsøk sparing */}
                         <button
                             type="button"
+                            title="Aktiverer målsøk sparing. Denne funksjonen beregner hvor mye du må spare årlig i investeringsperioden for at porteføljen skal gå i null i siste år av utbetalingsperioden"
                             onClick={goalSeekAnnualSavings}
                             className="bg-[#999999] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
                         >
@@ -4411,6 +4622,7 @@ return () => document.removeEventListener('keydown', onKey);
                         {/* Målsøk utbetaling */}
                         <button
                             type="button"
+                            title="Aktiverer Målsøk utbetaling. Har du valgt antall år utbetaling, vil denne funksjonen beregne hvor mye du maksimalt kan ta ut hvert år i denne perioden før porteføljen er tømt"
                             onClick={goalSeekAnnualPayout}
                             className="bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
                         >
@@ -4420,19 +4632,11 @@ return () => document.removeEventListener('keydown', onKey);
                         {/* Målsøk Portefølje I */}
                         <button
                             type="button"
+                            title="Denne funksjonen beregner hvor stor Portefølje I må være for å tilfredstille det du har lagt inn av utbetalinger i utbetalingsperioden."
                             onClick={goalSeekPortfolio1}
                             className="bg-[#4A6D8C] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
                         >
                             <span className="text-xs font-bold">Port.</span>
-                        </button>
-                        
-                        {/* Exp. – åpner høyoppløst bilde for kopiering */}
-                        <button
-                            type="button"
-                            onClick={() => { setChartImageCopied(false); setShowChartImageModal(true); }}
-                            className="bg-[#6BB6E8] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
-                        >
-                            <span className="text-xs font-bold">Exp.</span>
                         </button>
                     </div>
                 </div>

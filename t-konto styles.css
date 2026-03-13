@@ -6,38 +6,45 @@
 @font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
 
 :root {
-  /* Fargepalett Mål og behov */
-  --P_ACCENT: #66CCDD;            /* Hovedaksent / teal / CTA */
-  --P_LIGHT_BG: #f0f9fa;          /* Lys teal (hover/active BG) */
-  --P_SELECTED_BG: rgba(102, 204, 221, 0.25); /* Valgt tilstand */
+  /* S&P Wealth Management fargepalett (offisiell) */
+  --sp-background: #F5F3F3;       /* Light Grey */
+  --sp-foreground: #333333;       /* Coal */
+  --sp-dark-blue: #002359;        /* Dark Blue */
+  --sp-blue: #002D72;             /* Blue */
+  --sp-cyan-40: #99D9F2;          /* Cyan 40 */
+  --sp-cyan-20: #CCECF9;          /* Cyan 20 */
+  --sp-border: #CECCCC;           /* Outline/ramme */
+
+  --P_ACCENT: var(--sp-cyan-40);
+  --P_LIGHT_BG: var(--sp-cyan-20);
+  --P_SELECTED_BG: rgba(153, 217, 242, 0.25);
   --BLUE_100: #f9f9f9;
-  --BLUE_200: #e8f6f8;
+  --BLUE_200: var(--sp-cyan-20);
   --BLUE_300: #b8e8ee;
-  --BLUE_400: #88d4de;
-  --BLUE_500: #66CCDD;
-  --GRAY_TEXT_DARK: #333333;
+  --BLUE_400: var(--sp-cyan-40);
+  --BLUE_500: var(--sp-cyan-40);
+  --GRAY_TEXT_DARK: var(--sp-foreground);
   --GRAY_TEXT_SECONDARY: #666666;
-  --BG_OUTER: #f5f5f5;
+  --BG_OUTER: var(--sp-background);
   --BG_CARD: #ffffff;
-  --BORDER_LIGHT: #DDDDDD;
+  --BORDER_LIGHT: var(--sp-border);
   --ERROR_DEBT: #CC4B4B;
   --ERROR_LIGHT_BG: #FDE8E7;
 
-  --color-dark-blue: var(--BG_OUTER);
-  --color-blue: var(--BG_CARD);
+  --color-dark-blue: var(--sp-dark-blue);
+  --color-blue: var(--sp-blue);
   --accent-light-blue: var(--P_SELECTED_BG);
-  --accent-cyan: var(--P_ACCENT);
-  --text-primary: var(--GRAY_TEXT_DARK);
+  --accent-cyan: var(--sp-cyan-40);
+  --text-primary: var(--sp-foreground);
   --text-secondary: var(--GRAY_TEXT_SECONDARY);
   --text-label: #666666;
-  --border-color: var(--BORDER_LIGHT);
+  --border-color: var(--sp-border);
   --success-green: #0C8F4A;
 
-  /* Forside T-konto: blå i ikoner og tekst */
-  --FORSIDE_BLUE: #527997;
+  --FORSIDE_BLUE: var(--sp-blue);
 
   --surface-navy-1: #f9f9f9;
-  --surface-navy-2: #f0f9fa;
+  --surface-navy-2: var(--sp-cyan-20);
 
   --font-sans: "Whitney", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   --weight-book: 400;
@@ -53,10 +60,9 @@
   --space-5: 24px;
   --space-6: 32px;
 
-  /* Skygger Mål og behov */
   --shadow-button: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-focus: 0 0 0 2px rgba(102, 204, 221, 0.2);
+  --shadow-focus: 0 0 0 2px rgba(153, 217, 242, 0.35);
 }
 
 /* Grunnoppsett */
@@ -95,11 +101,11 @@ body {
 .brand-title {
   margin: 0;
   font-family: var(--font-sans);
-  font-weight: 900; /* Whitney Black, som «Mål og behov» */
-  font-size: clamp(1.26rem, 2.52vw, 2.86rem); /* H1-skala fra design (3rem·0.42 … 6.8rem·0.42) */
+  font-weight: 900;
+  font-size: clamp(1.26rem, 2.52vw, 2.86rem);
   line-height: 1.1;
   letter-spacing: 0;
-  color: #4A6D8C;
+  color: var(--sp-blue);
 }
 
 .nav {
@@ -139,7 +145,7 @@ body {
 }
 
 .nav-item.is-active {
-  background: var(--BLUE_200);
+  background: var(--sp-cyan-20);
   color: var(--GRAY_TEXT_DARK);
 }
 
@@ -150,7 +156,7 @@ body {
   width: 32px; height: 32px;
   border-radius: 9999px;
   background: var(--BLUE_100);
-  color: #4A6D8C;
+  color: var(--sp-blue);
   flex: 0 0 auto;
 }
 .nav-label { flex: 1 1 auto; }
@@ -212,9 +218,9 @@ p { /* Avsnitt */
   margin: 0 0 var(--space-4) 0;
 }
 
-/* Fokus- og tilgjengelighet (Mål og behov: aksent #66CCDD) */
+/* Fokus – S&P Cyan 40 */
 :focus-visible {
-  outline: 2px solid var(--P_ACCENT);
+  outline: 2px solid var(--sp-cyan-40);
   outline-offset: 2px;
 }
 
@@ -347,17 +353,19 @@ p { /* Avsnitt */
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   border-radius: 9999px;
-  border: 1px solid var(--BLUE_400);
-  background: #3388CC;
-  color: #ffffff;
+  border: none;
+  background: var(--sp-blue);
+  color: var(--sp-cyan-40);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
   transition: transform .12s ease, background-color .2s ease, box-shadow .2s ease;
 }
-.copy-btn:hover { transform: translateY(-1px); }
+.copy-btn:hover { transform: translateY(-1px); background: var(--sp-dark-blue); }
 .copy-btn:active { transform: translateY(0); }
 
 /* Success state */
@@ -433,14 +441,14 @@ p { /* Avsnitt */
 }
 .step-label { text-align: center; }
 .step.is-reached .step-dot {
-  background: #4A7393;
-  border-color: #4A7393;
-  box-shadow: 0 0 0 6px rgba(74, 115, 147, 0.2);
+  background: var(--sp-blue);
+  border-color: var(--sp-blue);
+  box-shadow: 0 0 0 6px rgba(0, 45, 114, 0.2);
 }
-.step.is-reached:not(.is-current)::after { background: #4A7393; }
+.step.is-reached:not(.is-current)::after { background: var(--sp-blue); }
 .step.is-current::after { background: var(--BORDER_LIGHT); }
 .step.is-reached { color: var(--GRAY_TEXT_DARK); }
-.step.is-current .step-label { color: #4A7393; }
+.step.is-current .step-label { color: var(--sp-blue); }
 
 @media (max-width: 768px) {
   .stepper { padding: 16px; }
@@ -725,10 +733,12 @@ p { /* Avsnitt */
   border: none;
   border-radius: 9999px;
   padding: 12px 28px;
-  font-size: 19.2px; /* 16px +20% for T-konto hovedsiden */
-  font-weight: var(--weight-semibold);
-  background: var(--FORSIDE_BLUE);
-  color: #fff;
+  font-size: 19.2px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: var(--sp-blue);
+  color: var(--sp-cyan-40);
   box-shadow: var(--shadow-button);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
@@ -736,8 +746,8 @@ p { /* Avsnitt */
 .forside-cta:hover,
 .forside-cta:focus-visible {
   transform: translateY(-2px);
-  background: #456a82;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background: var(--sp-dark-blue);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
   outline: none;
 }
 .forside-cta:active {
@@ -877,7 +887,7 @@ p { /* Avsnitt */
 
 .struktur-card-holding1 .struktur-card-illustration,
 .struktur-card-holding2 .struktur-card-illustration {
-  color: var(--P_ACCENT);
+  color: var(--sp-cyan-40);
 }
 
 .struktur-card.is-active {
@@ -1189,21 +1199,30 @@ p { /* Avsnitt */
   height: 24px;
 }
 
-/* Redusert høyde for eiendeler-bokser (20% mindre) */
+/* Redusert høyde for eiendeler-bokser (20% mindre + 10% lavere for 80% zoom) */
+.panel-assets .assets {
+  gap: 20px; /* 24px − 10% for å se mer ved 80% zoom */
+}
 .panel-assets .asset-row {
-  padding: 13px; /* Redusert fra 16px (20% mindre) */
+  padding: 12px; /* 13px − 10% */
 }
 
 .panel-assets .asset-col {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 7px; /* 8px − 10% */
 }
 
 .panel-assets .asset-top {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 7px; /* 8px − 10% */
 }
 
 .panel-assets .asset-name {
-  padding: 8px 10px; /* Redusert fra 10px 12px (20% mindre) */
+  padding: 7px 10px; /* 8px − 10% vertikalt */
+}
+
+/* Privat-nedtrekk: lavere felt (10% mindre høyde) */
+.panel-assets .asset-entity-select {
+  padding: 7px 12px;
+  font-size: 13px;
 }
 
 /* Default-eiendeler: navn er låst, ikke redigerbart */
@@ -1214,10 +1233,15 @@ p { /* Avsnitt */
 }
 
 .panel-assets .asset-amount {
-  padding: 8px 13px; /* Redusert fra 10px 16px (20% mindre) */
-  font-size: 1.1rem; /* Redusert fra 1.25rem (ca 20% mindre) */
+  padding: 7px 13px; /* 8px − 10% vertikalt */
+  font-size: 1rem; /* 1.1rem − ca 10% */
   width: 392px; /* 30% reduksjon: 560px * 0.7 = 392px */
   max-width: 392px; /* Sikrer at den ikke blir bredere */
+}
+
+.panel-assets .asset-delete {
+  width: 26px;
+  height: 26px;
 }
 
 /* Reduser bredden på sliderene i eiendeler-fanen med 50% */
@@ -1331,17 +1355,17 @@ p { /* Avsnitt */
 }
 
 .year-button.is-active {
-  background: #5F7B99;
+  background: var(--sp-blue);
   color: #ffffff;
-  border-color: #5F7B99;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--sp-blue);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .year-button.is-active:hover {
-  background: #4e6a85;
-  border-color: #4e6a85;
+  background: var(--sp-dark-blue);
+  border-color: var(--sp-dark-blue);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Fremtidig utvikling – År-slider kort og tydeligere stil (beholdt for bakoverkompatibilitet) */
@@ -1373,7 +1397,7 @@ p { /* Avsnitt */
 .year-range { width: 90%; height: 10px; }
 .year-range:focus { outline: none; }
 
-/* WebKit-browsere (Mål og behov: teal #66CCDD) */
+/* WebKit – S&P Cyan 40 */
 .year-range::-webkit-slider-runnable-track {
   height: 10px;
   border-radius: 9999px;
@@ -1407,10 +1431,10 @@ p { /* Avsnitt */
 }
 
 /* Fokusglød for tilgjengelighet */
-.year-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(102, 204, 221, 0.35); }
-.year-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 6px rgba(102, 204, 221, 0.35); }
+.year-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(153, 217, 242, 0.35); }
+.year-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 6px rgba(153, 217, 242, 0.35); }
 
-/* Range styling - WebKit (Mål og behov: track #DDDDDD, thumb #66CCDD) */
+/* Range styling – WebKit (track border, thumb S&P Cyan 40) */
 .asset-range::-webkit-slider-runnable-track {
   height: 6px;
   background: var(--BORDER_LIGHT);
@@ -1444,17 +1468,19 @@ p { /* Avsnitt */
 .btn-add {
   margin-top: 10px;
   width: 100%;
-  background: #3388CC;
-  color: #ffffff;
-  border: 1px solid #3388CC;
+  background: var(--sp-blue);
+  color: var(--sp-cyan-40);
+  border: none;
   padding: 14px 18px;
   border-radius: 12px;
-  font-weight: var(--weight-semibold);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   cursor: pointer;
   box-shadow: var(--shadow-button);
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
-.btn-add:hover { background: #005599; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); }
+.btn-add:hover { background: var(--sp-dark-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12); }
 
 /* --- Gjeld modul --- */
 .debt .asset-range { /* reuse markup; different color track for gjeld */ height: 6px; }
@@ -2096,17 +2122,17 @@ p { /* Avsnitt */
 }
 
 .t-konto-year-btn.is-active {
-  background: #5F7B99;
+  background: var(--sp-blue);
   color: #ffffff;
-  border-color: #5F7B99;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--sp-blue);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .t-konto-year-btn.is-active:hover {
-  background: #4e6a85;
-  border-color: #4e6a85;
+  background: var(--sp-dark-blue);
+  border-color: var(--sp-dark-blue);
   transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .t-konto-year-strip-scroll-hint {
@@ -2135,7 +2161,7 @@ p { /* Avsnitt */
   flex: 1;
   min-width: 0;
   min-height: 0;
-  max-width: 504px; /* 420px + 20% */
+  max-width: 554px; /* 504px + 10% (eiendeler + egenkapital/gjeld) */
   display: flex;
   flex-direction: column;
   gap: 0;
@@ -2171,7 +2197,9 @@ p { /* Avsnitt */
   color: #1C2A3A;
   letter-spacing: 0.02em;
   white-space: normal;
-  word-break: break-word;
+  overflow-wrap: break-word; /* bryt kun når nødvendig */
+  word-break: normal; /* unngå brytning midt i ord – bruk myk bindestrek (­) i teksten i stedet */
+  hyphens: manual; /* respekter ­ slik at "Sekundæreiendom" brytes som "Sekundær-eiendom" */
   line-height: 1.3;
 }
 
@@ -2213,9 +2241,9 @@ p { /* Avsnitt */
 }
 
 .tkonto-exp-btn:hover {
-  background: #f5f5f5 !important;
-  color: #355f7a !important;
-  border-color: #4A6D8C !important;
+  background: var(--sp-cyan-20) !important;
+  color: var(--sp-blue) !important;
+  border-color: var(--sp-blue) !important;
 }
 
 .tkonto-equals {

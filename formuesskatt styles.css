@@ -8,7 +8,7 @@ body {
     font-family: 'Whitney', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
     font-weight: 400;
     line-height: 1.5;
-    background-color: #f0f2f5;
+    background-color: #F5F3F3;
     color: #333333;
 }
 
@@ -21,26 +21,33 @@ body {
     display: block;
 }
 
-/* --- CSS Variabler (Mål og behov-design) --- */
+/* --- CSS Variabler: S&P Wealth Management --- */
 :root {
-    --accent-teal: #66CCDD;
-    --accent-blue-light: #3388CC; /* brukes av script.js – primær blå på slidere/verdier */
-    --primary-btn: #3388CC;
-    --primary-btn-hover: #005599;
-    --active-tab-start: #5d87a8;
-    --active-tab-end: #527A9B;
+    --sp-background: #F5F3F3;
+    --sp-foreground: #333333;
+    --sp-dark-blue: #002359;
+    --sp-blue: #002D72;
+    --sp-cyan-40: #99D9F2;
+    --sp-cyan-20: #CCECF9;
+    --sp-border: #CECCCC;
+    --accent-teal: #99D9F2;
+    --accent-blue-light: #002D72;
+    --primary-btn: #002D72;
+    --primary-btn-hover: #002359;
+    --active-tab-start: #002D72;
+    --active-tab-end: #002359;
     --text-primary: #333333;
     --text-secondary: rgba(51, 51, 51, 0.8);
     --text-muted: #666666;
     --text-tabs: #4a5568;
     --bg-white: #ffffff;
     --bg-light: #f9f9f9;
-    --bg-page: #f0f2f5;
-    --border-color: #DDDDDD;
+    --bg-page: #F5F3F3;
+    --border-color: #CECCCC;
     --heading-scale: 0.42;
     --panel-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
     --panel-shadow-hover: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
-    --tab-active-shadow: 0 -2px 0 0 #527A9B, 0 4px 20px -4px rgba(82,122,155,0.45), 0 8px 32px -8px rgba(82,122,155,0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+    --tab-active-shadow: 0 -2px 0 0 #002359, 0 4px 20px -4px rgba(0, 45, 114, 0.45), 0 8px 32px -8px rgba(0, 35, 89, 0.25), inset 0 1px 0 rgba(255,255,255,0.2);
 }
 
 /* --- Dashboard Spesifikke Stiler --- */
@@ -66,7 +73,7 @@ body {
     padding-bottom: 0.78rem !important;
 }
 
-/* Stil for hovedresultatverdiene (primær blå #3388CC) */
+/* Stil for hovedresultatverdiene (S&P Blue) */
 .output-value {
     font-size: 2rem !important;
     font-weight: 700;
@@ -80,7 +87,7 @@ body {
     letter-spacing: 0.02em;
 }
 
-/* Input: hvit, kant #DDDDDD, border-radius 6px; focus: border og ring primær blå #3388CC */
+/* Input: hvit, S&P border; focus: Cyan 40 */
 input[type="text"].asset-input {
     -webkit-appearance: textfield;
     -moz-appearance: textfield;
@@ -97,14 +104,14 @@ input[type="text"].asset-input {
 }
 input[type="text"].asset-input:focus {
     outline: none;
-    border-color: var(--primary-btn);
-    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
+    border-color: var(--sp-cyan-40);
+    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35);
 }
 input[type="text"].asset-input::placeholder {
     color: var(--text-muted);
 }
 
-/* Slidere: track 6–8px #DDDDDD rounded; thumb 20×20px primær blå #3388CC, 2px solid white */
+/* Slidere: track border; thumb S&P Cyan 40, 2px white */
 input[type="range"] {
     -webkit-appearance: none;
     -moz-appearance: none;
@@ -122,7 +129,7 @@ input[type="range"]::-webkit-slider-thumb {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
@@ -132,7 +139,7 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
@@ -315,7 +322,7 @@ header.text-center.mb-1.relative {
     margin-bottom: 1.75rem !important; /* ~28px */
 }
 
-/* --- Formuesskatt: Panel hvit, 1px solid #DDDDDD, border-radius 12px, padding 24px, panel-skygge --- */
+/* --- Formuesskatt: Panel hvit, S&P border, border-radius 12px, padding 24px --- */
 .formuesskatt-dashboard {
     padding-top: 0.78rem !important;
     padding-bottom: 0.78rem !important;
@@ -330,7 +337,7 @@ header.text-center.mb-1.relative {
     font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale)));
     line-height: 1.1;
     letter-spacing: 0;
-    color: #516d84;
+    color: #002D72;
     margin-bottom: 0.43rem !important;
 }
 .formuesskatt-dashboard .heading-m,
@@ -367,7 +374,7 @@ header.text-center.mb-1.relative {
     display: flex;
     flex-direction: column;
 }
-/* Panel: hvit, 1px solid #DDDDDD, border-radius 12px, padding 24px */
+/* Panel: hvit, S&P border, border-radius 12px, padding 24px */
 .formuesskatt-panel {
     background-color: var(--bg-white) !important;
     border: 1px solid var(--border-color) !important;
@@ -408,24 +415,23 @@ header.text-center.mb-1.relative {
 .formuesskatt-assets .asset-slider-group + .asset-slider-group {
     margin-top: 0.65rem !important;
 }
-/* Total Formuesskatt-felt: hvit boks, mørk blå bak tallet, lys blå tall */
+/* Total Formuesskatt-felt: hvit boks, S&P Dark Blue bak tallet, Cyan 40 tall */
 .formuesskatt-summary {
     margin-bottom: 0.78rem !important;
     background-color: #FFFFFF !important;
-    border: 1px solid #DDDDDD !important;
+    border: 1px solid var(--border-color) !important;
     border-radius: 12px !important;
     padding: 24px !important;
     box-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06) !important;
     color: #333333 !important;
     text-align: center !important;
 }
-/* Outputtall-container: mørk bakgrunn #232c37, tall i lys blå #5cc8eb */
 .formuesskatt-summary .output-value {
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
     font-weight: 900 !important;
     font-size: 2rem !important;
-    color: #5cc8eb !important;
-    background-color: #232c37 !important;
+    color: #99D9F2 !important;
+    background-color: #002359 !important;
     padding: 16px 24px !important;
     border-radius: 8px !important;
     line-height: 1.2 !important;
@@ -529,10 +535,10 @@ header.text-center.mb-1.relative {
 .formuesskatt-input-group > .formuesskatt-field .label-ui {
     font-size: inherit;
 }
-/* Primær knapp: #3388CC, hover #005599 */
+/* Primær knapp: S&P Blue, Cyan 40 tekst */
 .formuesskatt-panel .person-btn {
     background-color: var(--primary-btn) !important;
-    color: white !important;
+    color: #99D9F2 !important;
     border: none !important;
     box-shadow: var(--panel-shadow);
     transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
@@ -570,9 +576,9 @@ header.text-center.mb-1.relative {
 }
 .formuesskatt-panel .person-btn.bg-blue-600 {
     background-color: var(--primary-btn) !important;
-    color: white !important;
+    color: #99D9F2 !important;
     border: none !important;
-    box-shadow: 0 4px 20px -4px rgba(51, 136, 204, 0.45);
+    box-shadow: 0 4px 20px -4px rgba(0, 45, 114, 0.45);
 }
 /* Nullstill: sekundær stil */
 .formuesskatt-reset-btn {
@@ -646,10 +652,10 @@ header.text-center.mb-1.relative {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
-/* Tilbake-knapp: primær #3388CC */
+/* Tilbake-knapp: S&P Blue, Cyan 40 tekst */
 #goToPage1Btn {
     background-color: var(--primary-btn) !important;
-    color: white !important;
+    color: #99D9F2 !important;
     border: none !important;
     box-shadow: var(--panel-shadow);
 }

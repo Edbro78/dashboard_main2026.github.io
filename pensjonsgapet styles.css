@@ -39,7 +39,7 @@ body {
     font-family: 'Whitney', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
     font-weight: 400;
     line-height: 1.5;
-    background-color: #f0f2f5;
+    background-color: #F5F3F3;
     color: #333333;
 }
 .page {
@@ -49,18 +49,25 @@ body {
     display: block;
 }
 
-/* --- Typography: samme som Formuesskatt (--heading-scale 0.42) --- */
+/* --- Typography + S&P Wealth Management fargepalett --- */
 :root {
     --heading-scale: 0.42;
     --label-scale: 0.595;
-    --primary-btn: #3388CC;
-    --primary-btn-hover: #005599;
+    --sp-background: #F5F3F3;
+    --sp-foreground: #333333;
+    --sp-dark-blue: #002359;
+    --sp-blue: #002D72;
+    --sp-cyan-40: #99D9F2;
+    --sp-cyan-20: #CCECF9;
+    --sp-border: #CECCCC;
+    --primary-btn: #002D72;
+    --primary-btn-hover: #002359;
     --text-primary: #333333;
     --text-secondary: rgba(51, 51, 51, 0.8);
     --text-muted: #666666;
     --bg-white: #ffffff;
     --bg-light: #f9f9f9;
-    --border-color: #DDDDDD;
+    --border-color: #CECCCC;
     --panel-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
 }
 .typo-h1 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 900; font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale))); line-height: 1.1; letter-spacing: 0; }
@@ -70,18 +77,18 @@ body {
 .typo-label { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(1rem * var(--label-scale)); }
 .typo-paragraph { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 400; font-size: clamp(0.875rem, 1vw, 1rem); }
 
-/* --- Dashboard: samme lys tema som Formuesskatt --- */
+/* --- Dashboard: S&P Wealth Management tema --- */
 #dashboardPage {
-    --accent-blue-light: #3388CC;
-    --accent-blue-vibrant: #3388CC;
+    --accent-blue-light: #002D72;
+    --accent-blue-vibrant: #99D9F2;
     --card-bg: #ffffff;
     --light-text: #333333;
     --medium-text: #666666;
-    --border-color: #DDDDDD;
+    --border-color: #CECCCC;
     --success-green: #16a34a;
-    background-color: #f0f2f5;
+    background-color: #F5F3F3;
 }
-#dashboardPage h1, #dashboardPage .typo-h1 { color: #516d84; }
+#dashboardPage h1, #dashboardPage .typo-h1 { color: #002D72; }
 #dashboardPage h2, #dashboardPage .typo-h2,
 #dashboardPage h3, #dashboardPage .typo-h3,
 #dashboardPage h4, #dashboardPage .typo-h4 { color: #333333; }
@@ -223,9 +230,9 @@ body {
     margin-top: 0.26rem !important;
 }
 
-/* Containere med outputtall: mørk bakgrunn #232c37, tall #5cc8eb (som referansebildet) */
+/* Output-paneler: S&P Dark Blue bakgrunn, Cyan 40 på tall */
 #dashboardPage .summary-panel {
-    background-color: #232c37 !important;
+    background-color: #002359 !important;
     border: none !important;
     border-radius: 12px !important;
     padding: 24px !important;
@@ -233,7 +240,7 @@ body {
     color: #333333 !important;
 }
 #dashboardPage .summary-panel .output-value {
-    color: #5cc8eb !important;
+    color: #99D9F2 !important;
     font-weight: 900 !important;
     font-size: 1.5rem !important;
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
@@ -244,16 +251,15 @@ body {
     font-size: 0.85rem !important;
     margin-top: 0.25rem !important;
 }
-/* Combo-output (Engangsinnskudd / Månedlig sparing) – samme outputdesign */
 #dashboardPage .combo-output {
-    background-color: #232c37 !important;
+    background-color: #002359 !important;
     border: none !important;
     border-radius: 12px !important;
     padding: 24px !important;
     box-shadow: var(--panel-shadow);
 }
 #dashboardPage .combo-output .output-value {
-    color: #5cc8eb !important;
+    color: #99D9F2 !important;
     font-weight: 900 !important;
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
 }
@@ -272,12 +278,12 @@ body {
 #dashboardPage .metrics-panel span.font-semibold { color: #333333 !important; }
 #dashboardPage .metrics-panel hr { border-color: var(--border-color) !important; }
 #dashboardPage #pension-gap-summary.metrics-panel {
-    background-color: #232c37 !important;
+    background-color: #002359 !important;
     border: none !important;
 }
 #dashboardPage #pension-gap-summary .output-label { color: rgba(255, 255, 255, 0.85) !important; }
 #dashboardPage #pension-gap-details {
-    color: #5cc8eb !important;
+    color: #99D9F2 !important;
     font-weight: 900 !important;
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
 }
@@ -285,7 +291,7 @@ body {
 #dashboardPage .text-slate-500,
 #dashboardPage #goal-explainer { color: var(--text-muted) !important; }
 
-/* Knapper: samme som Formuesskatt – primær #3388CC, sekundær hvit */
+/* Knapper: S&P Blue primær, Cyan 40 tekst på valgt */
 #dashboardPage #disclaimerBtn {
     background-color: var(--bg-white) !important;
     color: #333333 !important;
@@ -333,11 +339,11 @@ body {
 #dashboardPage .combo-btn[data-combo-selected="true"],
 #dashboardPage .combo-btn.bg-\[var\(--accent-blue-light\)\] {
     background-color: var(--primary-btn) !important;
-    color: white !important;
+    color: #99D9F2 !important;
     border: none !important;
 }
 
-/* Input-felter: hvit, kant #DDDDDD, focus #3388CC */
+/* Input-felter: hvit, kant S&P border, focus Cyan 40 */
 #dashboardPage .asset-input,
 #dashboardPage input[type="number"].asset-input,
 #dashboardPage #input-container input {
@@ -349,8 +355,8 @@ body {
 #dashboardPage .asset-input:focus,
 #dashboardPage #input-container input:focus {
     outline: none !important;
-    border-color: var(--primary-btn) !important;
-    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25) !important;
+    border-color: var(--sp-cyan-40) !important;
+    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35) !important;
 }
 #dashboardPage [id$="-value"] { color: var(--primary-btn) !important; }
 #dashboardPage header .text-slate-400,
@@ -390,7 +396,7 @@ input[type="range"] {
     transition: background 0.3s, opacity 0.2s;
 }
 
-/* Dashboard Slider: samme som Formuesskatt – track #DDDDDD, thumb #3388CC, 2px white */
+/* Dashboard Slider: S&P Cyan 40 thumb */
 #dashboardPage input[type="range"] {
     background: var(--border-color);
     height: 8px;
@@ -401,7 +407,7 @@ input[type="range"] {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
@@ -410,14 +416,14 @@ input[type="range"] {
 #dashboardPage input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
     box-shadow: var(--panel-shadow);
 }
 
-/* Prognosis Tool Slider: samme som Formuesskatt */
+/* Prognosis Tool Slider: S&P Cyan 40 */
 #prognosisPage input[type="range"] {
     background: var(--border-color);
     height: 8px;
@@ -428,7 +434,7 @@ input[type="range"] {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
@@ -436,7 +442,7 @@ input[type="range"] {
 #prognosisPage input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--primary-btn);
+    background: var(--sp-cyan-40);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
@@ -488,21 +494,23 @@ input[type="number"] {
 }
 #outputTextArea:focus {
     outline: none;
-    border-color: var(--primary-btn);
-    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
+    border-color: var(--sp-cyan-40);
+    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35);
 }
 #outputTextArea::placeholder {
     color: #94a3b8;
     font-style: italic;
 }
 
-/* Copy Button: primær som Formuesskatt */
+/* Copy Button: S&P Blue + Cyan 40 tekst */
 #copyButton {
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
-    font-weight: 500;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     transition: all 0.2s ease-in-out;
     background-color: var(--primary-btn) !important;
-    color: white !important;
+    color: #99D9F2 !important;
 }
 #copyButton:hover {
     background-color: var(--primary-btn-hover) !important;
@@ -535,8 +543,8 @@ input[type="number"] {
 }
 #customComboPercent:focus {
     outline: none;
-    border-color: var(--primary-btn);
-    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
+    border-color: var(--sp-cyan-40);
+    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35);
 }
 
 /* Custom Desired Pension Level Input */
@@ -561,7 +569,7 @@ input[type="number"] {
 }
 #customDesiredPensionLevel:focus {
     outline: none;
-    border-color: var(--primary-btn);
-    box-shadow: 0 0 0 2px rgba(51, 136, 204, 0.25);
+    border-color: var(--sp-cyan-40);
+    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35);
 }
 
