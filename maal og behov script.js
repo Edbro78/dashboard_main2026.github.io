@@ -4014,10 +4014,10 @@ return () => document.removeEventListener('keydown', onKey);
             if (eventTaxAmt > 0) {
                 if (state.investorType === 'AS') {
                     const [taxFromStock, taxFromBond] = allocateFromTwo(eventTaxAmt, sPrin + sRet, bPrin + bRet);
-                    [sPrin, sRet] = deductPrincipalThenReturn(taxFromStock, sPrin, sRet);
-                    [bPrin, bRet] = deductPrincipalThenReturn(taxFromBond, bPrin, bRet);
+                    [sPrin, sRet] = deductReturnThenPrincipal(taxFromStock, sPrin, sRet);
+                    [bPrin, bRet] = deductReturnThenPrincipal(taxFromBond, bPrin, bRet);
                 } else {
-                    [sPrin, sRet] = deductPrincipalThenReturn(eventTaxAmt, sPrin, sRet);
+                    [sPrin, sRet] = deductReturnThenPrincipal(eventTaxAmt, sPrin, sRet);
                 }
             }
             if (bondTaxAmt > 0) {
@@ -4029,21 +4029,9 @@ return () => document.removeEventListener('keydown', onKey);
 
             // 4) Trekk ut uttak (hendelser + netto utbetaling) – etter skatt
             const totalOut = outflowArr[i];
-            if (state.deferredInterestTax === true) {
-                const [takeFromStockTotal, takeFromBondTotal] = allocateFromTwo(totalOut, sPrin + sRet, bPrin + bRet);
-                [sPrin, sRet] = deductPrincipalThenReturn(takeFromStockTotal, sPrin, sRet);
-                [bPrin, bRet] = deductReturnThenPrincipal(takeFromBondTotal, bPrin, bRet);
-            } else {
-                const [takeFromSPrin, takeFromBPrin] = allocateFromTwo(totalOut, sPrin, bPrin);
-                sPrin = Math.max(0, sPrin - takeFromSPrin);
-                bPrin = Math.max(0, bPrin - takeFromBPrin);
-                let remainder = totalOut - (takeFromSPrin + takeFromBPrin);
-                if (remainder > 0) {
-                    const [takeFromSRet, takeFromBRet] = allocateFromTwo(remainder, sRet, bRet);
-                    sRet = Math.max(0, sRet - takeFromSRet);
-                    bRet = Math.max(0, bRet - takeFromBRet);
-                }
-            }
+            const [takeFromStockTotal, takeFromBondTotal] = allocateFromTwo(totalOut, sPrin + sRet, bPrin + bRet);
+            [sPrin, sRet] = deductReturnThenPrincipal(takeFromStockTotal, sPrin, sRet);
+            [bPrin, bRet] = deductReturnThenPrincipal(takeFromBondTotal, bPrin, bRet);
 
             stockReturn[i] = Math.round(sRet);
             bondReturn[i] = Math.round(bRet);
