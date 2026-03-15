@@ -129,6 +129,11 @@ const Doughnut = ({ data, options, type = 'pie' }) => {
 // --- From constants.ts ---
 const START_YEAR = 2026;
 
+// Farger for Forutsetning «Vis grafikk» – aksjeandel i portefølje I/II og renteportefølje (Likviditetsfond)
+const FORUTSETNING_AKSJE_P1 = '#4b6a8a';   // Aksjeandel Portefølje I
+const FORUTSETNING_AKSJE_P2 = '#87CEEB';   // Aksjeandel Portefølje II
+const FORUTSETNING_RENTEPORTEFOLJE = '#DDE6F0'; // Renteportefølje (Likviditetsfond, 100 % renter)
+
 const CHART_COLORS = {
     hovedstol: '#002359',             // Dark Blue – hovedstol
     avkastning: '#99D9F2',            // Cyan 40 – avkastning
@@ -1421,7 +1426,8 @@ function TKontoDashboard() {
 }
 
 // Oppsummeringsrapport: fire containere – Mål og behov, Eiendeler år for år, Finansiering år for år, Kontantstrøm år for år
-function OppsummeringsrapportContent() {
+// Kontantstrøm år for år hentes alltid fra T-konto (fasit) – identisk med «Årlig kontantstrøm» i T-konto.
+function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 5 }) {
     const appState = MaalOgBehovState.appState || {};
     const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
@@ -1430,6 +1436,8 @@ function OppsummeringsrapportContent() {
     const yearLabels = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
 
     const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
+    const [tkontoDataRefreshKey, setTkontoDataRefreshKey] = useState(0);
+
     useEffect(() => {
         if (tkontoLoaded || typeof window === 'undefined') return;
         if (window.getTKontoAssetSegments) {
@@ -1442,6 +1450,20 @@ function OppsummeringsrapportContent() {
         script.onerror = () => setTkontoLoaded(false);
         document.body.appendChild(script);
     }, [tkontoLoaded]);
+
+    // Oppdater når brukeren bytter til Oppsummeringsrapport-fanen (les da fra T-konto)
+    useEffect(() => {
+        if (activeTab === oppsummeringsrapportTabIndex) {
+            setTkontoDataRefreshKey((k) => k + 1);
+        }
+    }, [activeTab, oppsummeringsrapportTabIndex]);
+
+    // Oppdater når T-konto-data endres (f.eks. etter Input-paste eller redigering i T-konto)
+    useEffect(() => {
+        const handler = () => setTkontoDataRefreshKey((k) => k + 1);
+        window.addEventListener('tkonto-data-changed', handler);
+        return () => window.removeEventListener('tkonto-data-changed', handler);
+    }, []);
 
     const chartOptionsBase = useMemo(() => ({
         responsive: true,
@@ -1464,6 +1486,16 @@ function OppsummeringsrapportContent() {
 
     const latestData = MaalOgBehovState.latestInvestmentChartData;
     const latestOptions = MaalOgBehovState.latestChartOptions;
+
+    // Fjern "start" fra Mål og behov-grafen i Oppsummeringsrapport slik at x-aksen starter på 2026 og står på linje med Eiendeler/Finansiering/Kontantstrøm
+    const maalOgBehovChartDataForReport = useMemo(() => {
+        if (!latestData || !latestData.labels || latestData.labels.length === 0) return latestData;
+        if (latestData.labels[0] !== 'start') return latestData;
+        return {
+            labels: latestData.labels.slice(1),
+            datasets: (latestData.datasets || []).map((ds) => ({ ...ds, data: (ds.data || []).slice(1) }))
+        };
+    }, [latestData]);
 
     const assetsChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoAssetSegments !== 'function') return null;
@@ -1497,7 +1529,7 @@ function OppsummeringsrapportContent() {
             borderSkipped: false
         }));
         return { labels: yearLabels, datasets };
-    }, [tkontoLoaded, yearLabels.join(',')]);
+    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
 
     const financingChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoFinancingSegments !== 'function') return null;
@@ -1531,8 +1563,9 @@ function OppsummeringsrapportContent() {
             borderSkipped: false
         }));
         return { labels: yearLabels, datasets };
-    }, [tkontoLoaded, yearLabels.join(',')]);
+    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
 
+    // Kontantstrøm år for år: alltid fra T-konto (getTKontoCashflowForYear) – identisk med T-konto «Årlig kontantstrøm»
     const cashflowChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoCashflowForYear !== 'function') return null;
         const data = yearLabels.map((y) => {
@@ -1552,7 +1585,7 @@ function OppsummeringsrapportContent() {
                 borderSkipped: false
             }]
         };
-    }, [tkontoLoaded, yearLabels.join(',')]);
+    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
 
     const cashflowOptions = useMemo(() => ({
         ...chartOptionsBase,
@@ -1573,10 +1606,10 @@ function OppsummeringsrapportContent() {
         <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ width: '100%', height: '100%', minHeight: 0, paddingRight: '2rem' }}>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Mål og behov</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Mål og behov</h3>
                     <div className="relative h-[280px]">
-                        {latestData && latestOptions ? (
-                            <Bar data={latestData} options={{ ...latestOptions, maintainAspectRatio: false }} />
+                        {maalOgBehovChartDataForReport && latestOptions ? (
+                            <Bar data={maalOgBehovChartDataForReport} options={{ ...latestOptions, maintainAspectRatio: false }} />
                         ) : (
                             <div className="flex items-center justify-center h-full text-[#999] text-sm">Ingen data. Åpne Mål og behov først.</div>
                         )}
@@ -1585,7 +1618,7 @@ function OppsummeringsrapportContent() {
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Eiendeler år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Eiendeler år for år</h3>
                     <div className="relative h-[280px]">
                         {assetsChartData ? (
                             <Bar data={assetsChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
@@ -1597,7 +1630,7 @@ function OppsummeringsrapportContent() {
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Finansiering år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Finansiering år for år</h3>
                     <div className="relative h-[280px]">
                         {financingChartData ? (
                             <Bar data={financingChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
@@ -1609,7 +1642,7 @@ function OppsummeringsrapportContent() {
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-sm font-medium text-[#333333]/80 mb-3">Kontantstrøm år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Kontantstrøm år for år</h3>
                     <div className="relative h-[280px]">
                         {cashflowChartData ? (
                             <Bar data={cashflowChartData} options={{ ...cashflowOptions, maintainAspectRatio: false }} />
@@ -1673,7 +1706,7 @@ function TabContainer() {
         { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Oppsummeringsrapport', content: <OppsummeringsrapportContent /> }
+        { name: 'Oppsummeringsrapport', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={5} /> }
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -4525,9 +4558,9 @@ return () => document.removeEventListener('keydown', onKey);
             : 0;
 
         const bars = [];
-        if (p1 > 0) bars.push({ key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: CHART_COLORS.hovedstol });
-        if (p2 > 0) bars.push({ key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: CHART_COLORS.sparing });
-        if (lf > 0) bars.push({ key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: CHART_COLORS.avkastning });
+        if (p1 > 0) bars.push({ key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1 });
+        if (p2 > 0) bars.push({ key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2 });
+        if (lf > 0) bars.push({ key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: FORUTSETNING_RENTEPORTEFOLJE });
         // Totalportefølje vises alltid
         bars.push({ key: 'tot', label: 'Totalportefølje', stockPct: totalStock, color: CHART_COLORS.hovedstol });
         return bars;
@@ -4548,9 +4581,9 @@ return () => document.removeEventListener('keydown', onKey);
             : 0;
 
         return [
-            { key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: CHART_COLORS.hovedstol, present: p1 > 0 },
-            { key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: CHART_COLORS.sparing, present: p2 > 0 },
-            { key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: CHART_COLORS.avkastning, present: lf > 0 },
+            { key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1, present: p1 > 0 },
+            { key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2, present: p2 > 0 },
+            { key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: FORUTSETNING_RENTEPORTEFOLJE, present: lf > 0 },
             { key: 'tot', label: 'Totalportefølje', stockPct: totalStock, color: CHART_COLORS.hovedstol, present: true },
         ];
     }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation]);
@@ -5072,11 +5105,11 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     {bar.present && (
                                                         <>
                                                             <div className="absolute inset-0 flex flex-col-reverse rounded-2xl overflow-hidden">
-                                                                {/* Bond section */}
+                                                                {/* Bond section – Renteportefølje (Likviditetsfond) får egen farge; renteandelen i P1/P2 uendret */}
                                                                 <div
                                                                     style={{
                                                                         height: `${bondPct}%`,
-                                                                        backgroundColor: '#D1DCE7',
+                                                                        backgroundColor: bar.key === 'lf' ? FORUTSETNING_RENTEPORTEFOLJE : '#D1DCE7',
                                                                     }}
                                                                 >
                                                                 </div>
@@ -5108,7 +5141,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                                 </div>
                                                             ) : (
                                                                 <div className="absolute inset-0 flex items-center justify-center text-center px-3 z-20">
-                                                                    <span className="text-white font-bold text-xl select-none leading-tight">
+                                                                    <span className={`font-bold text-xl select-none leading-tight ${bar.key === 'lf' ? 'text-[#475569]' : 'text-white'}`}>
                                                                         {labelText}
                                                                     </span>
                                                                 </div>

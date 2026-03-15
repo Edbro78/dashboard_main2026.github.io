@@ -5112,7 +5112,18 @@ function computeCashflowForecastSeries(startYear, yearsCount) {
 }
 
 function buildCashflowForecastSVG(startYear, yearsCount) {
-  const { series, inflation } = computeCashflowForecastSeries(startYear, yearsCount);
+  // Bruk samme datakilde som Oppsummeringsrapporten (getTKontoCashflowForYear) slik at kontantstrøm er identisk
+  let series;
+  if (typeof window.getTKontoCashflowForYear === "function") {
+    series = [];
+    for (let y = startYear; y < startYear + yearsCount; y++) {
+      const net = window.getTKontoCashflowForYear(y);
+      series.push({ year: y, net });
+    }
+  } else {
+    const result = computeCashflowForecastSeries(startYear, yearsCount);
+    series = result.series;
+  }
   const svgNS = "http://www.w3.org/2000/svg";
   const vbW = 1180;
   const vbH = 540;
@@ -9177,6 +9188,12 @@ function parseInputText(text) {
     }
   }
   
+  // Signaliser at T-konto-data er oppdatert (Oppsummeringsrapport leser kontantstrøm herfra)
+  try {
+    if (typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("tkonto-data-changed"));
+    }
+  } catch (e) {}
   return true;
 }
 
@@ -9203,6 +9220,11 @@ window.TKontoRefreshAfterInputLoad = function () {
   }
   if (typeof updateTopSummaries === "function") updateTopSummaries();
   if (typeof notifyCashflowRoutingChange === "function") notifyCashflowRoutingChange("Input");
+  try {
+    if (typeof window.dispatchEvent === "function") {
+      window.dispatchEvent(new CustomEvent("tkonto-data-changed"));
+    }
+  } catch (e) {}
 };
 
 function parseValue(str) {
