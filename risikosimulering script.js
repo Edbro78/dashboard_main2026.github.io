@@ -7477,6 +7477,8 @@ async function init() {
             state.newPortfolio.highYield = stockAllocation;
             state.newPortfolio.nordicStocks = 0;
             state.newPortfolio.emergingMarkets = 0;
+            state.newPortfolio.renterIGPct = Math.round(state.newPortfolio.riskFree * 7) / 10;
+            state.newPortfolio.renterHYPct = Math.round(state.newPortfolio.riskFree * 3) / 10;
             updateSliderUI('new');
             // Aktiver den preset-knappen som matcher (0, 20, 45, 55, 65, 85, 100)
             const presets = [0, 20, 45, 55, 65, 85, 100];
@@ -7511,6 +7513,9 @@ async function init() {
                     const val = parseFloat(String(mDagens[1]).replace(',', '.'));
                     if (!isNaN(val) && val >= 0 && val <= 100) {
                         state.currentPortfolio.highYield = val;
+                        state.currentPortfolio.riskFree = 100 - val;
+                        state.currentPortfolio.renterIGPct = Math.round(state.currentPortfolio.riskFree * 7) / 10;
+                        state.currentPortfolio.renterHYPct = Math.round(state.currentPortfolio.riskFree * 3) / 10;
                         changed = true;
                     }
                 }
@@ -7519,6 +7524,9 @@ async function init() {
                     const val = parseFloat(String(mNy[1]).replace(',', '.'));
                     if (!isNaN(val) && val >= 0 && val <= 100) {
                         state.newPortfolio.highYield = val;
+                        state.newPortfolio.riskFree = 100 - val;
+                        state.newPortfolio.renterIGPct = Math.round(state.newPortfolio.riskFree * 7) / 10;
+                        state.newPortfolio.renterHYPct = Math.round(state.newPortfolio.riskFree * 3) / 10;
                         changed = true;
                     }
                 }

@@ -705,6 +705,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     localStorage.setItem('pensjonsgapetPortefoljeOgSparing', JSON.stringify({ portfolio, saving }));
                 } catch (e) {}
 
+                // Eksporter pensjonsdata til T-konto kontantstrøm-prognose (kun visning i fremtidsgraf)
+                try {
+                    localStorage.setItem('pensjonsgapetTKontoAarligPensjon', JSON.stringify({
+                        annualPension: Math.max(0, Math.round(totalAnnualPension)),
+                        age: Math.max(0, Number(values.age) || 0),
+                        retirementAge: Math.max(0, Number(values.retirementAge) || 0),
+                        yearsToRetirement: Math.max(0, Number(n) || 0)
+                    }));
+                } catch (e) {}
+
                 const desiredAnnualPension = futureSalary * (values.desiredPensionLevel / 100);
                 const annualPensionGap = desiredAnnualPension - totalAnnualPension;
                 const goalMetMessage = document.getElementById('goal-met-message');

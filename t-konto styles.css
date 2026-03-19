@@ -1080,6 +1080,33 @@ p { /* Avsnitt */
   flex-shrink: 0;
 }
 
+.income-pension-amount-wrapper {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.income-pension-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.income-pension-toggle-label {
+  font-size: 14px;
+  font-weight: var(--weight-medium);
+  color: var(--GRAY_TEXT_DARK);
+  text-transform: none;
+}
+
+.income-pension-toggle-state {
+  min-width: 26px;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  color: var(--GRAY_TEXT_SECONDARY);
+  text-align: left;
+}
+
 .asset-toggle-switch {
   position: relative;
   width: 70px; /* 20% mindre: 87px * 0.8 = 69.6px, avrundet til 70px */
@@ -1166,40 +1193,82 @@ p { /* Avsnitt */
 .year-range { width: 100%; height: 8px; }
 
 /* Redusert høyde for inntekter- og kostnadsbokser (ca 15% lavere – mindre scroll ved 100 % zoom) */
+.panel-income > h3 {
+  display: none; /* fjern liten overskrift "Inntekt" øverst */
+}
+
+.panel-income {
+  padding-top: 12px; /* mindre toppmarg når overskriften fjernes */
+}
+
 .panel-income .assets {
-  gap: 18px; /* mindre avstand mellom radene */
+  gap: 19px; /* ca 5% lavere */
 }
 .panel-income .asset-row {
-  padding: 11px; /* ca 15 % lavere enn 13px */
+  padding: 11.5px; /* ca 5% lavere */
 }
 .panel-income .asset-col {
-  gap: 6px;
+  gap: 6.5px; /* ca 5% lavere */
 }
 .panel-income .asset-top {
-  gap: 6px;
+  gap: 6.5px; /* ca 5% lavere */
 }
 .panel-income .asset-name {
-  padding: 6px 8px;
-  font-size: 0.9rem;
-  line-height: 1.25;
+  padding: 6.5px 9.5px; /* ca 5% lavere */
+  font-size: inherit; /* match eiendeler (ingen egen font-size override) */
+  line-height: normal;
 }
 .panel-income .asset-amount {
-  padding: 6px 11px;
-  font-size: 1rem;
+  padding: 6.5px 12.5px; /* ca 5% lavere */
+  font-size: 1rem; /* identisk med eiendeler */
   width: 392px;
   max-width: 392px;
 }
 /* Sliderne i inntekter-fanen: samme bredde som eiendeler, litt lavere track */
 .panel-income .asset-range {
   width: 50%;
-  height: 5px;
+  height: 5.7px; /* ca 5% lavere */
 }
 .panel-income .asset-delete {
-  width: 24px;
-  height: 24px;
+  width: 25px; /* ca 5% lavere */
+  height: 25px;
+}
+
+/* Inntekter-rader kan inneholde toggle-brytere (f.eks. skattesatser). Gjør dem ~5% lavere. */
+.panel-income .asset-toggle-switch {
+  width: 53.2px;  /* 56 * 0.95 */
+  height: 31.35px; /* 33 * 0.95 */
+}
+.panel-income .asset-toggle-slider {
+  border-radius: 31.35px; /* tilsvarer .asset-toggle-switch høyde */
+}
+.panel-income .asset-toggle-slider:before {
+  height: 23.75px; /* 25 * 0.95 */
+  width: 23.75px;  /* 25 * 0.95 */
+  left: 3.8px;     /* 4 * 0.95 */
+  bottom: 3.8px;   /* 4 * 0.95 */
+}
+.panel-income .asset-toggle-switch input:checked + .asset-toggle-slider:before {
+  transform: translateX(22.8px); /* 24 * 0.95 */
+}
+
+/* Fjern liten overskrift i Gjeld-fanen og juster toppmarg */
+.panel-debt > h3 {
+  display: none;
+}
+.panel-debt {
+  padding-top: 12px; /* mindre toppmarg når overskriften fjernes */
 }
 
 /* Redusert høyde for eiendeler-bokser (20% mindre + 10% lavere for 80% zoom) */
+.panel-assets > h3 {
+  display: none; /* fjern liten overskrift over eiendelene */
+}
+
+.panel-assets {
+  padding-top: 12px; /* mindre toppmarg når overskriften fjernes */
+}
+
 .panel-assets .assets {
   gap: 20px; /* 24px − 10% for å se mer ved 80% zoom */
 }
@@ -1251,24 +1320,24 @@ p { /* Avsnitt */
 
 /* Redusert høyde for gjeld-bokser (20% mindre) */
 .panel-debt .asset-row {
-  padding: 13px; /* Redusert fra 16px (20% mindre) */
+  padding: 12px; /* identisk med eiendeler */
 }
 
 .panel-debt .asset-col {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 7px; /* identisk med eiendeler */
 }
 
 .panel-debt .asset-top {
-  gap: 8px; /* Redusert fra 10px (20% mindre) */
+  gap: 7px; /* identisk med eiendeler */
 }
 
 .panel-debt .asset-name {
-  padding: 8px 10px; /* Redusert fra 10px 12px (20% mindre) */
+  padding: 7px 10px; /* identisk med eiendeler */
 }
 
 .panel-debt .asset-amount {
-  padding: 8px 13px; /* Redusert fra 10px 16px (20% mindre) */
-  font-size: 1.1rem; /* Redusert fra 1.25rem (ca 20% mindre) */
+  padding: 7px 13px; /* identisk med eiendeler */
+  font-size: 1rem; /* identisk med eiendeler */
   width: 392px; /* Samme bredde som eiendeler-fanen */
   max-width: 392px; /* Sikrer at den ikke blir bredere */
 }
@@ -1276,6 +1345,12 @@ p { /* Avsnitt */
 /* Sliderne i gjeld-fanen skal være like brede som i eiendeler-fanen */
 .panel-debt .asset-range {
   width: 50%;
+}
+
+/* Slett-knapp skal matche eiendeler */
+.panel-debt .asset-delete {
+  width: 26px;
+  height: 26px;
 }
 
 /* Fremtidig utvikling – År-knapper kort og tydeligere stil */
@@ -2090,10 +2165,10 @@ p { /* Avsnitt */
 /* Som .stepper-list: grid med like kolonner (1fr) – alt får plass, ingen forsvinning ved zoom */
 .t-konto-year-buttons {
   display: grid;
-  grid-template-columns: repeat(15, 1fr);
-  gap: 8px;
+  grid-template-columns: repeat(16, 1fr);
+  gap: 6px;
   align-items: center;
-  padding: 0 8px; /* identisk .stepper-list */
+  padding: 0 4px; /* litt mer plass med 16 knapper */
   list-style: none;
   margin: 0;
 }
@@ -2101,17 +2176,18 @@ p { /* Avsnitt */
 .t-konto-year-btn {
   min-width: 0; /* la grid-celle bestemme bredde, som stepper-steg */
   width: 100%;
-  padding: 6px 12px;
+  padding: 6px 8px;
   border-radius: 8px;
   border: 2px solid var(--BORDER_LIGHT);
   background: #ffffff;
   color: var(--GRAY_TEXT_DARK);
   font-weight: var(--weight-semibold);
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   box-shadow: var(--shadow-button);
   box-sizing: border-box;
+  white-space: nowrap; /* unngå wrap for 'start' */
 }
 
 .t-konto-year-btn:hover {

@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
             { id: 'private-portfolio', label: 'Privat portefølje (ASK)', value: 0, min: 0, max: 100000000, step: 100000 },
             { id: 'secondary-residence', label: 'Sekundærbolig', value: 0, min: 0, max: 30000000, step: 50000 },
             { id: 'bank-deposits', label: 'Bankinnskudd', value: 0, min: 0, max: 50000000, step: 50000 },
-            { id: 'operating-assets', label: 'Driftsmidler', value: 0, min: 0, max: 20000000, step: 50000 },
+            { id: 'operating-assets', label: 'Andre eiendeler', value: 0, min: 0, max: 250000000, step: 50000 },
         ],
         // Rabattsatser/verdivurderingsfaktorer for ulike eiendelstyper.
         // Disse representerer hvor mye av eiendelens verdi som medregnes i formuegrunnlaget.
@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
             'private-portfolio': 0.80, // 80% verdivurdering (20% rabatt)
             'secondary-residence': 1, // 100% verdivurdering (0% rabatt)
             'bank-deposits': 1,      // 100% verdivurdering (0% rabatt)
-            'operating-assets': 0.70, // 70% verdivurdering (30% rabatt)
+            'operating-assets': 1, // 100% verdivurdering (ingen rabatt) - behandles som bankinnskudd
         },
         // Applikasjonsstatus, f.eks. antall personer for skatteberegninger.
         state: { personCount: 1 },
@@ -450,6 +450,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const bankSpan = document.getElementById('bank-deposits-value');
                 if (bankSpan) bankSpan.textContent = WealthTaxApp.formatCurrency(data.bankinnskudd || 0);
             }
+
+            // Andre eiendeler → Andre eiendeler
+            const otherAssetsSlider = document.getElementById('operating-assets');
+            if (otherAssetsSlider) {
+                otherAssetsSlider.value = data.andreEiendeler || 0;
+                const otherAssetsSpan = document.getElementById('operating-assets-value');
+                if (otherAssetsSpan) otherAssetsSpan.textContent = WealthTaxApp.formatCurrency(data.andreEiendeler || 0);
+            }
             WealthTaxApp.calculateAll();
         });
     }
@@ -484,6 +492,8 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         const labelToAssetId = {};
         (WealthTaxApp.assetsConfig || []).forEach(a => { labelToAssetId[a.label] = a.id; });
+        // Bakoverkompatibilitet: tidligere het kategorien "Driftsmidler"
+        labelToAssetId['Driftsmidler'] = 'operating-assets';
         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
         lines.forEach(line => {
             const colonIdx = line.indexOf(':');

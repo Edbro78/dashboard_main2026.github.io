@@ -137,7 +137,7 @@ const FORUTSETNING_RENTEPORTEFOLJE = '#DDE6F0'; // Renteportefølje (Likviditets
 const CHART_COLORS = {
     hovedstol: '#002359',             // Dark Blue – hovedstol
     avkastning: '#99D9F2',            // Cyan 40 – avkastning
-    sparing: '#333333',               // Coal – årlig sparing
+    sparing: '#4B6A8A',               // Harmonisk blågrå – årlig sparing
     utbetaling_netto: '#002D72',      // Blue – netto utbetaling
     utbetaling_skatt: '#CC4B4B',      // Rød for løpende skatt
     event_total_color: '#CCECF9',     // Cyan 20 – hendelser
@@ -246,7 +246,7 @@ const MaalOgBehovState = {
     showDistributionGraphic: false,
     showStockPortionGraphic: false,
     showInvestedCapitalGraphic: false,
-    showGoalSeek: true,
+    showGoalSeek: false,
     showDisclaimer: false,
     showOutputModal: false,
     outputText: '',
@@ -365,7 +365,12 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         const startOfYearPortfolioValue = currentPortfolioValue;
         const isLastPayoutYear = i === (state.investmentYears + state.payoutYears - 1);
         const isExtraDisplayYear = i === (state.investmentYears + state.payoutYears);
-        const useGoalSeekPayoutDrainFinalYear = taxesEnabled && state.goalSeekPayoutDrainFinalYear === true && (state.payoutYears || 0) > 0;
+        // Ved utsatt renteskatt skal målsøk utbetaling fordeles jevnt over utbetalingsårene.
+        // Da må vi IKKE tømme hele porteføljen i siste utbetalingsår.
+        const useGoalSeekPayoutDrainFinalYear = taxesEnabled &&
+            state.goalSeekPayoutDrainFinalYear === true &&
+            (state.payoutYears || 0) > 0 &&
+            state.deferredInterestTax !== true;
         const taxesPaidOutsidePortfolioThisYear = useGoalSeekPayoutDrainFinalYear && isExtraDisplayYear;
        
         // --- START OF YEAR ---
@@ -1433,7 +1438,12 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
     const extraDisplayYear = payoutYears > 0 ? 1 : 0;
     const totalYears = investmentYears + payoutYears + extraDisplayYear;
-    const yearLabels = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
+    // T-konto sin tidslogikk:
+    // - "start" skal være 1.jan 2026 (tilsvarer yearVal=2025 i T-konto beregninger)
+    // - "2026" skal være ett år etter (yearVal=2026 i T-konto beregninger)
+    const numericYearLabels = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
+    const yearLabels = ["start", ...numericYearLabels];
+    const yearVals = [START_YEAR - 1, ...numericYearLabels];
 
     const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
     const [tkontoDataRefreshKey, setTkontoDataRefreshKey] = useState(0);
@@ -1484,24 +1494,47 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
         }
     }), []);
 
+    // Tooltip-sum: legg alltid til et siste felt "sum" nederst i tooltipen
+    const tooltipSumFooterCallback = useMemo(() => {
+        return {
+            callbacks: {
+                footer: (tooltipItems) => {
+                    const items = tooltipItems || [];
+                    if (items.length === 0) return '';
+                    const sum = items.reduce((acc, it) => {
+                        const v = (typeof it.parsed?.y === 'number')
+                            ? it.parsed.y
+                            : Number(it.raw ?? it.parsed?.y ?? 0);
+                        return acc + (isFinite(v) ? v : 0);
+                    }, 0);
+                    return `sum: ${formatCurrency(sum)}`;
+                }
+            }
+        };
+    }, []);
+
+    const assetsAndFinancingOptions = useMemo(() => ({
+        ...chartOptionsBase,
+        plugins: {
+            ...(chartOptionsBase.plugins || {}),
+            tooltip: tooltipSumFooterCallback
+        }
+    }), [chartOptionsBase, tooltipSumFooterCallback]);
+
     const latestData = MaalOgBehovState.latestInvestmentChartData;
     const latestOptions = MaalOgBehovState.latestChartOptions;
 
-    // Fjern "start" fra Mål og behov-grafen i Oppsummeringsrapport slik at x-aksen starter på 2026 og står på linje med Eiendeler/Finansiering/Kontantstrøm
+    // Behold "start" på x-aksen i Oppsummeringsrapport (nå matcher vi også T-konto sin x-akse).
     const maalOgBehovChartDataForReport = useMemo(() => {
         if (!latestData || !latestData.labels || latestData.labels.length === 0) return latestData;
-        if (latestData.labels[0] !== 'start') return latestData;
-        return {
-            labels: latestData.labels.slice(1),
-            datasets: (latestData.datasets || []).map((ds) => ({ ...ds, data: (ds.data || []).slice(1) }))
-        };
+        return latestData;
     }, [latestData]);
 
     const assetsChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoAssetSegments !== 'function') return null;
         const keys = [];
         const keyColors = {};
-        yearLabels.forEach((y) => {
+        yearVals.forEach((y) => {
             try {
                 const segs = window.getTKontoAssetSegments(y);
                 (segs || []).forEach((seg) => {
@@ -1514,7 +1547,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
         });
         const datasets = keys.map((key) => ({
             label: key,
-            data: yearLabels.map((y) => {
+            data: yearVals.map((y) => {
                 try {
                     const segs = window.getTKontoAssetSegments(y);
                     const s = (segs || []).find((x) => x.key === key);
@@ -1529,13 +1562,13 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             borderSkipped: false
         }));
         return { labels: yearLabels, datasets };
-    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
+    }, [tkontoLoaded, yearVals.join(','), tkontoDataRefreshKey]);
 
     const financingChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoFinancingSegments !== 'function') return null;
         const keys = [];
         const keyColors = {};
-        yearLabels.forEach((y) => {
+        yearVals.forEach((y) => {
             try {
                 const res = window.getTKontoFinancingSegments(y);
                 (res.segments || []).forEach((seg) => {
@@ -1548,7 +1581,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
         });
         const datasets = keys.map((key) => ({
             label: key,
-            data: yearLabels.map((y) => {
+            data: yearVals.map((y) => {
                 try {
                     const res = window.getTKontoFinancingSegments(y);
                     const s = (res.segments || []).find((x) => x.key === key);
@@ -1563,12 +1596,12 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             borderSkipped: false
         }));
         return { labels: yearLabels, datasets };
-    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
+    }, [tkontoLoaded, yearVals.join(','), tkontoDataRefreshKey]);
 
     // Kontantstrøm år for år: alltid fra T-konto (getTKontoCashflowForYear) – identisk med T-konto «Årlig kontantstrøm»
     const cashflowChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoCashflowForYear !== 'function') return null;
-        const data = yearLabels.map((y) => {
+        const data = yearVals.map((y) => {
             try {
                 return window.getTKontoCashflowForYear(y) || 0;
             } catch (e) {
@@ -1585,7 +1618,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
                 borderSkipped: false
             }]
         };
-    }, [tkontoLoaded, yearLabels.join(','), tkontoDataRefreshKey]);
+    }, [tkontoLoaded, yearVals.join(','), tkontoDataRefreshKey]);
 
     const cashflowOptions = useMemo(() => ({
         ...chartOptionsBase,
@@ -1621,7 +1654,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
                     <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Eiendeler år for år</h3>
                     <div className="relative h-[280px]">
                         {assetsChartData ? (
-                            <Bar data={assetsChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
+                            <Bar data={assetsChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
                         ) : (
                             <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen eiendeler' : 'Last T-konto for data'}</div>
                         )}
@@ -1633,7 +1666,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
                     <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Finansiering år for år</h3>
                     <div className="relative h-[280px]">
                         {financingChartData ? (
-                            <Bar data={financingChartData} options={{ ...chartOptionsBase, maintainAspectRatio: false }} />
+                            <Bar data={financingChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
                         ) : (
                             <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen finansiering' : 'Last T-konto for data'}</div>
                         )}
@@ -3800,13 +3833,14 @@ return () => document.removeEventListener('keydown', onKey);
         // Hvis ingen utbetalingsår, gjør ingenting
         const hasPayoutYears = (state.payoutYears || 0) > 0;
         if (!hasPayoutYears) return;
+        const shouldDrainFinalYear = state.deferredInterestTax !== true;
 
         const simulateLastPrincipal = (consumptionPayoutValue) => {
             const p = calculatePrognosis({ 
                 ...state, 
                 desiredAnnualConsumptionPayout: consumptionPayoutValue,
                 desiredAnnualWealthTaxPayout: 0,  // Sett hele beløpet i forbruksutbetaling
-                goalSeekPayoutDrainFinalYear: true
+                goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
             }, false, null);
             return p.finalPortfolioValue;
         };
@@ -3845,7 +3879,7 @@ return () => document.removeEventListener('keydown', onKey);
             desiredAnnualConsumptionPayout: result,
             desiredAnnualWealthTaxPayout: 0,
             goalSeekPayoutResult: result,
-            goalSeekPayoutDrainFinalYear: true
+            goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
         }));
     }, [state, prognosis.data.hovedstol]);
 
@@ -3940,6 +3974,19 @@ return () => document.removeEventListener('keydown', onKey);
                 callbacks: {
                     title: (items) => `År ${items[0].label}`,
                     label: (context) => `${context.dataset.label || ''}: ${formatCurrency(context.raw)}`,
+                    footer: (tooltipItems) => {
+                        const yearIdx = tooltipItems?.[0]?.dataIndex ?? 0;
+                        const hovedstol = (prognosis?.data?.hovedstol?.[yearIdx] ?? 0);
+                        const avkastning = (prognosis?.data?.avkastning?.[yearIdx] ?? 0);
+                        const sparing = (prognosis?.data?.sparing?.[yearIdx] ?? 0);
+                        const hendelser = (prognosis?.data?.event_total?.[yearIdx] ?? 0);
+                        const nettoUtbetaling = (prognosis?.data?.nettoUtbetaling?.[yearIdx] ?? 0);
+                        const skattPaHendelser = (prognosis?.data?.skatt2?.[yearIdx] ?? 0);
+                        const lopendeRenteskatt = (prognosis?.data?.renteskatt?.[yearIdx] ?? 0);
+
+                        const sum = hovedstol + avkastning + sparing + hendelser + nettoUtbetaling + (state.taxCalculationEnabled ? (skattPaHendelser + lopendeRenteskatt) : 0);
+                        return [`sum: ${formatCurrency(sum)}`];
+                    },
                 }
             }
         },
