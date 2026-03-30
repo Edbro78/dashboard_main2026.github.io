@@ -32,9 +32,13 @@ const AppState = {
   expectations: { likvider: 4, fastEiendom: 4, investeringer: 6, andreEiendeler: 0, bilbat: -5, kpi: 2.5 },
   cashflowRouting: { mode: "forbruk", customAmount: 0 },
   structure: {
-    privat: [{ active: true, name: "Privat" }], // Array for å støtte flere privat-bokser
-    holding1: { active: false, name: "Holding AS" },
-    holding2: { active: false, name: "Holding II AS" }
+    privat: [
+      { active: true, name: "Privat" },
+      { active: false, name: "Privat II" }
+    ], // Array for å støtte flere privat-bokser; index > 0 kan være aktiv/inaktiv
+    // ownershipPct: heltall per privat-indeks, sum 100. Mangler/ugyldig lengde → lik fordeling (50/50 ved 2 privat, 100 % ved 1).
+    holding1: { active: false, name: "Holding AS", ownershipPct: null },
+    holding2: { active: false, name: "Holding II AS", ownershipPct: null }
   },
   tKontoViewMode: "individual", // "individual" eller "grouped"
   treemapValues: { // Lagre verdier fra treemap-diagrammene
@@ -73,6 +77,43 @@ function getPensjonForecastData() {
   } catch (e) {
     return null;
   }
+}
+
+/** Felles parametre når «årlig pensjon i kontantstrøm» er på: år fra 2026 bestemmer lønn vs pensjon. */
+function getPensionCashflowModeParams() {
+  const incomes = AppState.incomes || [];
+  const upper = (s) => String(s || "").toUpperCase();
+  const pensionIncomeItem = incomes.find((i) => /PENSJON/.test(upper(i.name)));
+  const pensionModeEnabled = !!(pensionIncomeItem && pensionIncomeItem._annualPensionEnabled);
+  const pensjonData = pensionModeEnabled ? getPensjonForecastData() : null;
+  const pensionModeActive = pensionModeEnabled && !!pensjonData;
+  const yearsToRetirement = pensjonData ? Math.max(0, Number(pensjonData.yearsToRetirement) || 0) : 0;
+  const annualPensionFromPensjon = pensjonData ? Math.max(0, Number(pensjonData.annualPension) || 0) : 0;
+  const pensionFromTKonto = Math.max(0, Number(pensionIncomeItem && pensionIncomeItem.amount) || 0);
+  const activeAnnualPension = annualPensionFromPensjon > 0 ? annualPensionFromPensjon : pensionFromTKonto;
+  return {
+    pensionModeActive,
+    yearsToRetirement,
+    activeAnnualPension,
+    pensionIncomeItem
+  };
+}
+
+/** Pensjon i skattegrunnlag (auto inntektsskatt) kun etter pensjonsstart — samme akse som kontantstrøm (år fra 2026). */
+function pensionAmountForIncomeTaxEstimate() {
+  const pensionIncome = AppState.incomes.find((i) => i.name === "PENSJONSINNTEKT");
+  if (!pensionIncome) return 0;
+  const raw = Math.max(0, Number(pensionIncome.amount) || 0);
+  if (!pensionIncome._annualPensionEnabled) return raw;
+  const pd = getPensjonForecastData();
+  if (!pd) return 0;
+  const ytr = Math.max(0, Number(pd.yearsToRetirement) || 0);
+  const annualPension = Math.max(0, Number(pd.annualPension) || 0);
+  const activeAnnualPension = annualPension > 0 ? annualPension : raw;
+  const refYear = 2026;
+  const yearsFrom2026 = Math.max(0, refYear - 2026);
+  if (yearsFrom2026 >= ytr) return activeAnnualPension;
+  return 0;
 }
 
 // Last skattesatser fra JSON-fil
@@ -158,8 +199,8 @@ function updateAutoTax() {
   const taxItem = AppState.incomes.find(i => i.name === "Inntektsskatt");
   if (taxItem && taxItem._autoTaxEnabled) {
     const wageIncome = AppState.incomes.find(i => i.name === "LØNNSINNTEKT");
-    const pensionIncome = AppState.incomes.find(i => i.name === "PENSJONSINNTEKT");
-    const taxableIncome = (wageIncome ? wageIncome.amount : 0) + (pensionIncome ? pensionIncome.amount : 0);
+    const taxableIncome =
+      (wageIncome ? wageIncome.amount : 0) + pensionAmountForIncomeTaxEstimate();
     if (taxableIncome > 0) {
       const calculatedTax = calculateTax(taxableIncome);
       taxItem.amount = calculatedTax;
@@ -220,6 +261,10 @@ function initTKontoDashboard() {
   // In that case, just return and wait for next call
   if (!moduleRoot || navItems.length === 0) {
     return;
+  }
+
+  if (AppState.lastActiveSection === "Treemap") {
+    AppState.lastActiveSection = "T-Konto";
   }
 
   // Check if this is a re-initialization by checking if nav items already have click handlers
@@ -285,12 +330,6 @@ function initTKontoDashboard() {
         if (typeof updateCardsForTKonto === 'function') updateCardsForTKonto();
       }
       if (sectionTitle) sectionTitle.textContent = "T-Konto";
-    } else if (savedSection === "Treemap") {
-      if (typeof renderFutureModule === 'function') {
-        renderFutureModule(moduleRoot);
-        if (typeof updateCardsForTreemap === 'function') updateCardsForTreemap();
-      }
-      if (sectionTitle) sectionTitle.textContent = "Treemap";
     } else {
       // Default to Forside if no active section
       if (typeof renderForsideModule === 'function') renderForsideModule(moduleRoot);
@@ -345,16 +384,12 @@ function initTKontoDashboard() {
           renderFutureModule(moduleRoot);
           updateCardsForTKonto();
         }
-        else if (section === "Treemap") {
-          renderFutureModule(moduleRoot);
-          updateCardsForTreemap();
-        }
         else if (section === "Kontantstrøm") renderWaterfallModule(moduleRoot);
         else if (section === "Fremtidig utvikling") renderFutureModule(moduleRoot);
         else moduleRoot.innerHTML = "";
       }
       // Oppdater summer, men ikke hvis vi er i T-Konto (der skal de være tomme)
-      if (section !== "T-Konto" && section !== "Treemap") {
+      if (section !== "T-Konto") {
         updateTopSummaries();
       }
     });
@@ -369,7 +404,6 @@ function initTKontoDashboard() {
     { key: "Inntekter" },
     { key: "Kontantstrøm" },
     { key: "T-Konto" },
-    { key: "Treemap" },
     { key: "TBE" },
     { key: "Analyse" }
   ];
@@ -403,7 +437,7 @@ function initTKontoDashboard() {
   navItems.forEach((item) => {
     item.addEventListener("click", () => {
       const currentlyActive = document.querySelector(".nav-item.is-active");
-      const wasTKonto = currentlyActive && (currentlyActive.getAttribute("data-section") === "T-Konto" || currentlyActive.getAttribute("data-section") === "Treemap");
+      const wasTKonto = currentlyActive && currentlyActive.getAttribute("data-section") === "T-Konto";
       
       if (currentlyActive) currentlyActive.classList.remove("is-active");
 
@@ -429,8 +463,8 @@ function initTKontoDashboard() {
 
       renderStepper(stepperKey);
 
-      // Gjenopprett kortene hvis vi forlater T-Konto eller Treemap
-      if (wasTKonto && title !== "T-Konto" && title !== "Treemap") {
+      // Gjenopprett kortene hvis vi forlater T-Konto
+      if (wasTKonto && title !== "T-Konto") {
         restoreCardsFromTKonto();
       }
 
@@ -456,9 +490,6 @@ function initTKontoDashboard() {
       } else if (title === "T-Konto") {
         renderFutureModule(moduleRoot);
         updateCardsForTKonto();
-      } else if (title === "Treemap") {
-        renderFutureModule(moduleRoot);
-        updateCardsForTreemap();
       } else {
         moduleRoot.innerHTML = "";
       }
@@ -530,10 +561,6 @@ function initTKontoDashboard() {
       renderFutureModule(moduleRoot);
       updateCardsForTKonto();
       if (sectionTitle) sectionTitle.textContent = "T-Konto";
-    } else if (activeSection === "Treemap") {
-      renderFutureModule(moduleRoot);
-      updateCardsForTreemap();
-      if (sectionTitle) sectionTitle.textContent = "Treemap";
     } else {
       // Fallback til Forside
       renderForsideModule(moduleRoot);
@@ -826,19 +853,15 @@ function renderForsideModule(root) {
   const iconMarkup = {
     assets: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 11.5L12 4l8 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 11v9h11v-9" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20v-4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     debt: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 3h10l4 4v14H6V3Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 3v5h4" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 15h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M9 19h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    income: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="9" cy="9" rx="4" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 9v3c0 1.1 1.8 2 4 2s4-.9 4-2V9" stroke="currentColor" stroke-width="2"/><path d="M5 12v3c0 1.1 1.8 2 4 2s4-.9 4-2v-3" stroke="currentColor" stroke-width="2"/><ellipse cx="15" cy="13" rx="4" ry="2" stroke="currentColor" stroke-width="2"/><path d="M11 13v3c0 1.1 1.8 2 4 2s4-.9 4-2v-3" stroke="currentColor" stroke-width="2"/><path d="M11 16v1.5c0 1.1 1.8 2 4 2s4-.9 4-2V16" stroke="currentColor" stroke-width="2"/><path d="M9 7.5c.5.3 1.1.5 2 .5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M15 11.5c.5.3 1.1.5 2 .5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    cashflow: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 9H4V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 9c2.2-3 5.3-5 9-5 4.5 0 7.5 3 7.5 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 15h3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 15c-2.2 3-5.3 5-9 5-4.5 0-7.5-3-7.5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.5 12c.4-.5 1-.8 1.5-.8.8 0 1.5.6 1.5 1.4s-.7 1.4-1.5 1.4c-.5 0-1.1-.3-1.5-.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
-    tbe: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l8 3v6c0 4.4-3 8.4-8 9-5-0.6-8-4.6-8-9V6l8-3Z" stroke="currentColor" stroke-width="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    analysis: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 20V10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10 20V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M22 20v-9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+    equity: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="9" cy="9" rx="4" ry="2" stroke="currentColor" stroke-width="2"/><path d="M5 9v3c0 1.1 1.8 2 4 2s4-.9 4-2V9" stroke="currentColor" stroke-width="2"/><path d="M5 12v3c0 1.1 1.8 2 4 2s4-.9 4-2v-3" stroke="currentColor" stroke-width="2"/><ellipse cx="15" cy="13" rx="4" ry="2" stroke="currentColor" stroke-width="2"/><path d="M11 13v3c0 1.1 1.8 2 4 2s4-.9 4-2v-3" stroke="currentColor" stroke-width="2"/><path d="M11 16v1.5c0 1.1 1.8 2 4 2s4-.9 4-2V16" stroke="currentColor" stroke-width="2"/><path d="M9 7.5c.5.3 1.1.5 2 .5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M15 11.5c.5.3 1.1.5 2 .5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    cashflow: '<svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 9H4V5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M4 9c2.2-3 5.3-5 9-5 4.5 0 7.5 3 7.5 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M17 15h3v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M20 15c-2.2 3-5.3 5-9 5-4.5 0-7.5-3-7.5-7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M10.5 12c.4-.5 1-.8 1.5-.8.8 0 1.5.6 1.5 1.4s-.7 1.4-1.5 1.4c-.5 0-1.1-.3-1.5-.8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
   };
 
   const cards = [
     { key: "assets", title: "Eiendeler", subtitle: "Totaloversikt over alle eiendeler" },
     { key: "debt", title: "Gjeld", subtitle: "Total gjeld, avdragsprofil og rentekostnader" },
-    { key: "income", title: "Inntekter", subtitle: "Inntekter, utbytter, forbruk og skatt" },
-    { key: "cashflow", title: "Kontantstrøm", subtitle: "Netto årlig kontantstrøm" },
-    { key: "tbe", title: "Tapsbærende evne", subtitle: "Evnen til å bære tap" },
-    { key: "analysis", title: "Analyse", subtitle: "Nøkkeltall og anbefalinger" }
+    { key: "equity", title: "Egenkapital", subtitle: "Eiendeler minus gjeld" },
+    { key: "cashflow", title: "Kontantstrøm", subtitle: "Innbetalinger minus utbetalinger. Netto årlig kontantstrøm" }
   ];
 
   cards.forEach(({ key, title, subtitle }) => {
@@ -861,14 +884,6 @@ function renderForsideModule(root) {
     sub.textContent = subtitle;
     card.appendChild(sub);
 
-    if (key === "tbe") {
-      const subScore = document.createElement("div");
-      subScore.className = "forside-card-text";
-      subScore.id = "forside-card-score-tbe";
-      subScore.hidden = true;
-      card.appendChild(subScore);
-    }
-
     grid.appendChild(card);
   });
 
@@ -889,7 +904,7 @@ function renderForsideModule(root) {
 
   root.appendChild(panel);
   updateTopSummaries();
-  updateForsideCards(getFinancialSnapshot(), true);
+  updateForsideCards(true);
 }
 
 // Hjelpefunksjon for å konvertere tall til romertall
@@ -916,6 +931,317 @@ function isPrivatEntity(entity) {
   return entity && (entity === "privat" || entity.startsWith("privat-"));
 }
 
+/** Lik fordeling av eierskap (heltall, sum 100). */
+function equalOwnershipSplit(n) {
+  if (n <= 0) return [];
+  const base = Math.floor(100 / n);
+  let remainder = 100 - base * n;
+  const arr = Array(n).fill(base);
+  for (let i = 0; i < remainder; i++) arr[i]++;
+  return arr;
+}
+
+/** Index 0 er alltid aktiv; index > 0 er aktiv kun ved active === true (mangler → aktiv for bakoverkompatibilitet). */
+function isPrivatEntryActive(privatEntity, index) {
+  if (index === 0) return true;
+  if (!privatEntity) return false;
+  if (privatEntity.active === false) return false;
+  return true;
+}
+
+function distributeOwnershipForPrivatArray(privatArray) {
+  const activeIndices = [];
+  privatArray.forEach((p, i) => {
+    if (isPrivatEntryActive(p, i)) activeIndices.push(i);
+  });
+  const split = equalOwnershipSplit(activeIndices.length);
+  const full = privatArray.map(() => 0);
+  activeIndices.forEach((idx, j) => {
+    full[idx] = split[j];
+  });
+  return full;
+}
+
+/** Flere aktive privat, men kun én har > 0 % (typisk etter 100/0 før Privat II ble skrudd på) → bruk lik fordeling (50/50). */
+function ownershipNeedsEqualDefault(activeIndices, activeValues) {
+  if (activeIndices.length < 2) return false;
+  const nPos = activeValues.filter((x) => (Number(x) || 0) > 0).length;
+  return nPos <= 1;
+}
+
+function syncAllHoldingOwnershipLengths(privatArray) {
+  const n = privatArray.length;
+  ["holding1", "holding2"].forEach((k) => {
+    const h = AppState.structure[k];
+    if (!h) return;
+    const needFull = !Array.isArray(h.ownershipPct) || h.ownershipPct.length !== n;
+    if (needFull) {
+      h.ownershipPct = distributeOwnershipForPrivatArray(privatArray);
+      return;
+    }
+    const row = h.ownershipPct.slice();
+    const activeIndices = [];
+    privatArray.forEach((p, i) => {
+      if (isPrivatEntryActive(p, i)) activeIndices.push(i);
+      else row[i] = 0;
+    });
+    const rawActive = activeIndices.map((i) => row[i] ?? 0);
+    const sum = rawActive.reduce((a, b) => a + b, 0);
+    if (sum <= 0) {
+      h.ownershipPct = distributeOwnershipForPrivatArray(privatArray);
+      return;
+    }
+    if (ownershipNeedsEqualDefault(activeIndices, rawActive)) {
+      h.ownershipPct = distributeOwnershipForPrivatArray(privatArray);
+      return;
+    }
+    const nextActive = normalizeOwnershipPctInputs(rawActive);
+    activeIndices.forEach((idx, j) => {
+      row[idx] = nextActive[j];
+    });
+    h.ownershipPct = row;
+  });
+}
+
+/** Normaliserer til heltall som summerer til 100. */
+function normalizeOwnershipPctInputs(rawValues) {
+  const n = rawValues.length;
+  const nums = rawValues.map((x) => {
+    const v = parseFloat(String(x).replace(",", "."));
+    return isNaN(v) ? 0 : Math.max(0, v);
+  });
+  const sum = nums.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return equalOwnershipSplit(n);
+  const scaled = nums.map((x) => Math.round((x / sum) * 100));
+  let s = scaled.reduce((a, b) => a + b, 0);
+  if (s !== 100) scaled[scaled.length - 1] += 100 - s;
+  return scaled;
+}
+
+function redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer) {
+  const svg = panel.querySelector(".struktur-connection-lines");
+  if (!svg) return;
+  while (svg.firstChild) svg.removeChild(svg.firstChild);
+
+  const privatCards = Array.from(privatContainer.querySelectorAll(".struktur-card-privat"));
+  const holdingsMeta = [
+    { key: "holding1" },
+    { key: "holding2" }
+  ];
+  const activeHoldings = holdingsMeta.filter((e) => AppState.structure[e.key] && AppState.structure[e.key].active);
+
+  if (privatCards.length === 0 || activeHoldings.length === 0) return;
+
+  const grid = panel.querySelector(".struktur-grid");
+  if (!grid) return;
+
+  /* Absolutt SVG i flex får ofte 0×0 med auto-bredde/høyde – tving eksplisitte px fra grid. */
+  const gw = Math.max(0, Math.round(grid.offsetWidth || grid.getBoundingClientRect().width));
+  const gh = Math.max(0, Math.round(grid.offsetHeight || grid.getBoundingClientRect().height));
+  if (gw < 8 || gh < 8) return;
+
+  svg.style.width = gw + "px";
+  svg.style.height = gh + "px";
+  svg.style.top = "0";
+  svg.style.left = "0";
+  svg.style.right = "auto";
+  svg.style.bottom = "auto";
+  svg.setAttribute("width", String(gw));
+  svg.setAttribute("height", String(gh));
+  void svg.offsetWidth;
+
+  const sRect = svg.getBoundingClientRect();
+  const iw = Math.max(4, Math.round(sRect.width) || gw);
+  const ih = Math.max(4, Math.round(sRect.height) || gh);
+  const originX = sRect.left;
+  const originY = sRect.top;
+
+  svg.setAttribute("viewBox", "0 0 " + String(iw) + " " + String(ih));
+  svg.setAttribute("preserveAspectRatio", "none");
+
+  const pArr = Array.isArray(AppState.structure.privat) ? AppState.structure.privat : [AppState.structure.privat];
+  syncAllHoldingOwnershipLengths(pArr);
+
+  activeHoldings.forEach((holding) => {
+    const holdingCard = holdingsContainer.querySelector(`.struktur-card-${holding.key}`);
+    if (!holdingCard) return;
+    const rawRow = AppState.structure[holding.key].ownershipPct;
+    const ownership =
+      Array.isArray(rawRow) && rawRow.length === pArr.length
+        ? rawRow
+        : distributeOwnershipForPrivatArray(pArr);
+    const hRect = holdingCard.getBoundingClientRect();
+    const x2 = hRect.left + hRect.width / 2 - originX;
+    const y2 = hRect.top - originY;
+
+    privatCards.forEach((privatCard, i) => {
+      if (i >= pArr.length || !isPrivatEntryActive(pArr[i], i)) return;
+      const pct = Number(ownership[i]);
+        const hasPct = Number.isFinite(pct) && pct > 0;
+      const pRect = privatCard.getBoundingClientRect();
+      const x1 = pRect.left + pRect.width / 2 - originX;
+      const y1 = pRect.bottom - originY;
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("class", "struktur-connection-line");
+      line.setAttribute("x1", String(x1));
+      line.setAttribute("y1", String(y1));
+      line.setAttribute("x2", String(x2));
+      line.setAttribute("y2", String(y2));
+        line.setAttribute("stroke", hasPct ? "rgba(107, 157, 201, 0.95)" : "rgba(107, 157, 201, 0.55)");
+      line.setAttribute("stroke-width", "3");
+      line.setAttribute("stroke-dasharray", "7 6");
+      line.setAttribute("stroke-linecap", "round");
+      svg.appendChild(line);
+
+        if (hasPct) {
+          const midX = (x1 + x2) / 2;
+          const midY = (y1 + y2) / 2 - 6;
+          const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+          text.setAttribute("class", "struktur-connection-pct");
+          text.setAttribute("x", String(midX));
+          text.setAttribute("y", String(midY));
+          text.setAttribute("text-anchor", "middle");
+          text.setAttribute("fill", "#5888B8");
+          text.setAttribute("font-size", "12");
+          text.setAttribute("font-weight", "600");
+          text.textContent = `${Math.round(pct)}%`;
+          svg.appendChild(text);
+        }
+    });
+  });
+
+  // Ekstra "privat I <-> privat II" strek når Holding AS er aktiv.
+  // Match ønsket: connector mellom Privat I og Privat II vises selv om Privat II ikke er skrudd på.
+  const activeHoldingKeys = new Set(activeHoldings.map((h) => h.key));
+  if (activeHoldingKeys.has("holding1") && privatCards.length >= 2) {
+    const p0 = privatCards.find((c) => String(c.dataset.privatIndex) === "0") || privatCards[0];
+    const p1 = privatCards.find((c) => String(c.dataset.privatIndex) === "1") || privatCards[1];
+    if (!p0 || !p1) return;
+    const p0Rect = p0.getBoundingClientRect();
+    const p1Rect = p1.getBoundingClientRect();
+    const topCard = p0Rect.top <= p1Rect.top ? p0 : p1;
+    const bottomCard = topCard === p0 ? p1 : p0;
+    const topRect = topCard.getBoundingClientRect();
+    const bottomRect = bottomCard.getBoundingClientRect();
+
+    const x1 = topRect.left + topRect.width / 2 - originX;
+    const y1 = topRect.bottom - originY;
+    const x2 = bottomRect.left + bottomRect.width / 2 - originX;
+    const y2 = bottomRect.top - originY;
+
+    const midX = (x1 + x2) / 2;
+    const midY = (y1 + y2) / 2;
+    // Unngå at kurvepunkt havner utenfor viewBox (kan klippes).
+    const controlY = Math.max(0, midY - 26);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    // Bruk egen class så vi ikke blir "overstyrt" av CSS for vanlige linjer.
+    path.setAttribute("class", "struktur-connection-privat-privat-line");
+    path.setAttribute("fill", "none");
+    path.setAttribute("d", `M ${x1} ${y1} Q ${midX} ${controlY} ${x2} ${y2}`);
+    path.setAttribute("stroke", "rgba(107, 157, 201, 0.95)");
+    path.setAttribute("stroke-width", "3");
+    path.setAttribute("stroke-dasharray", "7 6");
+    path.setAttribute("stroke-linecap", "round");
+    svg.appendChild(path);
+  }
+}
+
+/** Én global resize: tegn struktur-linjer på nytt når vinduet endrer seg (aktive holding + privat-kort). */
+(function initStrukturConnectionLinesResize() {
+  if (typeof window === "undefined") return;
+  let resizeTimer = null;
+  function redrawFromDom() {
+    const panel = document.querySelector(".panel.panel-struktur");
+    if (!panel || !panel.querySelector(".struktur-connection-lines")) return;
+    const privatContainer = panel.querySelector(".struktur-privat-container");
+    const holdingsContainer = panel.querySelector(".struktur-holdings-container");
+    if (!privatContainer || !holdingsContainer) return;
+    redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer);
+  }
+  window.addEventListener(
+    "resize",
+    function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(redrawFromDom, 80);
+    },
+    { passive: true }
+  );
+  var contentEl = document.querySelector("main.content");
+  if (contentEl) {
+    contentEl.addEventListener(
+      "scroll",
+      function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(redrawFromDom, 32);
+      },
+      { passive: true }
+    );
+  }
+})();
+
+function buildStrukturOwnershipEditor(holdingKey, privatArray, onApplied) {
+  syncAllHoldingOwnershipLengths(privatArray);
+  const pct = AppState.structure[holdingKey].ownershipPct;
+
+  const wrap = document.createElement("div");
+  wrap.className = "struktur-ownership";
+
+  const title = document.createElement("div");
+  title.className = "struktur-ownership-title";
+  title.textContent = "Eierskap (sum 100 %)";
+  wrap.appendChild(title);
+
+  privatArray.forEach((privatEntity, index) => {
+    const row = document.createElement("div");
+    row.className = "struktur-ownership-row";
+    const activeRow = isPrivatEntryActive(privatEntity, index);
+    if (!activeRow) row.classList.add("struktur-ownership-row--inactive");
+    const lab = document.createElement("label");
+    lab.className = "struktur-ownership-label";
+    lab.textContent =
+      (privatEntity.name || (index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`)) + ":";
+    const inp = document.createElement("input");
+    inp.type = "number";
+    inp.min = "0";
+    inp.max = "100";
+    inp.step = "1";
+    inp.className = "struktur-ownership-input";
+    inp.value = String(pct[index] ?? 0);
+    inp.disabled = !activeRow;
+    inp.addEventListener("click", (e) => e.stopPropagation());
+    inp.addEventListener("keydown", (e) => e.stopPropagation());
+    inp.addEventListener("blur", () => {
+      const inputs = wrap.querySelectorAll(".struktur-ownership-input");
+      const activeIndices = [];
+      privatArray.forEach((p, i) => {
+        if (isPrivatEntryActive(p, i)) activeIndices.push(i);
+      });
+      const rawActive = activeIndices.map((i) => inputs[i].value);
+      const nextActive = normalizeOwnershipPctInputs(rawActive);
+      const nextFull = privatArray.map(() => 0);
+      activeIndices.forEach((idx, j) => {
+        nextFull[idx] = nextActive[j];
+      });
+      AppState.structure[holdingKey].ownershipPct = nextFull;
+      inputs.forEach((el, i) => {
+        el.value = String(nextFull[i]);
+      });
+      if (typeof onApplied === "function") onApplied();
+    });
+    row.appendChild(lab);
+    row.appendChild(inp);
+    const unit = document.createElement("span");
+    unit.className = "struktur-ownership-unit";
+    unit.textContent = "%";
+    row.appendChild(unit);
+    wrap.appendChild(row);
+  });
+
+  return wrap;
+}
+
 // --- Struktur modul ---
 function renderStrukturModule(root) {
   root.innerHTML = "";
@@ -928,25 +1254,34 @@ function renderStrukturModule(root) {
   // Initialiser struktur hvis den ikke finnes
   if (!AppState.structure) {
     AppState.structure = {
-      privat: [{ active: true, name: "Privat" }],
-      holding1: { active: false, name: "Holding AS" },
-      holding2: { active: false, name: "Holding II AS" }
+      privat: [
+        { active: true, name: "Privat" },
+        { active: false, name: "Privat II" }
+      ],
+      holding1: { active: false, name: "Holding AS", ownershipPct: null },
+      holding2: { active: false, name: "Holding II AS", ownershipPct: null }
     };
   }
+  ["holding1", "holding2"].forEach(function (k) {
+    var hh = AppState.structure[k];
+    if (hh && hh.ownershipPct === undefined) hh.ownershipPct = null;
+  });
   
   // Migrer gammel struktur til ny array-struktur hvis nødvendig
   if (!Array.isArray(AppState.structure.privat)) {
     AppState.structure.privat = [AppState.structure.privat];
   }
+  // Vis alltid to privat-kort: ved gammel lagring med én rad legges Privat II (ikke aktiv) til
+  if (AppState.structure.privat.length === 1) {
+    AppState.structure.privat.push({ active: false, name: "Privat II" });
+  }
 
-  // Opprett container for privat-bokser
+  // Opprett container for privat-bokser (2 kolonner = samme bredde som holding-raden; + ligger utenfor)
   const privatContainer = document.createElement("div");
   privatContainer.className = "struktur-privat-container";
-  privatContainer.style.display = "flex";
-  privatContainer.style.gap = "16px";
-  privatContainer.style.alignItems = "center";
-  privatContainer.style.justifyContent = "center";
-  privatContainer.style.flexWrap = "wrap";
+
+  const privatRow = document.createElement("div");
+  privatRow.className = "struktur-privat-row";
 
   // Opprett container for holdingselskaper
   const holdingsContainer = document.createElement("div");
@@ -960,11 +1295,23 @@ function renderStrukturModule(root) {
 
   // Render alle privat-bokser
   const privatArray = AppState.structure.privat || [];
+  privatContainer.dataset.privatCount = String(privatArray.length);
+  if (privatArray.length === 1) {
+    privatContainer.classList.add("struktur-privat-container--single");
+  } else {
+    privatContainer.classList.remove("struktur-privat-container--single");
+  }
+  syncAllHoldingOwnershipLengths(privatArray);
   privatArray.forEach((privatEntity, index) => {
     const card = document.createElement("div");
     card.className = "struktur-card struktur-card-privat";
-    card.classList.add("is-active");
-    card.dataset.privatIndex = index; // Lagre indeks for å kunne fjerne riktig boks
+    const privActive = isPrivatEntryActive(privatEntity, index);
+    if (privActive) {
+      card.classList.add("is-active");
+    } else {
+      card.classList.add("struktur-card-privat--inactive");
+    }
+    card.dataset.privatIndex = index;
 
     // Legg til ikon
     const icon = document.createElement("div");
@@ -985,7 +1332,7 @@ function renderStrukturModule(root) {
         privatEntity.name = nameInput.value.trim();
         updateAllEntitySelects();
         // Oppdater T-Konto-knappen hvis vi er i T-Konto-fanen
-        const tKontoNavItem = document.querySelector('.nav-item[data-section="T-Konto"], .nav-item[data-section="Treemap"]');
+        const tKontoNavItem = document.querySelector('.nav-item[data-section="T-Konto"]');
         if (tKontoNavItem && tKontoNavItem.classList.contains("is-active")) {
           updateCardsForTKonto();
         }
@@ -1005,37 +1352,63 @@ function renderStrukturModule(root) {
     nameContainer.appendChild(nameInput);
     card.appendChild(nameContainer);
 
-    // Klikk-håndtering for å fjerne boksen (men ikke den første)
+    if (index > 0 && !privActive) {
+      const inactiveStatus = document.createElement("div");
+      inactiveStatus.className = "struktur-card-privat-inactive-status";
+      inactiveStatus.textContent = "(ikke aktiv)";
+      card.appendChild(inactiveStatus);
+    }
+
     card.addEventListener("click", (e) => {
-      // Ikke fjern hvis brukeren klikker på input-feltet
       if (e.target.classList.contains("struktur-card-name-input")) {
         return;
       }
-      
-      // Ikke tillat å fjerne den første Privat-boksen
       if (index === 0) {
         return;
       }
-      
-      // Oppdater alle eiendeler som var tilknyttet denne Privat-boksen til å gå tilbake til første privat
+
+      const activeNow = isPrivatEntryActive(privatEntity, index);
+
+      if (index === 1) {
+        if (!activeNow) {
+          privatEntity.active = true;
+        } else {
+          privatEntity.active = false;
+          const assets = AppState.assets || [];
+          assets.forEach((asset) => {
+            if (asset.entity === `privat-${index}`) {
+              asset.entity = "privat";
+            }
+          });
+        }
+        syncAllHoldingOwnershipLengths(privatArray);
+        renderStrukturModule(root);
+        updateAllEntitySelects();
+        return;
+      }
+
+      if (!activeNow) {
+        privatEntity.active = true;
+        syncAllHoldingOwnershipLengths(privatArray);
+        renderStrukturModule(root);
+        updateAllEntitySelects();
+        return;
+      }
+
       const entityValueToRemove = `privat-${index}`;
       const assets = AppState.assets || [];
       assets.forEach(asset => {
         if (asset.entity === entityValueToRemove) {
-          asset.entity = "privat"; // Gå tilbake til første privat
+          asset.entity = "privat";
         } else if (asset.entity && asset.entity.startsWith("privat-")) {
-          // Hvis indeks var høyere enn den som fjernes, juster ned
           const assetIndex = parseInt(asset.entity.replace("privat-", ""), 10);
           if (assetIndex > index) {
             asset.entity = assetIndex === 1 ? "privat" : `privat-${assetIndex - 1}`;
           }
         }
       });
-      
-      // Fjern denne Privat-boksen
+
       privatArray.splice(index, 1);
-      
-      // Oppdater visningen
       renderStrukturModule(root);
       updateAllEntitySelects();
     });
@@ -1066,7 +1439,9 @@ function renderStrukturModule(root) {
     renderStrukturModule(root);
     updateAllEntitySelects();
   });
-  privatContainer.appendChild(addButton);
+
+  privatRow.appendChild(privatContainer);
+  privatRow.appendChild(addButton);
 
   // Render holdingselskaper
   const holdingsEntities = [
@@ -1112,7 +1487,7 @@ function renderStrukturModule(root) {
           AppState.structure[key].name = nameInput.value.trim();
           updateAllEntitySelects();
           // Oppdater T-Konto-knappen hvis vi er i T-Konto-fanen
-          const tKontoNavItem = document.querySelector('.nav-item[data-section="T-Konto"], .nav-item[data-section="Treemap"]');
+          const tKontoNavItem = document.querySelector('.nav-item[data-section="T-Konto"]');
           if (tKontoNavItem && tKontoNavItem.classList.contains("is-active")) {
             updateCardsForTKonto();
           }
@@ -1140,15 +1515,28 @@ function renderStrukturModule(root) {
 
     card.appendChild(nameContainer);
 
+    if (isActive) {
+      const ownEl = buildStrukturOwnershipEditor(key, privatArray, function () {
+        redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer);
+      });
+      card.appendChild(ownEl);
+    }
+
     // Klikk-håndtering
     card.addEventListener("click", (e) => {
       if (e.target.classList.contains("struktur-card-name-input")) {
         return;
       }
-      
+      if (e.target.closest && e.target.closest(".struktur-ownership")) {
+        return;
+      }
+
       // Toggle aktiv status
       AppState.structure[key].active = !AppState.structure[key].active;
-      
+      if (AppState.structure[key].active) {
+        AppState.structure[key].ownershipPct = distributeOwnershipForPrivatArray(privatArray);
+      }
+
       renderStrukturModule(root);
       updateAllEntitySelects();
       // Oppdater T-Konto-knappen hvis vi er i T-Konto-fanen
@@ -1161,97 +1549,50 @@ function renderStrukturModule(root) {
     holdingsContainer.appendChild(card);
   });
 
-  // Legg til privat-container øverst
-  grid.appendChild(privatContainer);
+  // Legg til privat-rad (+ utenfor kolonnebredden) øverst
+  grid.appendChild(privatRow);
 
   // Legg til holdings-container i grid
   grid.appendChild(holdingsContainer);
 
-  // Legg til linjer mellom Privat og aktive Holding-bokser
-  const activeHoldings = holdingsEntities.filter(e => 
-    AppState.structure[e.key].active
-  );
-  
+  panel.style.position = "relative";
+
+  const activeHoldings = holdingsEntities.filter(e => AppState.structure[e.key].active);
+
   if (activeHoldings.length > 0) {
-    // Opprett SVG-container for linjer
     const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgContainer.className = "struktur-connection-lines";
+    svgContainer.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    svgContainer.setAttribute("aria-hidden", "true");
     svgContainer.style.position = "absolute";
     svgContainer.style.top = "0";
     svgContainer.style.left = "0";
-    svgContainer.style.width = "100%";
-    svgContainer.style.height = "100%";
     svgContainer.style.pointerEvents = "none";
-    svgContainer.style.zIndex = "0";
-    
-    // Sett viewBox basert på grid-størrelse
-    svgContainer.setAttribute("viewBox", "0 0 1200 600");
-    svgContainer.setAttribute("preserveAspectRatio", "none");
-    
-    // Finn posisjoner etter at elementene er lagt til DOM
-    setTimeout(() => {
-      const privatCards = Array.from(privatContainer.querySelectorAll(".struktur-card-privat"));
-      
-      if (privatCards.length > 0 && activeHoldings.length > 0) {
-        const panelRect = panel.getBoundingClientRect();
-        
-        // Beregn posisjoner for alle privat-bokser som en gruppe
-        const privatRects = privatCards.map(card => card.getBoundingClientRect());
-        const privatLeft = Math.min(...privatRects.map(r => r.left));
-        const privatRight = Math.max(...privatRects.map(r => r.right));
-        const privatCenterX = (privatLeft + privatRight) / 2 - panelRect.left;
-        const privatBottomY = Math.max(...privatRects.map(r => r.bottom)) - panelRect.top;
-        
-        // Beregn koordinater i SVG viewBox basert på panel-størrelse
-        const panelWidth = panelRect.width;
-        const panelHeight = panelRect.height;
-        
-        // Tegn horisontal linje som forbinder alle privat-bokser som en gruppe
-        // Linjen plasseres rett under privat-boksene
-        const yHorizontalLine = (privatBottomY / panelHeight) * 600;
-        const xHorizontalLeft = ((privatLeft - panelRect.left) / panelWidth) * 1200;
-        const xHorizontalRight = ((privatRight - panelRect.left) / panelWidth) * 1200;
-        const xHorizontalCenter = (privatCenterX / panelWidth) * 1200;
-        
-        // Tegn horisontal linje som går gjennom alle privat-bokser
-        const horizontalLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        horizontalLine.setAttribute("x1", String(xHorizontalLeft));
-        horizontalLine.setAttribute("y1", String(yHorizontalLine));
-        horizontalLine.setAttribute("x2", String(xHorizontalRight));
-        horizontalLine.setAttribute("y2", String(yHorizontalLine));
-        horizontalLine.setAttribute("stroke", "#0C8F4A");
-        horizontalLine.setAttribute("stroke-width", "2");
-        horizontalLine.setAttribute("stroke-dasharray", "4,4");
-        svgContainer.appendChild(horizontalLine);
-        
-        // Tegn linjer fra senteret av den horisontale linjen ned til hvert holdingselskap
-        activeHoldings.forEach((holding) => {
-          const holdingCard = holdingsContainer.querySelector(`.struktur-card-${holding.key}`);
-          if (holdingCard) {
-            const holdingRect = holdingCard.getBoundingClientRect();
-            const holdingCenterX = holdingRect.left + holdingRect.width / 2 - panelRect.left;
-            const holdingTopY = holdingRect.top - panelRect.top;
-            
-            const x2 = (holdingCenterX / panelWidth) * 1200;
-            const y2 = (holdingTopY / panelHeight) * 600;
-            
-            // Tegn linje fra senteret av horisontal linje ned til holdingselskapet
-            const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-            line.setAttribute("x1", String(xHorizontalCenter));
-            line.setAttribute("y1", String(yHorizontalLine));
-            line.setAttribute("x2", String(x2));
-            line.setAttribute("y2", String(y2));
-            line.setAttribute("stroke", "#0C8F4A");
-            line.setAttribute("stroke-width", "2");
-            line.setAttribute("stroke-dasharray", "4,4");
-            svgContainer.appendChild(line);
-          }
+    svgContainer.style.overflow = "visible";
+    svgContainer.setAttribute("focusable", "false");
+
+    grid.appendChild(svgContainer);
+
+    function scheduleStrukturLinesRedraw() {
+      redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer);
+      requestAnimationFrame(function () {
+        redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer);
+      });
+    }
+
+    setTimeout(scheduleStrukturLinesRedraw, 0);
+    setTimeout(scheduleStrukturLinesRedraw, 32);
+    setTimeout(scheduleStrukturLinesRedraw, 120);
+    setTimeout(scheduleStrukturLinesRedraw, 400);
+
+    if (typeof ResizeObserver !== "undefined") {
+      var strukturLinesRO = new ResizeObserver(function () {
+        requestAnimationFrame(function () {
+          redrawStrukturConnectionLines(panel, privatContainer, holdingsContainer);
         });
-      }
-    }, 10);
-    
-    panel.style.position = "relative";
-    panel.appendChild(svgContainer);
+      });
+      strukturLinesRO.observe(grid);
+    }
   }
 
   panel.appendChild(grid);
@@ -1527,7 +1868,7 @@ function computeAssetProjection(yearVal) {
   const rBilBat = (exp.bilbat || 0) / 100;
   const rOther = (exp.andreEiendeler || 0) / 100;
   const routing = ensureCashflowRoutingState();
-  const cashflow = computeAnnualCashflowBreakdown();
+  const cashflow = computeAnnualCashflowBreakdownForYear(Number(yearVal) || 2026);
   const netPositive = Math.max(0, Math.round(cashflow.net || 0));
   const customAllocation = Math.max(0, Math.min(netPositive, Math.round(routing.customAmount || 0)));
 
@@ -1579,8 +1920,8 @@ function computeAssetProjection(yearVal) {
 
 function remainingDebtTotalForYear(yearVal) {
   const debts = AppState.debts || [];
-  const elapsed = Math.max(0, Number(yearVal) - 2025);
-  return debts.reduce((total, debt) => total + remainingBalanceAfterYears(debt, elapsed), 0);
+  const Y = Number(yearVal);
+  return debts.reduce((total, debt) => total + remainingBalanceForDebtInYear(debt, Y), 0);
 }
 
 function computeEquityValue(yearVal) {
@@ -1613,9 +1954,12 @@ function renderGraphicsModule(root) {
   // Initialiser struktur hvis den ikke finnes
   if (!AppState.structure) {
     AppState.structure = {
-      privat: { active: true, name: "Privat" },
-      holding1: { active: false, name: "Holding AS" },
-      holding2: { active: false, name: "Holding II AS" }
+      privat: [
+        { active: true, name: "Privat" },
+        { active: false, name: "Privat II" }
+      ],
+      holding1: { active: false, name: "Holding AS", ownershipPct: null },
+      holding2: { active: false, name: "Holding II AS", ownershipPct: null }
     };
   }
 
@@ -2501,8 +2845,8 @@ function renderCashflowTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) 
   let annualDebtPayment = 0;
   
   debts.forEach((debt) => {
-    const elapsed = Math.max(0, Number(yearVal) - 2025);
-    const debtProjection = projectDebtYear(debt, elapsed);
+    const eff = getDebtScheduleElapsed(debt, yearVal);
+    const debtProjection = projectDebtYear(debt, eff);
     annualDebtPayment += debtProjection.payment || 0;
   });
   
@@ -3915,8 +4259,7 @@ function renderDebtEquityTreemap(svg, x, y, width, height, svgNS, yearVal = 2026
     const totalRemDebt = remDebt;
     debts.forEach((debt, idx) => {
       if (totalRemDebt > 0) {
-        const elapsed = Math.max(0, Number(yearVal) - 2025);
-        const remForDebt = remainingBalanceAfterYears(debt, elapsed);
+        const remForDebt = remainingBalanceForDebtInYear(debt, yearVal);
         const debtProportion = remForDebt / totalRemDebt;
         const debtAmount = Math.min(debtVal * debtProportion, debtVal);
         if (debtAmount > 0) {
@@ -4525,17 +4868,12 @@ function renderDebtEquityTreemap(svg, x, y, width, height, svgNS, yearVal = 2026
   squarify(sortedItems, [], treemapX, treemapY, treemapW, treemapH);
 }
 
+// Kalenderår for waterfall under Kontantstrøm (2025 = «start», samme logikk som T-konto/Treemap år-strip)
+var waterfallChartSelectedYear = 2025;
+
 // --- Waterfall (Grafikk III) ---
 function renderWaterfallModule(root) {
   root.innerHTML = "";
-
-  // Sample period selector (Month/Quarter/Year)
-  const controls = document.createElement("div");
-  controls.style.display = "none"; // make invisible as requested
-  const select = document.createElement("select");
-  ["Måned", "Kvartal", "År"].forEach((t) => { const o = document.createElement("option"); o.value = t; o.textContent = t; select.appendChild(o); });
-  controls.appendChild(select);
-  root.appendChild(controls);
 
   const svgNS = "http://www.w3.org/2000/svg";
   const vbW = 1200, vbH = 560;
@@ -4546,27 +4884,47 @@ function renderWaterfallModule(root) {
   const style = document.createElementNS(svgNS, "style");
   style.textContent = `
     .wf-title { font: 900 24px Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #1C2A3A; }
-    .wf-label { font: 600 13px Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #677788; }
-    .wf-value { font: 700 13px Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #1C2A3A; }
+    .wf-label { font: 600 12px Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #64748B; letter-spacing: 0.02em; }
+    .wf-value { font: 700 13px Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif; fill: #0F172A; }
   `;
   svg.appendChild(style);
 
   const defs = document.createElementNS(svgNS, "defs");
 
+  function addLinearGradient(id, stops) {
+    const lg = document.createElementNS(svgNS, "linearGradient");
+    lg.setAttribute("id", id);
+    lg.setAttribute("x1", "0%"); lg.setAttribute("y1", "0%");
+    lg.setAttribute("x2", "0%"); lg.setAttribute("y2", "100%");
+    stops.forEach(([offset, color, op]) => {
+      const st = document.createElementNS(svgNS, "stop");
+      st.setAttribute("offset", offset);
+      st.setAttribute("stop-color", color);
+      if (op != null) st.setAttribute("stop-opacity", String(op));
+      lg.appendChild(st);
+    });
+    defs.appendChild(lg);
+  }
+  addLinearGradient("wfGradUp", [
+    ["0%", "#E9FFF0"],
+    ["50%", "#D4FDE5"],
+    ["100%", "#B3EBC2"]
+  ]);
+  addLinearGradient("wfGradDown", [
+    ["0%", "#FFF3F3"],
+    ["50%", "#FCE1E7"],
+    ["100%", "#F4C4CC"]
+  ]);
   const wfBarShadow = document.createElementNS(svgNS, "filter");
   wfBarShadow.setAttribute("id", "wfBarShadow");
-  wfBarShadow.setAttribute("x", "-12%"); wfBarShadow.setAttribute("y", "-10%");
-  wfBarShadow.setAttribute("width", "130%"); wfBarShadow.setAttribute("height", "140%");
-  const feSh1 = document.createElementNS(svgNS, "feDropShadow");
-  feSh1.setAttribute("dx", "0"); feSh1.setAttribute("dy", "6");
-  feSh1.setAttribute("stdDeviation", "8");
-  feSh1.setAttribute("flood-color", "#1C2A3A"); feSh1.setAttribute("flood-opacity", "0.12");
-  wfBarShadow.appendChild(feSh1);
-  const feSh2 = document.createElementNS(svgNS, "feDropShadow");
-  feSh2.setAttribute("dx", "0"); feSh2.setAttribute("dy", "2");
-  feSh2.setAttribute("stdDeviation", "3");
-  feSh2.setAttribute("flood-color", "#1C2A3A"); feSh2.setAttribute("flood-opacity", "0.06");
-  wfBarShadow.appendChild(feSh2);
+  wfBarShadow.setAttribute("x", "-15%"); wfBarShadow.setAttribute("y", "-15%");
+  wfBarShadow.setAttribute("width", "130%"); wfBarShadow.setAttribute("height", "135%");
+  wfBarShadow.setAttribute("color-interpolation-filters", "sRGB");
+  const feSh = document.createElementNS(svgNS, "feDropShadow");
+  feSh.setAttribute("dx", "0"); feSh.setAttribute("dy", "2");
+  feSh.setAttribute("stdDeviation", "3.5");
+  feSh.setAttribute("flood-color", "#0F172A"); feSh.setAttribute("flood-opacity", "0.035");
+  wfBarShadow.appendChild(feSh);
   defs.appendChild(wfBarShadow);
 
   const wfPanelShadow = document.createElementNS(svgNS, "filter");
@@ -4574,9 +4932,9 @@ function renderWaterfallModule(root) {
   wfPanelShadow.setAttribute("x", "-2%"); wfPanelShadow.setAttribute("y", "-2%");
   wfPanelShadow.setAttribute("width", "104%"); wfPanelShadow.setAttribute("height", "108%");
   const feP1 = document.createElementNS(svgNS, "feDropShadow");
-  feP1.setAttribute("dx", "0"); feP1.setAttribute("dy", "4");
-  feP1.setAttribute("stdDeviation", "10");
-  feP1.setAttribute("flood-color", "#1C2A3A"); feP1.setAttribute("flood-opacity", "0.06");
+  feP1.setAttribute("dx", "0"); feP1.setAttribute("dy", "2");
+  feP1.setAttribute("stdDeviation", "6");
+  feP1.setAttribute("flood-color", "#1C2A3A"); feP1.setAttribute("flood-opacity", "0.03");
   wfPanelShadow.appendChild(feP1);
   defs.appendChild(wfPanelShadow);
 
@@ -4585,7 +4943,7 @@ function renderWaterfallModule(root) {
   const bg = document.createElementNS(svgNS, "rect");
   bg.setAttribute("x", "0"); bg.setAttribute("y", "0");
   bg.setAttribute("width", String(vbW)); bg.setAttribute("height", String(vbH));
-  bg.setAttribute("fill", "#F4F6FA");
+  bg.setAttribute("fill", "#F1F5F9");
   svg.appendChild(bg);
 
   const panel = document.createElementNS(svgNS, "rect");
@@ -4607,255 +4965,62 @@ function renderWaterfallModule(root) {
   quickBtn.addEventListener("click", openCashflowForecastModal);
   container.appendChild(quickBtn);
 
-  const strip = document.createElement("div");
-  strip.className = "waterfall-base-strip";
+  const yearStrip = document.createElement("div");
+  yearStrip.className = "t-konto-year-strip";
+  yearStrip.setAttribute("aria-label", "Velg år for kontantstrøm");
+  const yearInner = document.createElement("div");
+  yearInner.className = "t-konto-year-buttons";
 
-  const sliderStep = 10_000;
+  const startBtn = document.createElement("button");
+  startBtn.type = "button";
+  startBtn.className = "t-konto-year-btn";
+  startBtn.textContent = "start";
+  startBtn.setAttribute("data-year", "2025");
+  startBtn.setAttribute("aria-label", "Velg start");
+  if (waterfallChartSelectedYear === 2025) startBtn.classList.add("is-active");
+  yearInner.appendChild(startBtn);
 
-  const actions = document.createElement("div");
-  actions.className = "waterfall-strip-actions";
-  const stripLabel = document.createElement("div");
-  stripLabel.className = "waterfall-strip-label";
-  stripLabel.textContent = "Plassering av Årlig kontantstrøm:";
-
-  let customSlider = null;
-  let customSliderValue = null;
-  const routingState = ensureCashflowRoutingState();
-  const buttonRefs = new Map();
-  let currentNet = 0;
-
-  function updateButtonStates() {
-    const state = ensureCashflowRoutingState();
-    buttonRefs.forEach((el, key) => {
-      if (!el) return;
-      if (key === state.mode) el.classList.add("is-active");
-      else el.classList.remove("is-active");
-    });
+  for (let y = 2026; y <= 2040; y++) {
+    const yBtn = document.createElement("button");
+    yBtn.type = "button";
+    yBtn.className = "t-konto-year-btn";
+    yBtn.textContent = String(y);
+    yBtn.setAttribute("data-year", String(y));
+    yBtn.setAttribute("aria-label", "Velg år " + y);
+    if (waterfallChartSelectedYear === y) yBtn.classList.add("is-active");
+    yearInner.appendChild(yBtn);
   }
 
-  function selectMode(mode, options = {}) {
-    const state = ensureCashflowRoutingState();
-    const netPositive = Math.max(0, Math.round(currentNet || 0));
-    let changed = false;
+  yearStrip.appendChild(yearInner);
+  const scrollHint = document.createElement("span");
+  scrollHint.className = "t-konto-year-strip-scroll-hint";
+  scrollHint.setAttribute("aria-hidden", "true");
+  scrollHint.innerHTML = "&#9660;";
+  yearStrip.appendChild(scrollHint);
 
-  if (mode === "custom") {
-      const raw = options && Object.prototype.hasOwnProperty.call(options, "customAmount")
-        ? Number(options.customAmount)
-        : state.customAmount;
-    const snapped = sliderStep > 0
-      ? Math.round((raw || 0) / sliderStep) * sliderStep
-      : Math.round(raw || 0);
-    const value = Math.max(0, Math.min(netPositive, snapped));
-      if (state.customAmount !== value) {
-        state.customAmount = value;
-        changed = true;
-      }
-    } else {
-      if (state.customAmount !== netPositive) {
-        state.customAmount = netPositive;
-        changed = true;
-      }
-    }
-
-    if (state.mode !== mode) {
-      state.mode = mode;
-      changed = true;
-    }
-
-    updateButtonStates();
-    syncSliderToNet(currentNet);
-    writeSparingForMaalOgBehov();
-
-    if (!options.silent && changed) {
-      notifyCashflowRoutingChange("Kontantstrøm");
-    }
-  }
-
-  const actionItems = [
-    {
-      key: "forbruk",
-      label: "Forbruk",
-      className: "is-forbruk",
-      icon: `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M3 7h16a2 2 0 012 2v7a3 3 0 01-3 3H6a3 3 0 01-3-3V8a1 1 0 011-1h14" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <path d="M16 11h5v4h-5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-          <circle cx="13.5" cy="13" r="1.2" fill="currentColor" />
-        </svg>
-      `
-    },
-    {
-      key: "bank",
-      label: "Bankinnskudd",
-      className: "is-bank",
-      icon: `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 10h16" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M5 20V10m5 10V10m4 10V10m5 10V10" stroke-width="1.8" stroke-linecap="round"/>
-          <path d="M3 10l9-6 9 6" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M9 20h6" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
-      `
-    },
-    {
-      key: "investeringer",
-      label: "Årlig sparing",
-      className: "is-investeringer",
-      icon: `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M4 17l4.5-5 3.5 3 5-7" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M15 8h4v4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `
-    },
-    {
-      key: "custom",
-      label: "Alt:",
-      className: "is-custom",
-      icon: `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 15.5l-3.09 1.63.59-3.43-2.5-2.44 3.45-.5L12 7.5l1.55 3.26 3.45.5-2.5 2.44.59 3.43L12 15.5z" stroke-width="1.6" stroke-linejoin="round"/>
-          <path d="M19 19c0-1.66-1.79-3-4-3H9c-2.21 0-4 1.34-4 3" stroke-width="1.6" stroke-linecap="round"/>
-        </svg>
-      `
-    }
-  ];
-
-  actionItems.forEach((item) => {
-    const isCustom = item.key === "custom";
-    const wrapper = document.createElement(isCustom ? "div" : "button");
-    wrapper.className = `waterfall-strip-button ${item.className}${isCustom ? " has-slider" : ""}`;
-    wrapper.setAttribute("data-action", item.key);
-    wrapper.setAttribute("aria-label", item.label);
-
-    if (!isCustom) {
-      wrapper.type = "button";
-    }
-
-    const iconHolder = document.createElement("span");
-    iconHolder.className = "wsb-icon";
-    iconHolder.innerHTML = item.icon.trim();
-    iconHolder.querySelectorAll("svg").forEach((svgEl) => {
-      svgEl.setAttribute("stroke", "currentColor");
+  yearInner.querySelectorAll(".t-konto-year-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      yearInner.querySelectorAll(".t-konto-year-btn").forEach((b) => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      const yy = parseInt(btn.getAttribute("data-year"), 10);
+      if (!Number.isNaN(yy)) waterfallChartSelectedYear = yy;
+      draw();
     });
-
-    const label = document.createElement("span");
-    label.className = "wsb-label";
-    label.textContent = item.label;
-
-    wrapper.appendChild(iconHolder);
-    wrapper.appendChild(label);
-
-    if (isCustom) {
-      const sliderWrapper = document.createElement("div");
-      sliderWrapper.className = "wsb-slider-wrap";
-
-      const slider = document.createElement("input");
-      slider.type = "range";
-      slider.className = "wsb-slider";
-      slider.min = "0";
-      slider.max = "0";
-      slider.step = String(sliderStep);
-      slider.value = "0";
-      slider.setAttribute("aria-label", "Fordel årlig kontantstrøm");
-
-      const valueLabel = document.createElement("span");
-      valueLabel.className = "wsb-slider-value";
-      valueLabel.textContent = "0 kr";
-
-      slider.addEventListener("input", () => {
-        const raw = Number(slider.value) || 0;
-        const maxVal = Number(slider.max) || 0;
-        let snapped = sliderStep > 0 ? Math.round(raw / sliderStep) * sliderStep : Math.round(raw);
-        if (snapped > maxVal) snapped = maxVal;
-        if (snapped < 0) snapped = 0;
-        if (snapped !== raw) slider.value = String(snapped);
-        valueLabel.textContent = formatNOK(snapped);
-        selectMode("custom", { customAmount: snapped });
-      });
-
-      sliderWrapper.appendChild(slider);
-      sliderWrapper.appendChild(valueLabel);
-      wrapper.appendChild(sliderWrapper);
-
-      customSlider = slider;
-      customSliderValue = valueLabel;
-      wrapper.setAttribute("role", "group");
-      wrapper.tabIndex = 0;
-      wrapper.addEventListener("click", () => {
-        selectMode("custom", { customAmount: routingState.customAmount });
-      });
-      wrapper.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          selectMode("custom", { customAmount: routingState.customAmount });
-        }
-      });
-    } else {
-      wrapper.addEventListener("click", () => selectMode(item.key));
-      wrapper.addEventListener("keydown", (ev) => {
-        if (ev.key === "Enter" || ev.key === " ") {
-          ev.preventDefault();
-          selectMode(item.key);
-        }
-      });
-    }
-
-    buttonRefs.set(item.key, wrapper);
-    actions.appendChild(wrapper);
   });
-
-  strip.appendChild(stripLabel);
-  strip.appendChild(actions);
 
   const wrapper = document.createElement("div");
   wrapper.className = "waterfall-wrapper";
   wrapper.appendChild(container);
-  wrapper.appendChild(strip);
-
-  const syncStripWidth = () => {};
-
-  function syncSliderToNet(netValue) {
-    if (!customSlider || !customSliderValue) return;
-    const state = ensureCashflowRoutingState();
-    const max = Math.max(0, Math.round(netValue || 0));
-    customSlider.max = String(max);
-    if (max === 0) {
-      customSlider.value = "0";
-      customSlider.disabled = true;
-      customSliderValue.textContent = formatNOK(0);
-      if (state.mode === "custom") state.customAmount = 0;
-      return;
-    }
-    customSlider.disabled = false;
-    let sliderValue;
-    if (state.mode === "custom") {
-      let desired = Math.max(0, Math.min(max, Math.round(state.customAmount || 0)));
-      if (sliderStep > 0) desired = Math.max(0, Math.min(max, Math.round(desired / sliderStep) * sliderStep));
-      sliderValue = desired;
-      state.customAmount = sliderValue;
-    } else {
-      let desired = max;
-      if (sliderStep > 0 && desired > 0) {
-        desired = Math.min(max, Math.round(desired / sliderStep) * sliderStep);
-        if (desired === 0 && max > 0) desired = Math.min(max, sliderStep);
-      }
-      sliderValue = desired;
-      state.customAmount = sliderValue;
-    }
-    customSlider.value = String(sliderValue);
-    customSliderValue.textContent = formatNOK(sliderValue);
-    writeSparingForMaalOgBehov();
-  }
+  wrapper.appendChild(yearStrip);
 
   function draw() {
     // Clear dynamic content except styles/panel (first three nodes: style, bg, panel)
     while (svg.childNodes.length > 3) svg.removeChild(svg.lastChild);
 
-    const state = ensureCashflowRoutingState();
-    const previousAllocated = Math.round(state.customAmount || 0);
-    const { totalIncome, costs, net, wage, pension, dividends, otherIncome } = computeAnnualCashflowBreakdown();
-    currentNet = net;
+    const { costs, net, wage, pension, dividends, otherIncome } = computeAnnualCashflowBreakdownForYear(
+      waterfallChartSelectedYear,
+      { kontantstromStartAlignsDebtWith2026: true }
+    );
 
     const padX = 80; const padTop = 70; const padBottom = net < 0 ? 96 : 64;
     const chartW = vbW - padX * 2; const chartH = vbH - padTop - padBottom;
@@ -4888,21 +5053,12 @@ function renderWaterfallModule(root) {
       return { yTop, h: Math.max(2, hRaw) };
     };
 
-    // Farger – myke, behagelige nyanser
-    const cashflowPositive = '#D6E6F2';
-    const blue = "#0A5EDC";
-    const redPalette = ["#EDCACA", "#E2B3B3", "#D69C9C", "#C98888", "#BD7676"];
-    const redEnd = "#BD7676";
-    const greenPalette = ["#C4E6D4", "#A5D9BC", "#84CCA5", "#68BF90"];
-    const netBarColor = '#D5E2F5';
-
     const colW = Math.max(60, Math.floor(chartW / steps.length) - 10);
     let cursorX = padX;
     let running = 0;
-    let downIndex = 0; let upIndex = 0;
     steps.forEach((s, idx) => {
       if (!s || !isFinite(s.value)) return; // hopp over nulltrinn, men behold 0 for Avdrag
-      let h, y, fill;
+      let h, y, fill, stroke;
       let labelText;
       if (s.type === "up") {
         const from = running;
@@ -4910,8 +5066,8 @@ function renderWaterfallModule(root) {
         const geom = barGeom(from, to);
         h = geom.h; y = geom.yTop;
         running = to;
-        fill = greenPalette[upIndex % greenPalette.length];
-        upIndex++;
+        fill = "url(#wfGradUp)";
+        stroke = "rgba(16, 185, 129, 0.14)";
         labelText = formatNOK(Math.round(Math.abs(s.value)));
       } else if (s.type === "down") {
         const from = running;
@@ -4919,16 +5075,17 @@ function renderWaterfallModule(root) {
         const geom = barGeom(from, to);
         h = geom.h; y = geom.yTop;
         running = to;
-        fill = redPalette[downIndex % redPalette.length];
-        downIndex++;
+        fill = "url(#wfGradDown)";
+        stroke = "rgba(244, 63, 94, 0.14)";
         labelText = formatNOK(Math.round(s.value)); // vis alltid minus for kostnader
       } else { // end (netto)
         const from = 0;
         const to = s.value;
         const geom = barGeom(from, to);
         h = geom.h; y = geom.yTop;
-        // Fast definert farge for netto-kolonnen
-        fill = netBarColor;
+        /* Samme mørkeblå som .summary-cash / kontantstrøm-boksen øverst (--sp-dark-blue) */
+        fill = "#002359";
+        stroke = "rgba(153, 217, 242, 0.25)";
         labelText = formatNOK(Math.round(s.value)); // signert
       }
 
@@ -4937,8 +5094,10 @@ function renderWaterfallModule(root) {
       rect.setAttribute("y", String(y));
       rect.setAttribute("width", String(colW));
       rect.setAttribute("height", String(Math.max(2, h)));
-      rect.setAttribute("rx", "8");
+      rect.setAttribute("rx", "9");
       rect.setAttribute("fill", fill);
+      rect.setAttribute("stroke", stroke);
+      rect.setAttribute("stroke-width", "0.75");
       rect.setAttribute("filter", "url(#wfBarShadow)");
       svg.appendChild(rect);
 
@@ -4961,29 +5120,10 @@ function renderWaterfallModule(root) {
 
       cursorX += colW + 10;
     });
-
-    syncStripWidth();
-    syncSliderToNet(net);
-    updateButtonStates();
-    writeSparingForMaalOgBehov();
-    const updatedAllocated = Math.round(state.customAmount || 0);
-    if (state.mode !== "forbruk" && updatedAllocated !== previousAllocated) {
-      notifyCashflowRoutingChange("Kontantstrøm");
-    }
   }
 
-  select.addEventListener("change", draw);
   draw();
   root.appendChild(wrapper);
-  syncStripWidth();
-
-  if (typeof ResizeObserver !== "undefined") {
-    const resizeObserver = new ResizeObserver(syncStripWidth);
-    resizeObserver.observe(svg);
-    strip._resizeObserver = resizeObserver;
-  } else {
-    window.addEventListener("resize", syncStripWidth, { passive: true });
-  }
 }
 
 function notifyCashflowRoutingChange(sourceSection) {
@@ -4993,7 +5133,7 @@ function notifyCashflowRoutingChange(sourceSection) {
   if (!currentNav) return;
   const section = currentNav.getAttribute("data-section") || currentNav.textContent || "";
   if (section === sourceSection) return;
-  if (section === "T-Konto" || section === "Treemap") {
+  if (section === "T-Konto") {
     renderGraphicsModule(moduleRoot);
   } else if (section === "Fremtidig utvikling") {
     renderFutureModule(moduleRoot);
@@ -5005,6 +5145,8 @@ function notifyCashflowRoutingChange(sourceSection) {
 function aggregateCashflowBase() {
   const incomeItems = AppState.incomes || [];
   const upper = (s) => String(s || "").toUpperCase();
+  const pen = getPensionCashflowModeParams();
+  const yearsFrom2026 = 0;
 
   let incomeTotal = 0;
   let wage = 0;
@@ -5017,8 +5159,17 @@ function aggregateCashflowBase() {
   const individualCosts = [];
 
   incomeItems.forEach((item) => {
-    const amount = Number(item.amount) || 0;
     const name = upper(item.name);
+    let raw = Number(item.amount) || 0;
+    if (pen.pensionModeActive) {
+      if (/L[ØO]NN/.test(name)) {
+        if (yearsFrom2026 >= pen.yearsToRetirement) raw = 0;
+      } else if (/PENSJON/.test(name)) {
+        if (yearsFrom2026 < pen.yearsToRetirement) raw = 0;
+        else raw = pen.activeAnnualPension;
+      }
+    }
+    const amount = raw;
     if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
       annualTax += amount;
       if (amount > 0) {
@@ -5054,17 +5205,98 @@ function aggregateCashflowBase() {
   };
 }
 
-function computeAnnualCashflowBreakdown() {
-  const base = aggregateCashflowBase();
+/** Samme KPI-justering som Treemap kontantstrøm: «start» (2025) = faktor 1, deretter (1+KPI)^(år−2025). */
+function aggregateCashflowBaseForYear(calendarYear) {
+  const incomeItems = AppState.incomes || [];
+  const upper = (s) => String(s || "").toUpperCase();
+  const Y = Number(calendarYear);
+  const year = Number.isFinite(Y) ? Y : 2026;
+  const kpiRate = Number(AppState.expectations && AppState.expectations.kpi) || 0;
+  const inflation = Math.max(0, kpiRate) / 100;
+  const yearsFromStart = Math.max(0, year - 2025);
+  const inflationFactor = Math.pow(1 + inflation, yearsFromStart);
+  const pen = getPensionCashflowModeParams();
+  const yearsFrom2026 = Math.max(0, year - 2026);
+  const postRetirementPen = pen.pensionModeActive && yearsFrom2026 >= pen.yearsToRetirement;
+
+  let incomeTotal = 0;
+  let wage = 0;
+  let pension = 0;
+  let dividends = 0;
+  let otherIncome = 0;
+  let annualTax = 0;
+  let annualCosts = 0;
+  const individualTaxes = [];
+  const individualCosts = [];
+
+  incomeItems.forEach((item) => {
+    const name = upper(item.name);
+    let raw = Math.max(0, Number(item.amount) || 0);
+    if (pen.pensionModeActive) {
+      if (/L[ØO]NN/.test(name)) {
+        if (yearsFrom2026 >= pen.yearsToRetirement) raw = 0;
+      } else if (/PENSJON/.test(name)) {
+        if (yearsFrom2026 < pen.yearsToRetirement) raw = 0;
+        else raw = pen.activeAnnualPension;
+      }
+    }
+    const shouldKeepNominal = postRetirementPen && /PENSJON/.test(name);
+    const amount = shouldKeepNominal ? raw : raw * inflationFactor;
+    if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
+      annualTax += amount;
+      if (amount > 0) {
+        individualTaxes.push({ key: item.name, value: amount });
+      }
+    } else if (/KOSTNAD/.test(name)) {
+      annualCosts += amount;
+      if (amount > 0) {
+        individualCosts.push({ key: item.name, value: amount });
+      }
+    } else {
+      if (amount > 0) {
+        incomeTotal += amount;
+        if (/PENSJON/.test(name)) pension += amount;
+        else if (/L[ØO]NN/.test(name)) wage += amount;
+        else if (/UTBYT/.test(name)) dividends += amount;
+        else otherIncome += amount;
+      }
+    }
+  });
+
+  return {
+    wage,
+    pension,
+    dividends,
+    otherIncome,
+    incomeTotal,
+    annualTax,
+    annualCosts,
+    individualTaxes,
+    individualCosts,
+    costTotal: annualTax + annualCosts
+  };
+}
+
+/**
+ * @param {number} calendarYear
+ * @param {{ kontantstromStartAlignsDebtWith2026?: boolean }} [options]
+ *   Kontantstrøm-waterfall: ved «start» (2025) skal renter/avdrag være like som for 2026 (gjeld starter typisk 2026).
+ */
+function computeAnnualCashflowBreakdownForYear(calendarYear, options) {
+  const o = options && typeof options === "object" ? options : {};
+  const Y = Number(calendarYear);
+  const year = Number.isFinite(Y) ? Y : 2026;
+  const base = aggregateCashflowBaseForYear(year);
   const debts = AppState.debts || [];
-  const annualPayment = calculateTotalAnnualDebtPayment(debts);
-  const interestCost = calculateTotalAnnualInterest(debts);
+  const debtYear =
+    o.kontantstromStartAlignsDebtWith2026 && year === 2025 ? 2026 : year;
+  const annualPayment = calculateTotalAnnualDebtPaymentForYear(debts, debtYear);
+  const interestCost = calculateTotalAnnualInterestForYear(debts, debtYear);
   const principalCost = Math.max(0, annualPayment - interestCost);
-  // Hvis det finnes individuelle kostnader, vis dem individuelt, ellers vis samlet "Årlige kostnader"
   const costItems = base.individualCosts && base.individualCosts.length > 0
     ? base.individualCosts
     : (base.annualCosts > 0 ? [{ key: "Årlige kostnader", value: base.annualCosts }] : []);
-  
+
   const costs = [
     ...base.individualTaxes,
     ...costItems,
@@ -5088,16 +5320,43 @@ function computeAnnualCashflowBreakdown() {
   };
 }
 
+function computeAnnualCashflowBreakdown() {
+  return computeAnnualCashflowBreakdownForYear(2026);
+}
+
+/**
+ * Kalenderår → indeks i gjeldsamortisering (samme som tidligere «år − 2025» når startår er 2026 og Y ≥ 2026).
+ * Uten lagret startår antas 2026. Før startår: ingen gjeld (indeks −1).
+ */
+function getDebtScheduleElapsed(debt, calendarYear) {
+  const params = (debt && debt.debtParams) || AppState.debtParams || {};
+  const Y = Number(calendarYear);
+  if (!Number.isFinite(Y)) return 0;
+  let S;
+  if (params.startYear == null || params.startYear === "") {
+    S = 2026;
+  } else {
+    S = Number(params.startYear);
+    if (!Number.isFinite(S)) S = 2026;
+  }
+  if (Y < S) return -1;
+  return Y - S + 1;
+}
+
 function projectDebtYear(debt, yearIndex) {
   const amount = Number(debt && debt.amount) || 0;
   if (amount <= 0) {
+    return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+  }
+  const rawIdx = Math.floor(Number(yearIndex));
+  if (rawIdx < 0) {
     return { interest: 0, principal: 0, payment: 0, remaining: 0 };
   }
   const params = debt.debtParams || AppState.debtParams || {};
   const type = params.type || "Annuitetslån";
   const rate = Number(params.rate) || 0;
   const years = Math.max(1, Number(params.years) || 1);
-  const idx = Math.max(0, Math.floor(yearIndex));
+  const idx = rawIdx;
 
   if (/Avdragsfrihet/.test(type)) {
     const years = Math.max(1, Number(params.years) || 1);
@@ -5182,9 +5441,11 @@ function computeCashflowForecastSeries(startYear, yearsCount) {
     const factor = Math.pow(1 + inflation, i);
     const income = incomeTotal * factor;
     const costs = costTotal * factor;
+    const calendarYear = startYear + i;
     const debtAgg = debts.reduce(
       (acc, debt) => {
-        const detail = projectDebtYear(debt, i);
+        const eff = getDebtScheduleElapsed(debt, calendarYear);
+        const detail = projectDebtYear(debt, eff);
         acc.interest += detail.interest;
         acc.principal += detail.principal;
         return acc;
@@ -5216,14 +5477,10 @@ function getCashflowForecastNetForYear(yearVal) {
     const yearsFrom2026 = Math.max(0, Number(yearVal) - 2026);
     const upper = (s) => String(s || "").toUpperCase();
 
-    const pensionIncomeItem = incomes.find((i) => /PENSJON/.test(upper(i.name)));
-    const pensionModeEnabled = !!(pensionIncomeItem && pensionIncomeItem._annualPensionEnabled);
-    const pensjonData = pensionModeEnabled ? getPensjonForecastData() : null;
-    const pensionModeActive = pensionModeEnabled && !!pensjonData;
-    const yearsToRetirement = pensjonData ? Math.max(0, Number(pensjonData.yearsToRetirement) || 0) : 0;
-    const annualPensionFromPensjon = pensjonData ? Math.max(0, Number(pensjonData.annualPension) || 0) : 0;
-    const pensionFromTKonto = Math.max(0, Number(pensionIncomeItem && pensionIncomeItem.amount) || 0);
-    const activeAnnualPension = annualPensionFromPensjon > 0 ? annualPensionFromPensjon : pensionFromTKonto;
+    const pen = getPensionCashflowModeParams();
+    const pensionModeActive = pen.pensionModeActive;
+    const yearsToRetirement = pen.yearsToRetirement;
+    const activeAnnualPension = pen.activeAnnualPension;
     const postRetirement = pensionModeActive && yearsFrom2026 >= yearsToRetirement;
 
     let totalIncome = 0;
@@ -5246,6 +5503,8 @@ function getCashflowForecastNetForYear(yearVal) {
         } else if (/PENSJON/.test(name)) {
           if (yearsFrom2026 >= yearsToRetirement) {
             baseAmount = activeAnnualPension;
+          } else {
+            baseAmount = 0;
           }
         } else if (/INNTEKTSSKATT/.test(name)) {
           // Før pensjon: behold brukerens inntektsskatt. Fra pensjonsår: 30% flat skatt av årlig pensjon.
@@ -5268,9 +5527,9 @@ function getCashflowForecastNetForYear(yearVal) {
     });
 
     let annualDebtPayment = 0;
-    const elapsed = Math.max(0, Number(yearVal) - 2025);
     debts.forEach((debt) => {
-      const debtProjection = projectDebtYear(debt, elapsed);
+      const eff = getDebtScheduleElapsed(debt, yearVal);
+      const debtProjection = projectDebtYear(debt, eff);
       annualDebtPayment += debtProjection.payment || 0;
     });
 
@@ -5561,10 +5820,10 @@ function getTKontoFinancingSegments(yearVal) {
     segs.push({ key: "GJELD", value: debtVal, color: TKONTO_CHART_COLORS.GJELD });
   } else {
     var debtScale = ["#F2BFB8", "#F1999C", "#EF4444", "#DC2626", "#B91C1C"];
-    var elapsed = Math.max(0, Number(yearVal) - 2025);
+    var Yc = Number(yearVal);
     var totalRem = remDebt || 1;
     debts.forEach(function (debt, idx) {
-      var remForDebt = remainingBalanceAfterYears(debt, elapsed);
+      var remForDebt = remainingBalanceForDebtInYear(debt, Yc);
       var proportion = totalRem > 0 ? remForDebt / totalRem : 0;
       var amount = Math.round(debtVal * proportion);
       segs.push({
@@ -5579,7 +5838,8 @@ function getTKontoFinancingSegments(yearVal) {
 
 function buildTKontoBarChart(container, yearVal) {
   container.innerHTML = "";
-  container.style.background = "#F8F8F8";
+  /* Bakgrunn styres av CSS (#t-konto-graphic-placeholder) — ikke grå flat farge */
+  container.style.background = "transparent";
   var assetSegs = getTKontoAssetSegments(yearVal);
   var fin = getTKontoFinancingSegments(yearVal);
   var financingSegs = fin.segments;
@@ -5640,36 +5900,16 @@ function buildTKontoBarChart(container, yearVal) {
 
   var leftCard = document.createElement("div");
   leftCard.className = "tkonto-chart-card";
-  leftCard.style.background = "#FFFFFF";
-  leftCard.style.backgroundColor = "#FFFFFF";
   addCard(assetSegs, leftCard);
 
   var eqBtn = document.createElement("div");
   eqBtn.className = "tkonto-equals";
   eqBtn.setAttribute("aria-hidden", "true");
   eqBtn.textContent = "=";
-  eqBtn.style.background = "#ECECEC";
-  eqBtn.style.backgroundColor = "#ECECEC";
-  eqBtn.style.color = "#666666";
 
   var rightCard = document.createElement("div");
   rightCard.className = "tkonto-chart-card";
-  rightCard.style.position = "relative";
-  rightCard.style.background = "#FFFFFF";
-  rightCard.style.backgroundColor = "#FFFFFF";
   addCard(financingSegs, rightCard);
-
-  var expBtn = document.createElement("button");
-  expBtn.type = "button";
-  expBtn.className = "tkonto-exp-btn";
-  expBtn.textContent = "Exp.";
-  expBtn.setAttribute("aria-label", "Eksporter grafikken");
-  expBtn.style.cssText = "position:absolute;top:6px;right:6px;z-index:5;padding:4px 8px;font-size:11px;font-weight:600;color:#4A6D8C;background:#fff;border:1px solid #DDDDDD;border-radius:6px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.06);";
-  expBtn.addEventListener("click", function (e) {
-    e.stopPropagation();
-    document.dispatchEvent(new CustomEvent("tkonto-export-click"));
-  });
-  rightCard.appendChild(expBtn);
 
   wrap.appendChild(leftCard);
   wrap.appendChild(eqBtn);
@@ -5725,6 +5965,14 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
   var cardY = pad;
   var radius = 12;
 
+  var bgGrad = ctx.createLinearGradient(0, 0, w, h);
+  bgGrad.addColorStop(0, "#002359");
+  bgGrad.addColorStop(0.42, "#002D72");
+  bgGrad.addColorStop(0.78, "#CCECF9");
+  bgGrad.addColorStop(1, "#ffffff");
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, w, h);
+
   function roundRect(x, y, width, height, r) {
     ctx.beginPath();
     ctx.moveTo(x + r, y);
@@ -5739,11 +5987,11 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
     ctx.closePath();
   }
 
-  /* Ingen ytre ramme – kun grafikken (kort + likhetstegn), transparent bakgrunn */
+  /* Hvite kort på gradientbakgrunn (samme uttrykk som på skjerm) */
   ctx.fillStyle = "#FFFFFF";
   roundRect(leftX, cardY, cardW, cardH, radius);
   ctx.fill();
-  ctx.strokeStyle = "rgba(0,0,0,0.06)";
+  ctx.strokeStyle = "rgba(0, 45, 114, 0.12)";
   ctx.lineWidth = 1;
   ctx.stroke();
 
@@ -5753,14 +6001,14 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
 
   var eqCenterX = leftX + cardW + 22;
   var eqCenterY = cardY + cardH / 2;
-  ctx.fillStyle = "#ECECEC";
+  ctx.fillStyle = "#002D72";
   ctx.beginPath();
   ctx.arc(eqCenterX, eqCenterY, 22, 0, Math.PI * 2);
   ctx.fill();
-  ctx.strokeStyle = "#DDDDDD";
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(255,255,255,0.9)";
+  ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.fillStyle = "#666666";
+  ctx.fillStyle = "#99D9F2";
   ctx.font = "700 18px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -5776,7 +6024,7 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
     var totalVal = segs.reduce(function (s, seg) { return s + (seg.value || 0); }, 0) || 1;
     var y = cardY + innerPad;
     ctx.font = "500 14px sans-serif";
-    ctx.fillStyle = "#1C2A3A";
+    ctx.fillStyle = "#002D72";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     for (var i = 0; i < segs.length; i++) {
@@ -5815,7 +6063,7 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
 
       var cy = segTop + segH / 2;
       if (segH >= 18) {
-        ctx.fillStyle = "#1C2A3A";
+        ctx.fillStyle = "#002D72";
         ctx.textAlign = "left";
         var lines = labelLines(seg.key);
         var lineHeight = 16;
@@ -5825,6 +6073,7 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
           ctx.fillText(lines[L], cardX + innerPad + 4, startY + L * lineHeight + lineHeight / 2);
         }
         ctx.textAlign = "right";
+        ctx.fillStyle = "#333333";
         ctx.fillText(valueLabel(seg.value), cardX + innerPad + valueLeft + barWidth - 4, cy);
       }
     }
@@ -5904,9 +6153,6 @@ function renderFutureModule(root) {
   const debts = AppState.debts || [];
   const blueScale = ["#2A4D80", "#355F9E", "#60A5FA", "#00A9E0", "#294269", "#203554"];
 
-  // Sjekk om vi er i Treemap-seksjonen
-  const isTreemap = currentSection === "Treemap";
-
   const graphWrap = document.createElement("div");
   graphWrap.style.position = "relative";
   graphWrap.style.width = "100%";
@@ -5936,10 +6182,7 @@ function renderFutureModule(root) {
   financingBtnSecondary.style.cssText = "display: none !important;";
   financingBtnSecondary.setAttribute("aria-hidden", "true");
 
-  // Default år for grafikk-kortet:
-  // - T-konto: håndteres i egen gren (med start=2025 allerede)
-  // - Treemap (og andre non-T-Konto seksjoner): sørg for at "start" vises som default
-  let selectedYear = isTreemap ? 2025 : 2026; // Definer selectedYear før draw-funksjonen
+  let selectedYear = 2026;
   
   function draw(yearVal) {
     let assetCategories = computeAssetProjection(yearVal);
@@ -6007,8 +6250,7 @@ function renderFutureModule(root) {
       const totalRemDebt = remDebt;
       debts.forEach((debt, idx) => {
         if (totalRemDebt > 0) {
-        const elapsed = Math.max(0, Number(yearVal) - 2025);
-          const remForDebt = remainingBalanceAfterYears(debt, elapsed);
+          const remForDebt = remainingBalanceForDebtInYear(debt, yearVal);
           const debtProportion = remForDebt / totalRemDebt;
           const debtAmount = Math.min(debtVal * debtProportion, debtVal);
           if (debtAmount > 0) {
@@ -6044,7 +6286,7 @@ function renderFutureModule(root) {
       resizeContainer.style.aspectRatio = "1200 / 840";
     }
     
-    const svgElement = buildFinanceSVG(assetCategories, financingParts, totalAssets, yearVal, null, isTreemap);
+    const svgElement = buildFinanceSVG(assetCategories, financingParts, totalAssets, yearVal, null, false);
     // Sett høyde til 100% for å fylle containeren
     svgElement.style.height = "100%";
     resizeContainer.appendChild(svgElement);
@@ -6147,57 +6389,8 @@ function renderFutureModule(root) {
   // Initial draw
   draw(selectedYear);
 
-  // År-strip under grafikken (erstatter slider)
-  if (isTreemap) {
-    // Identisk med T-konto sin år-strip
-    const yearStrip = document.createElement("div");
-    yearStrip.className = "t-konto-year-strip";
-
-    const yearInner = document.createElement("div");
-    yearInner.className = "t-konto-year-buttons";
-
-    // start-knapp (tilsvarer yearVal=2025)
-    const startBtn = document.createElement("button");
-    startBtn.type = "button";
-    startBtn.className = "t-konto-year-btn";
-    startBtn.textContent = "start";
-    startBtn.setAttribute("data-year", "2025");
-    startBtn.setAttribute("aria-label", "Velg start");
-    if (selectedYear === 2025) startBtn.classList.add("is-active");
-    yearInner.appendChild(startBtn);
-
-    for (let year = 2026; year <= 2040; year++) {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "t-konto-year-btn";
-      btn.textContent = String(year);
-      btn.setAttribute("data-year", String(year));
-      btn.setAttribute("aria-label", `Velg år ${year}`);
-      if (selectedYear === year) btn.classList.add("is-active");
-      yearInner.appendChild(btn);
-    }
-
-    yearStrip.appendChild(yearInner);
-
-    const scrollHint = document.createElement("span");
-    scrollHint.className = "t-konto-year-strip-scroll-hint";
-    scrollHint.setAttribute("aria-hidden", "true");
-    scrollHint.innerHTML = "&#9660;";
-    yearStrip.appendChild(scrollHint);
-
-    root.appendChild(yearStrip);
-
-    yearInner.querySelectorAll(".t-konto-year-btn").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        yearInner.querySelectorAll(".t-konto-year-btn").forEach((b) => b.classList.remove("is-active"));
-        btn.classList.add("is-active");
-        const y = parseInt(btn.getAttribute("data-year"), 10);
-        selectedYear = y;
-        draw(y);
-      });
-    });
-  } else {
-    // Eksisterende UI for andre graf-faner
+  // År-knapper under grafikken (Fremtidig utvikling m.fl.)
+  {
     const wrap = document.createElement("div");
     wrap.className = "year-buttons-card";
 
@@ -7032,16 +7225,12 @@ function buildFinancingGrowthSVG(startYear, yearsCount) {
   const debts = AppState.debts || [];
   
   function remainingDebtForYear(yearVal) {
-    return debts.reduce((total, debt) => {
-          const elapsed = Math.max(0, Number(yearVal) - 2025);
-      return total + remainingBalanceAfterYears(debt, elapsed);
-    }, 0);
+    return debts.reduce((total, debt) => total + remainingBalanceForDebtInYear(debt, yearVal), 0);
   }
 
   // Hjelpefunksjon for å beregne gjenværende gjeld for en spesifikk gjeldspost
   function remainingDebtForDebt(debt, yearVal) {
-    const elapsed = Math.max(0, Number(yearVal) - 2025);
-    return remainingBalanceAfterYears(debt, elapsed);
+    return remainingBalanceForDebtInYear(debt, yearVal);
   }
 
   const perYear = years.map((y) => {
@@ -7334,15 +7523,29 @@ function setFormuesskattForMaalOgBehov(value) {
   }
 }
 
-/** Skriv sparing-beløp til Mål og behov: ved «Årlig sparing» = netto kontantstrøm, ved «Alt» = tilpasset beløp. */
-function writeSparingForMaalOgBehov() {
-  try {
-    const routing = ensureCashflowRoutingState();
-    const { net } = computeAnnualCashflowBreakdown();
-    const netPositive = Math.max(0, Math.round(net || 0));
-    const amount = routing.mode === "investeringer" ? netPositive : routing.mode === "custom" ? Math.round(routing.customAmount || 0) : 0;
-    localStorage.setItem("tKontoSparingForMaalOgBehov", String(amount));
-  } catch (e) {}
+/**
+ * Inntekter: skatt- og kostnadsrader skal bruke slider-steg 1 kr (ikke 50 000).
+ * Matcher eksplisitte navn + generelle skattelinjer (unntatt skattefrie inntekter).
+ */
+function incomeSliderUseFineStep(itemName, nameInputValue) {
+  const label = String(itemName != null ? itemName : nameInputValue || "")
+    .trim()
+    .normalize("NFC")
+    .toUpperCase();
+  if (
+    label === "INNTEKTSSKATT" ||
+    label === "UTBYTTESKATT" ||
+    label === "FORMUESSKATT" ||
+    label === "ÅRLIGE KOSTNADER"
+  ) {
+    return true;
+  }
+  if (/^(INNTEKTSSKATT|UTBYTTESKATT|FORMUESSKATT)$/.test(label)) return true;
+  if (/^ÅRLIGE\s*KOSTNADER$/.test(label)) return true;
+  if (/SKATTEFRIE\s*INNTEKTER/.test(label)) return false;
+  if (/SKATT/.test(label)) return true;
+  if (/KOSTNAD/.test(label)) return true;
+  return false;
 }
 
 function createItemRow(collectionName, item) {
@@ -7401,6 +7604,10 @@ function createItemRow(collectionName, item) {
   };
   markCostIfNeeded(item && item.name);
 
+  const isPensionIncomeRow =
+    collectionName === "incomes" &&
+    String(item.name || "").normalize("NFC").toUpperCase() === "PENSJONSINNTEKT";
+
   const col = document.createElement("div");
   col.className = "asset-col";
 
@@ -7413,9 +7620,11 @@ function createItemRow(collectionName, item) {
   name.value = item.name || "";
   name.setAttribute("aria-label", `Navn på ${collectionName.slice(0, -1)}`);
   const isNameLocked = collectionName === "assets" && item.noRename;
-  if (isNameLocked) {
+  if (isNameLocked || isPensionIncomeRow) {
     name.readOnly = true;
-    name.title = "Default-eiendel: navn kan ikke endres";
+    name.title = isPensionIncomeRow
+      ? "Årlig pensjon i prognose hentes fra Pensjon-fanen når bryteren er på"
+      : "Default-eiendel: navn kan ikke endres";
     name.classList.add("asset-name-readonly");
   } else {
     name.addEventListener("input", () => { 
@@ -7440,15 +7649,33 @@ function createItemRow(collectionName, item) {
       // Initialiser struktur hvis den ikke finnes
       if (!AppState.structure) {
         AppState.structure = {
-          privat: { active: true, name: "Privat" },
-          holding1: { active: false, name: "Holding AS" },
-          holding2: { active: false, name: "Holding II AS" }
+          privat: [
+            { active: true, name: "Privat" },
+            { active: false, name: "Privat II" }
+          ],
+          holding1: { active: false, name: "Holding AS", ownershipPct: null },
+          holding2: { active: false, name: "Holding II AS", ownershipPct: null }
         };
+      }
+      if (!Array.isArray(AppState.structure.privat)) {
+        AppState.structure.privat = [AppState.structure.privat];
+      }
+      if (AppState.structure.privat.length === 1) {
+        AppState.structure.privat.push({ active: false, name: "Privat II" });
       }
       
       // Legg til alle Privat-bokser i nedtrekksmenyen
-      const privatArray = Array.isArray(AppState.structure.privat) ? AppState.structure.privat : [AppState.structure.privat];
+      const privatArray = AppState.structure.privat;
+      if (item.entity && item.entity.startsWith("privat-")) {
+        const pi = getPrivatIndexFromEntity(item.entity);
+        if (pi > 0 && !isPrivatEntryActive(privatArray[pi], pi)) {
+          item.entity = "privat";
+        }
+      }
       privatArray.forEach((privatEntity, index) => {
+        if (index > 0 && !isPrivatEntryActive(privatEntity, index)) {
+          return;
+        }
         const privatOption = document.createElement("option");
         privatOption.value = index === 0 ? "privat" : `privat-${index}`;
         privatOption.textContent = privatEntity.name || (index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`);
@@ -7532,26 +7759,26 @@ function createItemRow(collectionName, item) {
   amount.className = "asset-amount";
   amount.textContent = formatNOK(Number(isMaalOgBehovReadOnly ? (item.amount || 0) : 0));
 
-  if (!isMaalOgBehovReadOnly) {
+  if (!isMaalOgBehovReadOnly && !isPensionIncomeRow) {
     range = document.createElement("input");
     range.className = "asset-range";
     range.type = "range";
     range.min = "0";
     range.max = "50000000";
     range.step = "50000";
+    if (collectionName === "incomes" && incomeSliderUseFineStep(item.name, name.value)) {
+      range.step = "1";
+    }
 
     setRangeBounds = function () {
       if (collectionName === "incomes") {
-        const label = String(item.name || name.value || "").toUpperCase();
+        const label = String(item.name || name.value || "").normalize("NFC").toUpperCase();
         if (/L[ØO]NN|PENSJON|SKATT|UTBYT|SKATTEFRIE\s*INNTEKTER|KOSTNAD/.test(label)) range.max = "10000000";
         else range.max = "50000000";
 
         // Ikke la skatte-/kostnadsverdier "snappe" til nearest step ved re-render.
         // Problemet ditt: f.eks. 378400 -> rundes til nærmeste 50k/100k når range.step = 50000.
-        const isTaxOrCost =
-          /INNTEKTSSKATT|UTBYTTESKATT|FORMUESSKATT|KOSTNAD/.test(label) ||
-          (/SKATT/.test(label) && !/SKATTEFRIE\s*INNTEKTER/.test(label));
-        range.step = isTaxOrCost ? "1" : "50000";
+        range.step = incomeSliderUseFineStep(item.name, name.value) ? "1" : "50000";
 
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
@@ -7581,6 +7808,7 @@ function createItemRow(collectionName, item) {
     setRangeBounds();
     range.value = String(item.amount || 0);
     if (Number(range.value) > Number(range.max)) range.value = range.max;
+    if (collectionName === "incomes") setRangeBounds();
     amount.textContent = formatNOK(Number(range.value));
 
     range.addEventListener("input", () => {
@@ -7654,10 +7882,21 @@ function createItemRow(collectionName, item) {
   // For inntekter: legg til wrapper med toggle-knapp, ellers bare legg til amount direkte
   if (collectionName === "incomes") {
     const itemNameUpper = String(item.name || "").toUpperCase();
-    const isPensionIncome = itemNameUpper === "PENSJONSINNTEKT";
     const shouldShowToggle = !["LØNNSINNTEKT", "PENSJONSINNTEKT", "UTBYTTER", "SKATTEFRIE INNTEKTER"].includes(itemNameUpper);
 
-    if (isPensionIncome) {
+    if (isPensionIncomeRow) {
+      row.classList.add("asset-row--pension-toggle-only");
+
+      function syncPensionAmountFromToggle() {
+        if (item._annualPensionEnabled) {
+          const pd = getPensjonForecastData();
+          item.amount = pd ? Math.max(0, Number(pd.annualPension) || 0) : 0;
+        } else {
+          item.amount = 0;
+        }
+      }
+      syncPensionAmountFromToggle();
+
       const amountWrapper = document.createElement("div");
       amountWrapper.className = "asset-amount-wrapper income-pension-amount-wrapper";
 
@@ -7686,7 +7925,10 @@ function createItemRow(collectionName, item) {
       toggleInput.addEventListener("change", () => {
         item._annualPensionEnabled = toggleInput.checked;
         pensionToggleState.textContent = toggleInput.checked ? "Ja" : "Nei";
+        syncPensionAmountFromToggle();
         notifyCashflowRoutingChange("Inntekter");
+        updateAutoTax();
+        updateTopSummaries();
       });
 
       toggleSwitch.appendChild(toggleInput);
@@ -7696,7 +7938,6 @@ function createItemRow(collectionName, item) {
       pensionToggleGroup.appendChild(pensionToggleState);
 
       amountWrapper.appendChild(pensionToggleGroup);
-      amountWrapper.appendChild(amount);
 
       row.appendChild(col);
       row.appendChild(amountWrapper);
@@ -7725,8 +7966,8 @@ function createItemRow(collectionName, item) {
         toggleInput.addEventListener("change", () => {
           if (toggleInput.checked) {
             const wageIncome = AppState.incomes.find(i => i.name === "LØNNSINNTEKT");
-            const pensionIncome = AppState.incomes.find(i => i.name === "PENSJONSINNTEKT");
-            const taxableIncome = (wageIncome ? wageIncome.amount : 0) + (pensionIncome ? pensionIncome.amount : 0);
+            const taxableIncome =
+              (wageIncome ? wageIncome.amount : 0) + pensionAmountForIncomeTaxEstimate();
             if (taxableIncome > 0) {
               const calculatedTax = calculateTax(taxableIncome);
               item.amount = calculatedTax;
@@ -7851,6 +8092,7 @@ function formatPercent(value, fractionDigits = 0) {
 }
 
 function remainingBalanceAfterYears(debt, elapsedYears) {
+  if (elapsedYears < 0) return 0;
   const amount = Number(debt && debt.amount) || 0;
   if (amount <= 0) return 0;
   const params = debt.debtParams || AppState.debtParams || {};
@@ -7892,6 +8134,17 @@ function remainingBalanceAfterYears(debt, elapsedYears) {
   return Math.max(0, balance);
 }
 
+/**
+ * Gjenværende hovedstol for én gjeldspost i et kalenderår (T-konto-grafikk m.m.).
+ * Før lånets startår (år < startYear): full nominell saldo — viser f.eks. 10 MNOK ved «start» (2025) når startår er 2026.
+ * Fra og med startår: saldo etter eff år med betalinger (2026 = etter første års avdrag når eff=1).
+ */
+function remainingBalanceForDebtInYear(debt, calendarYear) {
+  const eff = getDebtScheduleElapsed(debt, calendarYear);
+  if (eff < 0) return remainingBalanceAfterYears(debt, 0);
+  return remainingBalanceAfterYears(debt, eff);
+}
+
 // Hjelpefunksjoner for gjeld-beregninger med individuelle debtParams
 function calculateAnnualDebtPayment(debt) {
   const P = debt.amount || 0;
@@ -7913,17 +8166,30 @@ function calculateAnnualDebtPayment(debt) {
   }
 }
 
+function calculateTotalAnnualDebtPaymentForYear(debts, yearVal) {
+  const Y = Number(yearVal) || 2026;
+  return (debts || AppState.debts || []).reduce((sum, debt) => {
+    const eff = getDebtScheduleElapsed(debt, Y);
+    if (eff < 0) return sum;
+    return sum + (projectDebtYear(debt, eff).payment || 0);
+  }, 0);
+}
+
 function calculateTotalAnnualDebtPayment(debts) {
-  return (debts || AppState.debts || []).reduce((sum, debt) => sum + calculateAnnualDebtPayment(debt), 0);
+  return calculateTotalAnnualDebtPaymentForYear(debts, 2026);
+}
+
+function calculateTotalAnnualInterestForYear(debts, yearVal) {
+  const Y = Number(yearVal) || 2026;
+  return (debts || AppState.debts || []).reduce((sum, debt) => {
+    const eff = getDebtScheduleElapsed(debt, Y);
+    if (eff < 0) return sum;
+    return sum + (projectDebtYear(debt, eff).interest || 0);
+  }, 0);
 }
 
 function calculateTotalAnnualInterest(debts) {
-  return (debts || AppState.debts || []).reduce((sum, debt) => {
-    const P = debt.amount || 0;
-    if (P <= 0) return sum;
-    const debtParams = debt.debtParams || AppState.debtParams;
-    return sum + (P * (debtParams.rate || 0));
-  }, 0);
+  return calculateTotalAnnualInterestForYear(debts, 2026);
 }
 
 // --- Gjeld modul ---
@@ -7967,6 +8233,40 @@ function createDebtRow(debt) {
   });
   typeWrap.appendChild(select);
   container.appendChild(typeWrap);
+
+  const startYearLabel = document.createElement("div");
+  startYearLabel.className = "section-label";
+  startYearLabel.textContent = "Startår";
+  startYearLabel.style.marginTop = "16px";
+  container.appendChild(startYearLabel);
+
+  const startYearWrap = document.createElement("div");
+  startYearWrap.className = "select";
+  const startYearSelect = document.createElement("select");
+  startYearSelect.setAttribute("aria-label", "Startår");
+  for (let y = 2026; y <= 2035; y++) {
+    const opt = document.createElement("option");
+    opt.value = String(y);
+    opt.textContent = String(y);
+    startYearSelect.appendChild(opt);
+  }
+  let startY = debt.debtParams.startYear;
+  if (startY == null || startY === "" || !Number.isFinite(Number(startY))) {
+    startY = 2026;
+  } else {
+    startY = Math.min(2035, Math.max(2026, Number(startY)));
+  }
+  startYearSelect.value = String(startY);
+  if (debt.debtParams.startYear != null && debt.debtParams.startYear !== "") {
+    debt.debtParams.startYear = startY;
+  }
+  startYearSelect.addEventListener("change", () => {
+    debt.debtParams.startYear = Number(startYearSelect.value);
+    updateTopSummaries();
+    if (typeof refreshTKontoChart === "function") refreshTKontoChart();
+  });
+  startYearWrap.appendChild(startYearSelect);
+  container.appendChild(startYearWrap);
 
   // Lånetid (år) for denne gjeldsposten
   const yearsLabel = document.createElement("div");
@@ -8527,8 +8827,8 @@ function getFinancialSnapshot() {
   const annualCosts = incomeItems.filter(isCost).reduce((s, x) => s + (x.amount || 0), 0);
   const totalIncome = incomeItems.filter(isIncome).reduce((s, x) => s + (x.amount || 0), 0);
   const disposableIncome = totalIncome - annualCosts;
-  const annualDebtPayment = calculateTotalAnnualDebtPayment(debts);
-  const cashflow = Math.round(totalIncome - annualCosts - annualDebtPayment);
+  const annualDebtPayment = calculateTotalAnnualDebtPaymentForYear(debts, 2026);
+  const cashflow = Math.round(getCashflowForecastNetForYear(2026));
 
   return {
     sumAssets,
@@ -8580,24 +8880,12 @@ function calculateTbeSummary(snapshot) {
   };
 }
 
-function updateForsideCards(snapshot, forceActive = false) {
+function updateForsideCards(forceActive = false) {
   const forsideIsActive = forceActive || !!document.querySelector('.nav-item[data-section="Forside"].is-active');
   const summaryCards = document.querySelectorAll(".summary-card");
   summaryCards.forEach(card => {
     card.classList.toggle("is-forside", forsideIsActive);
   });
-
-  const tbe = calculateTbeSummary(snapshot);
-  const tbeSub = document.getElementById("forside-card-subtitle-tbe");
-  if (tbeSub) {
-    tbeSub.textContent = "Evnen til å bære tap";
-  }
-  const tbeScore = document.getElementById("forside-card-score-tbe");
-  if (tbeScore) {
-    tbeScore.hidden = true;
-    tbeScore.textContent = "";
-    tbeScore.classList.remove("status-high", "status-mid", "status-low");
-  }
 }
 
 function updateTopSummaries() {
@@ -8615,7 +8903,7 @@ function updateTopSummaries() {
   const elC = document.getElementById("sum-cashflow");
   if (elC) elC.textContent = formatNOKSummary(snapshot.cashflow);
 
-  updateForsideCards(snapshot);
+  updateForsideCards();
 
   if (typeof refreshTKontoChart === "function") refreshTKontoChart();
 }
@@ -8676,7 +8964,7 @@ function updateCardsForTKonto() {
   if (card2) {
     card2.textContent = "Utvikling eiendeler";
     card2.classList.remove("success", "success-dark");
-    card2.classList.add("danger"); // Gjeld skal ha rød farge
+    card2.classList.add("danger"); // Gjeld: merkevare-blå (se --ERROR_DEBT i CSS)
   }
   if (card3) {
     card3.textContent = "Egenkapital og gjeld";
@@ -8686,7 +8974,7 @@ function updateCardsForTKonto() {
   if (card4) {
     card4.textContent = "Ek avkastning";
     card4.classList.remove("danger", "success");
-    card4.classList.add("success-dark"); // Årlig kontantstrøm skal ha mørk grønn farge
+    card4.classList.add("success-dark"); /* tittel på mørkeblå boks — farge fra .summary-cash */
   }
   
   // Skjul verdiene
@@ -8768,7 +9056,7 @@ function updateCardsForTreemap() {
     card3.classList.add("success");
   }
   if (card4) {
-    card4.textContent = "Årlig kontantstrøm";
+    card4.textContent = "Kontantstrøm";
     card4.classList.remove("danger", "success");
     card4.classList.add("success-dark");
   }
@@ -8825,7 +9113,7 @@ function restoreCardsFromTKonto() {
     card3.classList.add("success");
   }
   if (card4) {
-    card4.textContent = "Årlig kontantstrøm";
+    card4.textContent = "Kontantstrøm";
     card4.classList.add("success-dark");
   }
   
@@ -8942,6 +9230,8 @@ function generateOutputText() {
         const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
         lines.push(`${counter}: Struktur - ${label} navn: ${displayName}`);
         counter++;
+        lines.push(`${counter}: Struktur - ${label} aktiv: ${isPrivatEntryActive(privat, index) ? "ja" : "nei"}`);
+        counter++;
       }
     });
     
@@ -8952,6 +9242,15 @@ function generateOutputText() {
       const holding1Name = orIngenData(structure.holding1.name) || "Holding AS";
       lines.push(`${counter}: Struktur - Holding AS 1 navn: ${holding1Name}`);
       counter++;
+      const holding1Ownership = Array.isArray(structure.holding1.ownershipPct) && structure.holding1.ownershipPct.length === privatArray.length
+        ? structure.holding1.ownershipPct
+        : distributeOwnershipForPrivatArray(privatArray);
+      privatArray.forEach((privat, index) => {
+        const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
+        const pct = Number(holding1Ownership[index]) || 0;
+        lines.push(`${counter}: Struktur - Holding AS 1 eierskap ${label}: ${formatPercent(pct)}`);
+        counter++;
+      });
     }
     
     if (structure.holding2) {
@@ -8960,6 +9259,15 @@ function generateOutputText() {
       const holding2Name = orIngenData(structure.holding2.name) || "Holding II AS";
       lines.push(`${counter}: Struktur - Holding AS 2 navn: ${holding2Name}`);
       counter++;
+      const holding2Ownership = Array.isArray(structure.holding2.ownershipPct) && structure.holding2.ownershipPct.length === privatArray.length
+        ? structure.holding2.ownershipPct
+        : distributeOwnershipForPrivatArray(privatArray);
+      privatArray.forEach((privat, index) => {
+        const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
+        const pct = Number(holding2Ownership[index]) || 0;
+        lines.push(`${counter}: Struktur - Holding AS 2 eierskap ${label}: ${formatPercent(pct)}`);
+        counter++;
+      });
     }
   }
   
@@ -9096,7 +9404,6 @@ function initInputUI() {
           else if (section === "TBE" || section === "Tapsbærende evne") renderTbeModule(moduleRoot);
           else if (section === "Forventet avkastning") renderExpectationsModule(moduleRoot);
           else if (section === "T-Konto") renderGraphicsModule(moduleRoot);
-          else if (section === "Treemap") renderGraphicsModule(moduleRoot);
           else if (section === "Kontantstrøm") renderWaterfallModule(moduleRoot);
           else if (section === "Fremtidig utvikling") renderFutureModule(moduleRoot);
         }
@@ -9259,12 +9566,49 @@ function parseInputText(text) {
           structureData.privatNames = {};
         }
         structureData.privatNames[index] = valueStr.trim();
+      } else if (name.match(/Privat\s+(II|III|IV|V|VI|VII|VIII|IX|X|\d+)?\s+aktiv/)) {
+        const privActiveMatch = name.match(/Privat\s+(II|III|IV|V|VI|VII|VIII|IX|X|\d+)?\s+aktiv/);
+        const romanNumeral = (privActiveMatch && privActiveMatch[1]) || "";
+        let index = 0;
+        if (romanNumeral) {
+          const romanMap = { "II": 1, "III": 2, "IV": 3, "V": 4, "VI": 5, "VII": 6, "VIII": 7, "IX": 8, "X": 9 };
+          index = romanMap[romanNumeral] !== undefined ? romanMap[romanNumeral] : (parseInt(romanNumeral, 10) - 1 || 0);
+        }
+        if (!structureData.privatActive) {
+          structureData.privatActive = {};
+        }
+        structureData.privatActive[index] = valueStr.trim().toLowerCase() === "ja";
+      } else if (name.includes("Privat aktiv") && !name.includes("II") && !name.includes("III") && !name.includes("IV") && !name.includes("V")) {
+        if (!structureData.privatActive) {
+          structureData.privatActive = {};
+        }
+        structureData.privatActive[0] = valueStr.trim().toLowerCase() === "ja";
       } else if (name.includes("Privat navn") && !name.includes("II") && !name.includes("III") && !name.includes("IV") && !name.includes("V")) {
         // Første Privat (uten romertall)
         if (!structureData.privatNames) {
           structureData.privatNames = {};
         }
         structureData.privatNames[0] = valueStr.trim();
+      } else if (name.includes("Holding AS 1 eierskap ")) {
+        const ownershipMatch = name.match(/Holding AS 1 eierskap Privat\s*(II|III|IV|V|VI|VII|VIII|IX|X|\d+)?$/);
+        let index = 0;
+        if (ownershipMatch && ownershipMatch[1]) {
+          const romanNumeral = ownershipMatch[1];
+          const romanMap = { "II": 1, "III": 2, "IV": 3, "V": 4, "VI": 5, "VII": 6, "VIII": 7, "IX": 8, "X": 9 };
+          index = romanMap[romanNumeral] !== undefined ? romanMap[romanNumeral] : (parseInt(romanNumeral, 10) - 1 || 0);
+        }
+        if (!structureData.holding1Ownership) structureData.holding1Ownership = {};
+        structureData.holding1Ownership[index] = parsePercent(valueStr);
+      } else if (name.includes("Holding AS 2 eierskap ")) {
+        const ownershipMatch = name.match(/Holding AS 2 eierskap Privat\s*(II|III|IV|V|VI|VII|VIII|IX|X|\d+)?$/);
+        let index = 0;
+        if (ownershipMatch && ownershipMatch[1]) {
+          const romanNumeral = ownershipMatch[1];
+          const romanMap = { "II": 1, "III": 2, "IV": 3, "V": 4, "VI": 5, "VII": 6, "VIII": 7, "IX": 8, "X": 9 };
+          index = romanMap[romanNumeral] !== undefined ? romanMap[romanNumeral] : (parseInt(romanNumeral, 10) - 1 || 0);
+        }
+        if (!structureData.holding2Ownership) structureData.holding2Ownership = {};
+        structureData.holding2Ownership[index] = parsePercent(valueStr);
       } else if (name.includes("Holding AS 1 aktiv")) {
         structureData.holding1Active = valueStr.trim().toLowerCase() === "ja";
       } else if (name.includes("Holding AS 1 navn")) {
@@ -9367,9 +9711,12 @@ function parseInputText(text) {
   if (Object.keys(structureData).length > 0) {
     if (!AppState.structure) {
       AppState.structure = {
-        privat: [{ active: true, name: "Privat" }],
-        holding1: { active: false, name: "Holding AS" },
-        holding2: { active: false, name: "Holding II AS" }
+        privat: [
+          { active: true, name: "Privat" },
+          { active: false, name: "Privat II" }
+        ],
+        holding1: { active: false, name: "Holding AS", ownershipPct: null },
+        holding2: { active: false, name: "Holding II AS", ownershipPct: null }
       };
     }
     
@@ -9398,6 +9745,26 @@ function parseInputText(text) {
         }
       });
     }
+
+    if (structureData.privatActive && Object.keys(structureData.privatActive).length > 0) {
+      const privatActive = structureData.privatActive;
+      const maxIndex = Math.max(...Object.keys(privatActive).map(k => parseInt(k, 10)));
+      while (AppState.structure.privat.length <= maxIndex) {
+        const newIndex = AppState.structure.privat.length;
+        const defaultName = newIndex === 0 ? "Privat" : `Privat ${getRomanNumeral(newIndex + 1)}`;
+        AppState.structure.privat.push({ active: true, name: defaultName });
+      }
+      Object.keys(privatActive).forEach(indexStr => {
+        const index = parseInt(indexStr, 10);
+        if (AppState.structure.privat[index]) {
+          if (index === 0) {
+            AppState.structure.privat[index].active = true;
+          } else {
+            AppState.structure.privat[index].active = !!privatActive[index];
+          }
+        }
+      });
+    }
     
     // Oppdater Holdingselskaper (aktiv-status og/eller navn)
     if (structureData.holding1Active !== undefined || structureData.holding1Name) {
@@ -9415,6 +9782,38 @@ function parseInputText(text) {
       if (structureData.holding2Active !== undefined) AppState.structure.holding2.active = structureData.holding2Active;
       if (structureData.holding2Name) AppState.structure.holding2.name = structureData.holding2Name;
     }
+
+    if (!AppState.structure.holding1 || AppState.structure.holding1.ownershipPct === undefined) {
+      if (!AppState.structure.holding1) AppState.structure.holding1 = { active: false, name: "Holding AS", ownershipPct: null };
+      if (AppState.structure.holding1.ownershipPct === undefined) AppState.structure.holding1.ownershipPct = null;
+    }
+    if (!AppState.structure.holding2 || AppState.structure.holding2.ownershipPct === undefined) {
+      if (!AppState.structure.holding2) AppState.structure.holding2 = { active: false, name: "Holding II AS", ownershipPct: null };
+      if (AppState.structure.holding2.ownershipPct === undefined) AppState.structure.holding2.ownershipPct = null;
+    }
+
+    const privatArray = AppState.structure.privat || [];
+    syncAllHoldingOwnershipLengths(privatArray);
+
+    if (structureData.holding1Ownership && Object.keys(structureData.holding1Ownership).length > 0) {
+      const row = privatArray.map(() => 0);
+      Object.keys(structureData.holding1Ownership).forEach((indexStr) => {
+        const idx = parseInt(indexStr, 10);
+        if (idx >= 0 && idx < row.length) row[idx] = Number(structureData.holding1Ownership[idx]) || 0;
+      });
+      AppState.structure.holding1.ownershipPct = row;
+    }
+
+    if (structureData.holding2Ownership && Object.keys(structureData.holding2Ownership).length > 0) {
+      const row = privatArray.map(() => 0);
+      Object.keys(structureData.holding2Ownership).forEach((indexStr) => {
+        const idx = parseInt(indexStr, 10);
+        if (idx >= 0 && idx < row.length) row[idx] = Number(structureData.holding2Ownership[idx]) || 0;
+      });
+      AppState.structure.holding2.ownershipPct = row;
+    }
+
+    syncAllHoldingOwnershipLengths(privatArray);
   }
   
   // Signaliser at T-konto-data er oppdatert (Oppsummeringsrapport leser kontantstrøm herfra)
@@ -9442,7 +9841,7 @@ window.TKontoRefreshAfterInputLoad = function () {
     else if (section === "Analyse" && typeof renderAnalysisModule === "function") renderAnalysisModule(moduleRoot);
     else if ((section === "TBE" || section === "Tapsbærende evne") && typeof renderTbeModule === "function") renderTbeModule(moduleRoot);
     else if (section === "Forventet avkastning" && typeof renderExpectationsModule === "function") renderExpectationsModule(moduleRoot);
-    else if ((section === "T-Konto" || section === "Treemap") && typeof renderGraphicsModule === "function") renderGraphicsModule(moduleRoot);
+    else if (section === "T-Konto" && typeof renderGraphicsModule === "function") renderGraphicsModule(moduleRoot);
     else if (section === "Kontantstrøm" && typeof renderWaterfallModule === "function") renderWaterfallModule(moduleRoot);
     else if (section === "Fremtidig utvikling" && typeof renderFutureModule === "function") renderFutureModule(moduleRoot);
     else if (typeof renderStrukturModule === "function") renderStrukturModule(moduleRoot);

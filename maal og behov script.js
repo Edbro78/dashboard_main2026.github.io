@@ -247,7 +247,6 @@ const MaalOgBehovState = {
     showStockPortionGraphic: false,
     showInvestedCapitalGraphic: false,
     showGoalSeek: false,
-    showDisclaimer: false,
     showOutputModal: false,
     outputText: '',
     copied: false,
@@ -267,7 +266,6 @@ const MaalOgBehovState = {
     savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
     advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
     waterfallMode: false,
-    henteSparingFraTKontoActive: false,
     henteAltFraPensionActive: false
 };
 if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState; }
@@ -876,13 +874,13 @@ const InvestorTypeToggle = ({ value, onChange }) => (
         <div className="grid grid-cols-2 gap-2 mt-2">
             <button
                 onClick={() => onChange('investorType', 'AS')}
-                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value === 'AS' ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value === 'AS' ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
             >
                 <span>AS</span>
             </button>
             <button
                 onClick={() => onChange('investorType', 'Privat')}
-                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value === 'Privat' ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value === 'Privat' ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
             >
                 <span>Privat</span>
             </button>
@@ -896,13 +894,13 @@ const TaxCalculationToggle = ({ value, onChange }) => (
         <div className="grid grid-cols-2 gap-2 mt-2">
             <button
                 onClick={() => onChange('taxCalculationEnabled', true)}
-                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
             >
                 <span>På</span>
             </button>
             <button
                 onClick={() => onChange('taxCalculationEnabled', false)}
-                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${!value ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${!value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
             >
                 <span>Av</span>
             </button>
@@ -919,13 +917,13 @@ const DeferredInterestTaxToggle = ({ value, onChange }) => {
             <div className="grid grid-cols-2 gap-2 mt-2">
                 <button
                     onClick={() => onChange('deferredInterestTax', true)}
-                    className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${selected === 'Ja' ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                    className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${selected === 'Ja' ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
                 >
                     <span>Ja</span>
                 </button>
                 <button
                     onClick={() => onChange('deferredInterestTax', false)}
-                    className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${selected === 'Nei' ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
+                    className={`p-3 rounded-lg flex items-center justify-center text-center font-medium transition-all transform hover:-translate-y-0.5 ${selected === 'Nei' ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'}`}
                 >
                     <span>Nei</span>
                 </button>
@@ -1251,12 +1249,6 @@ function TKontoDashboard() {
                             </span>
                             <span className="nav-label">T-Konto</span>
                         </button>
-                        <button className="nav-item" data-section="Treemap">
-                            <span className="nav-icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 19V5" stroke="currentColor" strokeWidth="2"/><path d="M3 19h18" stroke="currentColor" strokeWidth="2"/><path d="M7 15l3-3 3 2 4-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                            </span>
-                            <span className="nav-label">Treemap</span>
-                        </button>
                         <button className="nav-item" data-section="Tapsbærende evne">
                             <span className="nav-icon" aria-hidden="true">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l8 3v6c0 4.4-3 8.4-8 9-5-0.6-8-4.6-8-9V6l8-3Z" stroke="currentColor" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -1309,7 +1301,7 @@ function TKontoDashboard() {
                                 <div id="sum-equity" className="summary-value">0 kr</div>
                             </div>
                             <div className="pe-item summary-card summary-cash" id="summary-equity-return-button" role="button" tabIndex="0">
-                                <div className="summary-title success-dark">Årlig kontantstrøm</div>
+                                <div className="summary-title success-dark">Kontantstrøm</div>
                                 <div id="sum-cashflow" className="summary-value">0 kr</div>
                             </div>
                         </div>
@@ -1999,7 +1991,8 @@ function App() {
     const [showStockPortionGraphic, setShowStockPortionGraphic] = useState(MaalOgBehovState.showStockPortionGraphic);
     const [showInvestedCapitalGraphic, setShowInvestedCapitalGraphic] = useState(MaalOgBehovState.showInvestedCapitalGraphic);
     const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
-    const [showDisclaimer, setShowDisclaimer] = useState(MaalOgBehovState.showDisclaimer);
+    // Disclaimer er fjernet fra UI. Vi holder den alltid av for å hindre modal-rendering.
+    const [showDisclaimer, setShowDisclaimer] = useState(false);
     const [panelTitle, setPanelTitle] = useState(MaalOgBehovState.panelTitle || 'Mål og behov');
     const [editingTitle, setEditingTitle] = useState(false);
     const titleInputRef = React.useRef(null);
@@ -2018,13 +2011,16 @@ function App() {
     const [showMonteCarloStockAllocation, setShowMonteCarloStockAllocation] = useState(MaalOgBehovState.showMonteCarloStockAllocation);
     const [monteCarloStockAllocationKey, setMonteCarloStockAllocationKey] = useState(MaalOgBehovState.monteCarloStockAllocationKey);
     const [simButtonActive, setSimButtonActive] = useState(MaalOgBehovState.simButtonActive);
+    const [spToolButtonMarked, setSpToolButtonMarked] = useState(false);
+    const [utbToolButtonMarked, setUtbToolButtonMarked] = useState(false);
+    const [portToolButtonMarked, setPortToolButtonMarked] = useState(false);
     const [simulationKey, setSimulationKey] = useState(MaalOgBehovState.simulationKey);
     const [savedSimulatedReturns, setSavedSimulatedReturns] = useState(MaalOgBehovState.savedSimulatedReturns);
     const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
     const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
-    const [henteSparingFraTKontoActive, setHenteSparingFraTKontoActive] = useState(MaalOgBehovState.henteSparingFraTKontoActive ?? false);
     const [henteAltFraPensionActive, setHenteAltFraPensionActive] = useState(MaalOgBehovState.henteAltFraPensionActive ?? false);
     const savedStateBeforePensionRef = React.useRef(null);
+    const portBeforeGoalSeekRef = React.useRef(null);
     const [showChartImageModal, setShowChartImageModal] = useState(false);
     const [chartImageCopied, setChartImageCopied] = useState(false);
     const chartExportCanvasRef = React.useRef(null);
@@ -2065,10 +2061,6 @@ function App() {
     useEffect(() => {
         MaalOgBehovState.showGoalSeek = showGoalSeek;
     }, [showGoalSeek]);
-
-    useEffect(() => {
-        MaalOgBehovState.showDisclaimer = showDisclaimer;
-    }, [showDisclaimer]);
 
     useEffect(() => {
         MaalOgBehovState.panelTitle = panelTitle;
@@ -2158,10 +2150,6 @@ function App() {
     }, [waterfallMode]);
 
     useEffect(() => {
-        MaalOgBehovState.henteSparingFraTKontoActive = henteSparingFraTKontoActive;
-    }, [henteSparingFraTKontoActive]);
-
-    useEffect(() => {
         MaalOgBehovState.henteAltFraPensionActive = henteAltFraPensionActive;
     }, [henteAltFraPensionActive]);
 
@@ -2245,12 +2233,12 @@ function App() {
             let nextWealthTax = prev.desiredAnnualWealthTaxPayout;
 
             if (nextFlag) {
-                // Bruk alltid det konkrete tallet fra T-konto (tallet helt til høyre) – aldri finn på eget tall
+                // Hent totalen fra Formuesskatt-fanen (cellen "Total Formuesskatt" i output)
                 try {
-                    if (typeof window.getTKontoFormuesskatt === 'function') {
-                        nextWealthTax = window.getTKontoFormuesskatt();
+                    const iframe = document.querySelector('iframe[src*="formuesskatt"]');
+                    if (iframe?.contentWindow && typeof iframe.contentWindow.getFormuesskattTotal === 'function') {
+                        nextWealthTax = iframe.contentWindow.getFormuesskattTotal();
                     } else {
-                        // T-konto ikke lastet: ikke bruk gammel localStorage – bruk 0
                         nextWealthTax = 0;
                     }
                 } catch (e) {
@@ -2305,7 +2293,6 @@ function App() {
                     investedCapital: 0,
                 });
                 setHenteAltFraPensionActive(true);
-                setHenteSparingFraTKontoActive(false);
             } catch (e) {}
         }
     }, [henteAltFraPensionActive, state]);
@@ -3928,6 +3915,13 @@ return () => document.removeEventListener('keydown', onKey);
         }
         // high er minste heltall som gir finalPortfolioValue >= 0
         const rounded = Math.round(high);
+        const gref = portBeforeGoalSeekRef.current;
+        if (gref && gref.pre && gref.post == null) {
+            gref.post = {
+                initialPortfolioSize: rounded,
+                goalSeekPortfolio1Result: rounded,
+            };
+        }
         setState(s => ({ 
             ...s, 
             initialPortfolioSize: rounded,
@@ -4659,13 +4653,6 @@ return () => document.removeEventListener('keydown', onKey);
                         >{panelTitle}</h1>
                     )}
                     <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
-                        <button
-                            onClick={() => setShowDisclaimer(true)}
-                            className="absolute -top-12 left-2 z-10 text-xs px-2 py-1 rounded-md border border-[#4A6D8C] bg-white text-[#4A6D8C] hover:bg-gray-100"
-                            title="Disclaimer/forutsetninger"
-                        >
-                            Disclaimer/forutsetninger
-                        </button>
                         <Bar options={chartOptions} data={investmentChartData} />
                     </div>
                     <CustomLegend items={state.taxCalculationEnabled ? LEGEND_DATA : LEGEND_DATA.filter(i => !['Skatt på hendelser','Løpende renteskatt'].includes(i.label))} />
@@ -4684,7 +4671,7 @@ return () => document.removeEventListener('keydown', onKey);
                                     setSimulationKey(prev => prev + 1);
                                 }
                             }}
-                            className={`${simButtonActive ? 'bg-[#66CC99] text-white' : 'bg-white border border-[#DDDDDD] text-[#333333]'} shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity relative`}
+                            className={`${simButtonActive ? 'bg-[#66CC99] text-white mbh-side-tool-active' : 'bg-white border border-[#DDDDDD] text-[#333333]'} shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] relative outline-none`}
                         >
                             <span className={`text-sm font-bold ${!simButtonActive ? 'line-through opacity-70' : ''}`}>sim</span>
                         </button>
@@ -4693,8 +4680,19 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Aktiverer målsøk sparing. Denne funksjonen beregner hvor mye du må spare årlig i investeringsperioden for at porteføljen skal gå i null i siste år av utbetalingsperioden"
-                            onClick={goalSeekAnnualSavings}
-                            className="bg-[#999999] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => {
+                                setSpToolButtonMarked((prev) => {
+                                    const next = !prev;
+                                    if (next) {
+                                        goalSeekAnnualSavings();
+                                    } else {
+                                        // Slå av målsøk sparing: nullstill årlig sparing
+                                        setState(s => ({ ...s, annualSavings: 0 }));
+                                    }
+                                    return next;
+                                });
+                            }}
+                            className={`bg-[#999999] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${spToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-sm font-bold">Sp.</span>
                         </button>
@@ -4703,8 +4701,25 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Aktiverer Målsøk utbetaling. Har du valgt antall år utbetaling, vil denne funksjonen beregne hvor mye du maksimalt kan ta ut hvert år i denne perioden før porteføljen er tømt"
-                            onClick={goalSeekAnnualPayout}
-                            className="bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => {
+                                setUtbToolButtonMarked((prev) => {
+                                    const next = !prev;
+                                    if (next) {
+                                        goalSeekAnnualPayout();
+                                    } else {
+                                        // Slå av målsøk utbetaling: nullstill ønsket årlig uttak til forbruk
+                                        setState(s => ({
+                                            ...s,
+                                            desiredAnnualConsumptionPayout: 0,
+                                            desiredAnnualWealthTaxPayout: 0,
+                                            goalSeekPayoutResult: 0,
+                                            goalSeekPayoutDrainFinalYear: false,
+                                        }));
+                                    }
+                                    return next;
+                                });
+                            }}
+                            className={`bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${utbToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-xs font-bold">Utb.</span>
                         </button>
@@ -4713,8 +4728,42 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Denne funksjonen beregner hvor stor Portefølje I må være for å tilfredstille det du har lagt inn av utbetalinger i utbetalingsperioden."
-                            onClick={goalSeekPortfolio1}
-                            className="bg-[#4A6D8C] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => {
+                                setPortToolButtonMarked((prev) => {
+                                    const next = !prev;
+                                    if (next) {
+                                        portBeforeGoalSeekRef.current = {
+                                            pre: {
+                                                initialPortfolioSize: state.initialPortfolioSize,
+                                                goalSeekPortfolio1Result: state.goalSeekPortfolio1Result,
+                                            },
+                                            post: null,
+                                        };
+                                        goalSeekPortfolio1();
+                                    } else {
+                                        const snap = portBeforeGoalSeekRef.current;
+                                        if (snap && snap.pre) {
+                                            const post = snap.post;
+                                            const resultEq = (a, b) =>
+                                                (Number(a) || 0) === (Number(b) || 0);
+                                            const unchangedSinceGoalSeek =
+                                                post != null &&
+                                                state.initialPortfolioSize === post.initialPortfolioSize &&
+                                                resultEq(state.goalSeekPortfolio1Result, post.goalSeekPortfolio1Result);
+                                            if (unchangedSinceGoalSeek) {
+                                                setState((s) => ({
+                                                    ...s,
+                                                    initialPortfolioSize: snap.pre.initialPortfolioSize,
+                                                    goalSeekPortfolio1Result: snap.pre.goalSeekPortfolio1Result,
+                                                }));
+                                            }
+                                        }
+                                        portBeforeGoalSeekRef.current = null;
+                                    }
+                                    return next;
+                                });
+                            }}
+                            className={`bg-[#4A6D8C] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${portToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-xs font-bold">Port.</span>
                         </button>
@@ -4798,27 +4847,9 @@ return () => document.removeEventListener('keydown', onKey);
                             <div className="hidden xl:flex justify-start items-center gap-3 w-full mb-3">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        try {
-                                            if (henteSparingFraTKontoActive) {
-                                                handleStateChange('annualSavings', 0);
-                                                setHenteSparingFraTKontoActive(false);
-                                            } else {
-                                                const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('tKontoSparingForMaalOgBehov') : null;
-                                                const amount = raw != null ? Math.max(0, Math.min(5000000, Math.round(Number(raw) || 0))) : 0;
-                                                handleStateChange('annualSavings', amount);
-                                                setHenteSparingFraTKontoActive(true);
-                                            }
-                                        } catch (e) {}
-                                    }}
-                                    className={`border border-[#DDDDDD] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${henteSparingFraTKontoActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A]' : 'bg-[#9CA3AF] text-white hover:bg-[#6B7280]'}`}
-                                    style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
-                                >
-                                    hente sparing fra T-konto
-                                </button>
-                                <button
-                                    type="button"
                                     onClick={handleHenteAltFraPension}
+                                    title="Ved å trykke her, vil mål og behov endre seg og bli identisk med tidslinjen som er lagt inn i fanen: Pensjon. Om det er ti år til pensjonsutbetalingene starter, vil antall år med investering være 10. Skal du ha utbetalt pensjonen over 15år vil antall år med utbetaling være 15. Aksjeandel blir også satt til det samme. Dette i portefølje I"
+                                    aria-label="Ved å trykke her, vil mål og behov endre seg og bli identisk med tidslinjen som er lagt inn i fanen: Pensjon. Om det er ti år til pensjonsutbetalingene starter, vil antall år med investering være 10. Skal du ha utbetalt pensjonen over 15år vil antall år med utbetaling være 15. Aksjeandel blir også satt til det samme. Dette i portefølje I"
                                     className={`border border-[#DDDDDD] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${henteAltFraPensionActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A] border-[#22C55E]' : 'bg-[#1A2A47] text-white hover:bg-[#2A3A5A]'}`}
                                     style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                                 >
@@ -4828,6 +4859,8 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekAnnualSavings}
+                        title="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
+                        aria-label="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
                         className="xl:hidden bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5"
                     >
                         Målsøk sparing
@@ -4836,6 +4869,8 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekAnnualSavings}
+                        title="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
+                        aria-label="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
                         className="bg-[#888888] border border-[#DDDDDD] text-white hover:bg-[#777777] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
@@ -4868,6 +4903,8 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekAnnualPayout}
+                        title="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
+                        aria-label="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
                         className="bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
@@ -4881,6 +4918,8 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={goalSeekPortfolio1}
+                        title="Ved å trykke på denne vil modellen beregne hvor stor Portefølje I må være, for at porteføljen totalt sett ikke skal gå i minus siste år av utbetalingsperioden. Om porteføljen ikke går i minus siste år, vil denne knappen ikke ha en funksjon."
+                        aria-label="Ved å trykke på denne vil modellen beregne hvor stor Portefølje I må være, for at porteføljen totalt sett ikke skal gå i minus siste år av utbetalingsperioden. Om porteføljen ikke går i minus siste år, vil denne knappen ikke ha en funksjon."
                         className="bg-[#4A6D8C] border border-[#DDDDDD] text-white hover:bg-[#3A5D7C] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
@@ -4899,6 +4938,8 @@ return () => document.removeEventListener('keydown', onKey);
                                 setShowSimulation(true);
                             }
                         }}
+                        title="Hvis knappen &quot;Sim&quot; er aktivert,  så vil du her få se en simulert avkastning i alle årene som ligger i Mål og behov. Simuleringen er basert på forventet avkastning i hhv aksjer og renter, og gitt hvilket standardavvik som legges inn på aksjer og renter. Hver gang du trykker på knappen &quot;Sim&quot;, vil denne simuleringen gjøres på nytt. Dette er kun en simulering"
+                        aria-label="Hvis knappen &quot;Sim&quot; er aktivert,  så vil du her få se en simulert avkastning i alle årene som ligger i Mål og behov. Simuleringen er basert på forventet avkastning i hhv aksjer og renter, og gitt hvilket standardavvik som legges inn på aksjer og renter. Hver gang du trykker på knappen &quot;Sim&quot;, vil denne simuleringen gjøres på nytt. Dette er kun en simulering"
                         className="bg-[#999999] border border-[#DDDDDD] text-white hover:bg-[#888888] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
                         style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%', marginRight: '10px' }}
                     >
@@ -4912,6 +4953,8 @@ return () => document.removeEventListener('keydown', onKey);
                                 setShowAccumulatedReturn(true);
                             }
                         }}
+                        title="Gitt av &quot;Sim&quot; er aktivert, vil du her få se et estimat på akkumulert avkastning i både % og i kr i hele perioden. Utbetalinger vil redusere den Årlige avkastningen (kr). Dette fordi modellen utbetaler avkastningen. Til slutt er kassen tom."
+                        aria-label="Gitt av &quot;Sim&quot; er aktivert, vil du her få se et estimat på akkumulert avkastning i både % og i kr i hele perioden. Utbetalinger vil redusere den Årlige avkastningen (kr). Dette fordi modellen utbetaler avkastningen. Til slutt er kassen tom."
                         className="bg-[#3498DB] border border-[#DDDDDD] text-white hover:bg-[#2980B9] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
                         style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%', marginRight: '10px' }}
                     >
@@ -4924,6 +4967,8 @@ return () => document.removeEventListener('keydown', onKey);
                             setMonteCarloKey(k => k + 1);
                             setShowMonteCarlo(true);
                         }}
+                        title="Ved å trykke her vil modellen gjøre 2000 simuleringer av hvor mye porteføljen totalt vil utbetale i alle utbetalingsårene. Dette gitt at antall år med utbetaling er større enn 0. Frekvenstabellen viser hvor de ulike simuleringene hoper seg opp, hvilke simuleringer det er flest av. Den viser også beste og dårligste simulering."
+                        aria-label="Ved å trykke her vil modellen gjøre 2000 simuleringer av hvor mye porteføljen totalt vil utbetale i alle utbetalingsårene. Dette gitt at antall år med utbetaling er større enn 0. Frekvenstabellen viser hvor de ulike simuleringene hoper seg opp, hvilke simuleringer det er flest av. Den viser også beste og dårligste simulering."
                         className="bg-[#CCCCCC] border border-[#DDDDDD] text-white hover:bg-[#BBBBBB] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
                         style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%', marginRight: '10px' }}
                     >
@@ -4936,6 +4981,8 @@ return () => document.removeEventListener('keydown', onKey);
                             setMonteCarloPortfolioKey(k => k + 1);
                             setShowMonteCarloPortfolio(true);
                         }}
+                        title="Ved å trykke her vil modellen gjøre 2000 simuleringer som viser hvor stor porteføljen vil være siste året før utbetalingene starter. Det vises også en frekvenstabell som viser hvor simuleringene hoper seg opp. Den viser også beste og dårligste simulering."
+                        aria-label="Ved å trykke her vil modellen gjøre 2000 simuleringer som viser hvor stor porteføljen vil være siste året før utbetalingene starter. Det vises også en frekvenstabell som viser hvor simuleringene hoper seg opp. Den viser også beste og dårligste simulering."
                         className="bg-[#2980B9] border border-[#DDDDDD] text-white hover:bg-[#21618C] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
                         style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%', marginRight: '10px' }}
                     >
@@ -4948,6 +4995,8 @@ return () => document.removeEventListener('keydown', onKey);
                             setMonteCarloStockAllocationKey(k => k + 1);
                             setShowMonteCarloStockAllocation(true);
                         }}
+                        title="Ved å trykke her, vil modellen gjøre 1000 simuleringer av hvor stor porteføljen vil være siste år før utebetalingene starter i 7 ulike porteføljer. Fra 100% renter til 100% aksjer."
+                        aria-label="Ved å trykke her, vil modellen gjøre 1000 simuleringer av hvor stor porteføljen vil være siste år før utebetalingene starter i 7 ulike porteføljer. Fra 100% renter til 100% aksjer."
                         className="bg-[#2980B9] border border-[#DDDDDD] text-white hover:bg-[#21618C] h-16 rounded-2xl flex items-center justify-center text-center p-2 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md"
                         style={{ flex: '1 1 0', minWidth: '0', maxWidth: '100%' }}
                     >
@@ -6191,9 +6240,9 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     {/* Assumptions Panel */}
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
-                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency />
-                        <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={30} step={1} onChange={handleStateChange} unit="år" />
-                        <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" />
+                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency thumbColor="#4A6D8C" />
+                        <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                        <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                          
                          {/* Ønsket årlig utbetaling */}
                          <div>
@@ -6208,6 +6257,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                      step={100000}
                                      onChange={handleStateChange}
                                      isCurrency
+                                    thumbColor="#4A6D8C"
                                  />
                                 <SliderInput
                                     id="desiredAnnualWealthTaxPayout"
@@ -6218,6 +6268,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                     step={50000}
                                     onChange={handleStateChange}
                                     isCurrency
+                                    thumbColor="#4A6D8C"
                                 />
                                 {/* Hent fra T‑konto knapp under formuesskatt-slideren */}
                                 <div className="flex justify-center mt-3">
@@ -6230,7 +6281,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                         }`}
                                         onClick={handleToggleWealthTaxFromTKonto}
                                     >
-                                        Hent fra T-konto
+                                        Hent Formuesskatt
                                     </button>
                                 </div>
                                  <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
@@ -6253,9 +6304,39 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
 
                         <div>
                             <h3 className="typo-h2 text-[#4A6D8C] mb-4">Forventet avkastning</h3>
-                            <SliderInput id="stockReturnRate" label="Forventet avkastning aksjer" value={state.stockReturnRate} min={5} max={10} step={0.1} onChange={handleStateChange} displayValue={`${state.stockReturnRate.toFixed(1)}%`} />
-                            <SliderInput id="bondReturnRate" label="Forventet avkastning renter" value={state.bondReturnRate} min={3} max={9} step={0.1} onChange={handleStateChange} displayValue={`${state.bondReturnRate.toFixed(1)}%`} />
-                            <SliderInput id="kpiRate" label="Forventet KPI" value={state.kpiRate} min={0} max={5} step={0.1} onChange={handleStateChange} displayValue={`${state.kpiRate.toFixed(1)}%`} />
+                            <SliderInput
+                                id="stockReturnRate"
+                                label="Forventet avkastning aksjer"
+                                value={state.stockReturnRate}
+                                min={5}
+                                max={10}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.stockReturnRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="bondReturnRate"
+                                label="Forventet avkastning renter"
+                                value={state.bondReturnRate}
+                                min={3}
+                                max={9}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.bondReturnRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="kpiRate"
+                                label="Forventet KPI"
+                                value={state.kpiRate}
+                                min={0}
+                                max={5}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.kpiRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
 
                             {/* Rådgivningshonorar knapper */}
                             <div className="mt-4">
@@ -6301,7 +6382,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                 handleStateChange('advisoryFeeRate', opt.value);
                                                 setAdvisoryInputValue((v) => v); // behold brukerens manuelle verdi i feltet
                                             }}
-                                            className={`${state.advisoryFeeRate === opt.value ? 'bg-[#66CCDD] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-12 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}
+                                            className={`${state.advisoryFeeRate === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-12 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}
                                         >
                                             {opt.label}
                                         </button>
@@ -6329,11 +6410,11 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                         <div className="mt-4">
                             <h3 className="typo-h2 text-[#4A6D8C] mb-4">Skatt</h3>
                             <div className="space-y-4">
-                                <SliderInput id="shieldingRate" label="Skjermingsrente" value={state.shieldingRate} min={2} max={7} step={0.01} onChange={handleStateChange} displayValue={`${state.shieldingRate.toFixed(2)}%`} />
+                                <SliderInput id="shieldingRate" label="Skjermingsrente" value={state.shieldingRate} min={2} max={7} step={0.01} onChange={handleStateChange} displayValue={`${state.shieldingRate.toFixed(2)}%`} thumbColor="#4A6D8C" />
                                 <ManualTaxInput id="manualStockTaxRate" label="Utbytteskatt / skatt aksjer (%)" value={state.manualStockTaxRate} onChange={handleStateChange} />
                                 <ManualTaxInput id="manualBondTaxRate" label="Kapitalskatt (%)" value={state.manualBondTaxRate} onChange={handleStateChange} />
-                                <SliderInput id="stockStdDev" label="Standardavvik aksjer" value={state.stockStdDev} min={5} max={20} step={0.1} onChange={handleStateChange} displayValue={`${state.stockStdDev.toFixed(1)}%`} />
-                                <SliderInput id="bondStdDev" label="Standardavvik renter" value={state.bondStdDev} min={1} max={8} step={0.1} onChange={handleStateChange} displayValue={`${state.bondStdDev.toFixed(1)}%`} />
+                                <SliderInput id="stockStdDev" label="Standardavvik aksjer" value={state.stockStdDev} min={5} max={20} step={0.1} onChange={handleStateChange} displayValue={`${state.stockStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
+                                <SliderInput id="bondStdDev" label="Standardavvik renter" value={state.bondStdDev} min={1} max={8} step={0.1} onChange={handleStateChange} displayValue={`${state.bondStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
                             </div>
                         </div>
                     </div>
@@ -6342,7 +6423,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <div className="flex justify-between items-start">
                             <h2 className="typo-h2 text-[#4A6D8C]">Hendelser</h2>
-                            <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`flex items-center gap-2 font-medium py-2 px-4 rounded-lg transition-all transform hover:-translate-y-0.5 shadow-md ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-300 text-white cursor-not-allowed' : 'bg-[#3388CC] hover:bg-[#005599] text-white'}`}>
+                            <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`flex items-center gap-2 font-medium py-2 px-4 rounded-lg transition-all transform hover:-translate-y-0.5 shadow-md ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-300 text-white cursor-not-allowed' : 'bg-[#4A6D8C] hover:bg-[#3A5D7C] text-white'}`}>
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
                                 <span>Legg til hendelse</span>
                             </button>
@@ -6355,7 +6436,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                             {Array.from({ length: Math.max(0, MAX_EVENTS - (state.events?.length || 0)) }).map((_, idx) => (
                                 <div key={`placeholder-${idx}`} className="bg-white border border-dashed border-[#DDDDDD] rounded-lg p-4 flex items-center justify-between">
                                     <div className="text-[#333333]/60">Tom plass for hendelse</div>
-                                    <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`px-3 py-1 rounded-md text-sm font-medium ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#3388CC] text-white hover:bg-[#005599]'}`}>
+                                    <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`px-3 py-1 rounded-md text-sm font-medium ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#4A6D8C] text-white hover:bg-[#3A5D7C]'}`}>
                                         Legg til
                                     </button>
                                 </div>

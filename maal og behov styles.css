@@ -528,3 +528,11 @@
     .tab-content.hidden {
         display: none;
     }
+
+/* Sidestilt verktøyknapp (sim / Sp. / Utb. / Port.): tydelig aktiv ramme.
+   Tailwind ring + shadow-lg på samme knapp konkurrerer om box-shadow, så ringen kan forsvinne. */
+.maal-og-behov-tab button.mbh-side-tool-active {
+    outline: 5px solid #0057ff;
+    outline-offset: 4px;
+    z-index: 2;
+}
