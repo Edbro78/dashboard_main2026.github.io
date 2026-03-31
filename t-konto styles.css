@@ -2086,6 +2086,12 @@ p { /* Avsnitt */
   font-weight: var(--weight-semibold);
 }
 
+/* Startår-hint under gjeld: 30 % mindre enn hovedteksten; egen kasus (ikke arv uppercase fra .section-label) */
+.section-label .debt-startyear-hint {
+  font-size: 70%;
+  text-transform: none;
+}
+
 .select {
   position: relative;
 }

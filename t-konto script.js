@@ -5349,21 +5349,22 @@ function computeAnnualCashflowBreakdown() {
   return computeAnnualCashflowBreakdownForYear(2026);
 }
 
+/** Første år lånet er aktivt i modellen (default 2026). */
+function getDebtScheduleStartYear(debt) {
+  const params = (debt && debt.debtParams) || AppState.debtParams || {};
+  if (params.startYear == null || params.startYear === "") return 2026;
+  const S = Number(params.startYear);
+  return Number.isFinite(S) ? S : 2026;
+}
+
 /**
  * Kalenderår → indeks i gjeldsamortisering (samme som tidligere «år − 2025» når startår er 2026 og Y ≥ 2026).
  * Uten lagret startår antas 2026. Før startår: ingen gjeld (indeks −1).
  */
 function getDebtScheduleElapsed(debt, calendarYear) {
-  const params = (debt && debt.debtParams) || AppState.debtParams || {};
   const Y = Number(calendarYear);
   if (!Number.isFinite(Y)) return 0;
-  let S;
-  if (params.startYear == null || params.startYear === "") {
-    S = 2026;
-  } else {
-    S = Number(params.startYear);
-    if (!Number.isFinite(S)) S = 2026;
-  }
+  const S = getDebtScheduleStartYear(debt);
   if (Y < S) return -1;
   return Y - S + 1;
 }
@@ -5842,7 +5843,9 @@ function getTKontoFinancingSegments(yearVal) {
   var segs = [];
   segs.push({ key: "EGENKAPITAL", value: equityVal, color: TKONTO_CHART_COLORS.EGENKAPITAL });
   if (debts.length === 0) {
-    segs.push({ key: "GJELD", value: debtVal, color: TKONTO_CHART_COLORS.GJELD });
+    if (debtVal > 0) {
+      segs.push({ key: "GJELD", value: debtVal, color: TKONTO_CHART_COLORS.GJELD });
+    }
   } else {
     var debtScale = ["#F2BFB8", "#F1999C", "#EF4444", "#DC2626", "#B91C1C"];
     var Yc = Number(yearVal);
@@ -5851,11 +5854,13 @@ function getTKontoFinancingSegments(yearVal) {
       var remForDebt = remainingBalanceForDebtInYear(debt, Yc);
       var proportion = totalRem > 0 ? remForDebt / totalRem : 0;
       var amount = Math.round(debtVal * proportion);
-      segs.push({
-        key: String(debt.name || "Gjeld " + (idx + 1)),
-        value: amount,
-        color: debtScale[idx % debtScale.length]
-      });
+      if (amount > 0) {
+        segs.push({
+          key: String(debt.name || "Gjeld " + (idx + 1)),
+          value: amount,
+          color: debtScale[idx % debtScale.length]
+        });
+      }
     });
   }
   return { segments: segs, total: totalAssets || 1 };
@@ -6267,8 +6272,9 @@ function renderFutureModule(root) {
     // Del opp gjeld i separate segmenter hvis det er flere gjeldsposter
     const financingParts = [];
     if (debts.length === 1) {
-      // Hvis kun én gjeldspost, bruk samme struktur som før
-      financingParts.push({ key: "Gjeld", value: debtVal, color: "#FCA5A5" });
+      if (debtVal > 0) {
+        financingParts.push({ key: "Gjeld", value: debtVal, color: "#FCA5A5" });
+      }
     } else if (debts.length > 1) {
       // Hvis flere gjeldsposter, beregn andel for hver gjeldspost basert på gjeldende år
       const debtScale = ["#FCA5A5", "#F87171", "#EF4444", "#DC2626", "#B91C1C"]; // Mildere rødskala
@@ -7268,8 +7274,9 @@ function buildFinancingGrowthSVG(startYear, yearsCount) {
     // Del opp gjeld i separate segmenter hvis det er flere gjeldsposter
     const segments = [];
     if (debts.length === 1) {
-      // Hvis kun én gjeldspost, bruk samme struktur som før
-      segments.push({ key: "Gjeld", value: totalDebtVal, color: "#FCA5A5" });
+      if (totalDebtVal > 0) {
+        segments.push({ key: "Gjeld", value: totalDebtVal, color: "#FCA5A5" });
+      }
     } else if (debts.length > 1) {
       // Hvis flere gjeldsposter, beregn andel for hver gjeldspost basert på gjeldende år
       const debtScale = ["#FCA5A5", "#F87171", "#EF4444", "#DC2626", "#B91C1C"]; // Mildere rødskala
@@ -7433,10 +7440,10 @@ function buildFinancingGrowthSVG(startYear, yearsCount) {
 
   // Forklaringsvariabler (legend) horisontalt under grafikken
   const legendItems = [];
-  // Legg til alle gjeldsposter i legend
+  const hasAnyDebtInSeries = years.some((yy) => remainingDebtForYear(yy) > 0);
   if (debts.length === 1) {
-    legendItems.push({ key: "Gjeld", color: "#FCA5A5" });
-  } else if (debts.length > 1) {
+    if (hasAnyDebtInSeries) legendItems.push({ key: "Gjeld", color: "#FCA5A5" });
+  } else if (debts.length > 1 && hasAnyDebtInSeries) {
     const debtScale = ["#FCA5A5", "#F87171", "#EF4444", "#DC2626", "#B91C1C"];
     debts.forEach((debt, idx) => {
       legendItems.push({
@@ -8161,12 +8168,20 @@ function remainingBalanceAfterYears(debt, elapsedYears) {
 
 /**
  * Gjenværende hovedstol for én gjeldspost i et kalenderår (T-konto-grafikk m.m.).
- * Før lånets startår (år < startYear): full nominell saldo — viser f.eks. 10 MNOK ved «start» (2025) når startår er 2026.
- * Fra og med startår: saldo etter eff år med betalinger (2026 = etter første års avdrag når eff=1).
+ * Før lånets startår (år < startYear): 0 — unntak: ved «start» (2025) og startår 2026 vises full hovedstol
+ * (boliglån m.m. skal synes i T-konto selv om årsvelgeren er «start»). Fremtidig gjeld (startår etter 2026) vises ikke før startåret.
+ * Fra og med startår: saldo etter eff år med betalinger.
  */
 function remainingBalanceForDebtInYear(debt, calendarYear) {
   const eff = getDebtScheduleElapsed(debt, calendarYear);
-  if (eff < 0) return remainingBalanceAfterYears(debt, 0);
+  if (eff < 0) {
+    const Y = Number(calendarYear);
+    const S = getDebtScheduleStartYear(debt);
+    if (S === 2026 && Y === 2025) {
+      return remainingBalanceAfterYears(debt, 0);
+    }
+    return 0;
+  }
   return remainingBalanceAfterYears(debt, eff);
 }
 
@@ -8261,7 +8276,12 @@ function createDebtRow(debt) {
 
   const startYearLabel = document.createElement("div");
   startYearLabel.className = "section-label";
-  startYearLabel.textContent = "Startår";
+  startYearLabel.appendChild(document.createTextNode("Startår "));
+  const startYearHint = document.createElement("span");
+  startYearHint.className = "debt-startyear-hint";
+  startYearHint.textContent =
+    "(husk å sette inn en motpost til fremtidig gjeld i mål og behov)";
+  startYearLabel.appendChild(startYearHint);
   startYearLabel.style.marginTop = "16px";
   container.appendChild(startYearLabel);
 
