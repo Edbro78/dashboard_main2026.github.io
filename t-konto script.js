@@ -653,10 +653,35 @@ window.initTKontoDashboard = initTKontoDashboard;
 // For Oppsummeringsrapport: eiendeler og finansiering per år
 window.getTKontoAssetSegments = getTKontoAssetSegments;
 window.getTKontoFinancingSegments = getTKontoFinancingSegments;
+/** Returnerer full kontantstrøm-breakdown per år (samme grunnlag som waterfall i Kontantstrøm-fanen). */
+window.getTKontoCashflowBreakdownForYear = function (yearVal) {
+  try {
+    return computeAnnualCashflowBreakdownForYear(yearVal, {
+      kontantstromStartAlignsDebtWith2026: true
+    });
+  } catch (e) {
+    return null;
+  }
+};
+/** Returnerer kontantstrøm-serie for flere år (samme kilde som waterfall). */
+window.getTKontoCashflowSeriesForYears = function (years) {
+  try {
+    if (!Array.isArray(years)) return [];
+    return years.map(function (yearVal) {
+      var breakdown = window.getTKontoCashflowBreakdownForYear(yearVal);
+      return Math.round((breakdown && Number(breakdown.net)) || 0);
+    });
+  } catch (e) {
+    return [];
+  }
+};
 /** Returnerer årlig kontantstrøm for et gitt år (brukes i Oppsummeringsrapport). */
 window.getTKontoCashflowForYear = function (yearVal) {
   try {
-    return getCashflowForecastNetForYear(yearVal);
+    // Bruk eksakt samme beregningsløp som Kontantstrøm-fanen (waterfall),
+    // inkl. spesialregel for "start" (2025) som aligner gjeld med 2026.
+    const res = window.getTKontoCashflowBreakdownForYear(yearVal);
+    return Math.round((res && Number(res.net)) || 0);
   } catch (e) {
     return 0;
   }

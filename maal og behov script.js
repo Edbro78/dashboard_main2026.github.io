@@ -1593,13 +1593,29 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     // Kontantstrøm år for år: alltid fra T-konto (getTKontoCashflowForYear) – identisk med T-konto «Årlig kontantstrøm»
     const cashflowChartData = useMemo(() => {
         if (!tkontoLoaded || typeof window.getTKontoCashflowForYear !== 'function') return null;
-        const data = yearVals.map((y) => {
+        let data = [];
+        // Foretrukket: hent hele serien fra samme globale T-konto-kilde som waterfall bruker.
+        if (typeof window.getTKontoCashflowSeriesForYears === 'function') {
             try {
-                return window.getTKontoCashflowForYear(y) || 0;
-            } catch (e) {
-                return 0;
-            }
-        });
+                const series = window.getTKontoCashflowSeriesForYears(yearVals);
+                if (Array.isArray(series) && series.length === yearVals.length) {
+                    data = series.map((v) => Number(v) || 0);
+                }
+            } catch (e) {}
+        }
+        if (data.length !== yearVals.length) {
+            data = yearVals.map((y) => {
+                try {
+                    if (typeof window.getTKontoCashflowBreakdownForYear === 'function') {
+                        const breakdown = window.getTKontoCashflowBreakdownForYear(y);
+                        return (breakdown && Number(breakdown.net)) || 0;
+                    }
+                    return window.getTKontoCashflowForYear(y) || 0;
+                } catch (e) {
+                    return 0;
+                }
+            });
+        }
         return {
             labels: yearLabels,
             datasets: [{
@@ -3815,6 +3831,19 @@ return () => document.removeEventListener('keydown', onKey);
         setState(s => ({ ...s, annualSavings: Math.round(high) }));
     }, [state, prognosis.data.hovedstol]);
 
+    /** Samme logikk som sideknappen «Sp.»: veksler på/av, kjører målsøk ved på, nullstiller årlig sparing ved av. */
+    const toggleGoalSeekAnnualSavings = useCallback(() => {
+        setSpToolButtonMarked((prev) => {
+            const next = !prev;
+            if (next) {
+                goalSeekAnnualSavings();
+            } else {
+                setState((s) => ({ ...s, annualSavings: 0 }));
+            }
+            return next;
+        });
+    }, [goalSeekAnnualSavings, setState]);
+
     // Målsøk: finn årlig utbetaling som får porteføljen til å gå akkurat i null i siste utbetalingsår (inkl. ekstra visningsår med skatt)
     const goalSeekAnnualPayout = useCallback(() => {
         // Hvis ingen utbetalingsår, gjør ingenting
@@ -3869,6 +3898,25 @@ return () => document.removeEventListener('keydown', onKey);
             goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
         }));
     }, [state, prognosis.data.hovedstol]);
+
+    /** Samme logikk som sideknappen «Utb.»: veksler på/av, kjører målsøk utbetaling ved på, nullstiller uttak ved av. */
+    const toggleGoalSeekAnnualPayout = useCallback(() => {
+        setUtbToolButtonMarked((prev) => {
+            const next = !prev;
+            if (next) {
+                goalSeekAnnualPayout();
+            } else {
+                setState((s) => ({
+                    ...s,
+                    desiredAnnualConsumptionPayout: 0,
+                    desiredAnnualWealthTaxPayout: 0,
+                    goalSeekPayoutResult: 0,
+                    goalSeekPayoutDrainFinalYear: false,
+                }));
+            }
+            return next;
+        });
+    }, [goalSeekAnnualPayout, setState]);
 
     // Målsøk: finn størrelse på Portefølje I som får porteføljen til å gå akkurat i null i siste utbetalingsår
     const goalSeekPortfolio1 = useCallback(() => {
@@ -3929,6 +3977,43 @@ return () => document.removeEventListener('keydown', onKey);
             goalSeekPayoutDrainFinalYear: false
         }));
     }, [state, prognosis.data.hovedstol]);
+
+    /** Samme logikk som sideknappen «Port.»: veksler på/av, kjører målsøk Portefølje I ved på, gjenoppretter ved av når uendret. */
+    const toggleGoalSeekPortfolio1 = useCallback(() => {
+        setPortToolButtonMarked((prev) => {
+            const next = !prev;
+            if (next) {
+                portBeforeGoalSeekRef.current = {
+                    pre: {
+                        initialPortfolioSize: state.initialPortfolioSize,
+                        goalSeekPortfolio1Result: state.goalSeekPortfolio1Result,
+                    },
+                    post: null,
+                };
+                goalSeekPortfolio1();
+            } else {
+                const snap = portBeforeGoalSeekRef.current;
+                if (snap && snap.pre) {
+                    const post = snap.post;
+                    const resultEq = (a, b) =>
+                        (Number(a) || 0) === (Number(b) || 0);
+                    const unchangedSinceGoalSeek =
+                        post != null &&
+                        state.initialPortfolioSize === post.initialPortfolioSize &&
+                        resultEq(state.goalSeekPortfolio1Result, post.goalSeekPortfolio1Result);
+                    if (unchangedSinceGoalSeek) {
+                        setState((s) => ({
+                            ...s,
+                            initialPortfolioSize: snap.pre.initialPortfolioSize,
+                            goalSeekPortfolio1Result: snap.pre.goalSeekPortfolio1Result,
+                        }));
+                    }
+                }
+                portBeforeGoalSeekRef.current = null;
+            }
+            return next;
+        });
+    }, [goalSeekPortfolio1, setState, state.initialPortfolioSize, state.goalSeekPortfolio1Result]);
 
     // Helper function for rounded corners on stacked bars
     // ALL segments get the EXACT SAME rounded corners on both top and bottom
@@ -4680,18 +4765,7 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Aktiverer målsøk sparing. Denne funksjonen beregner hvor mye du må spare årlig i investeringsperioden for at porteføljen skal gå i null i siste år av utbetalingsperioden"
-                            onClick={() => {
-                                setSpToolButtonMarked((prev) => {
-                                    const next = !prev;
-                                    if (next) {
-                                        goalSeekAnnualSavings();
-                                    } else {
-                                        // Slå av målsøk sparing: nullstill årlig sparing
-                                        setState(s => ({ ...s, annualSavings: 0 }));
-                                    }
-                                    return next;
-                                });
-                            }}
+                            onClick={toggleGoalSeekAnnualSavings}
                             className={`bg-[#999999] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${spToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-sm font-bold">Sp.</span>
@@ -4701,24 +4775,7 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Aktiverer Målsøk utbetaling. Har du valgt antall år utbetaling, vil denne funksjonen beregne hvor mye du maksimalt kan ta ut hvert år i denne perioden før porteføljen er tømt"
-                            onClick={() => {
-                                setUtbToolButtonMarked((prev) => {
-                                    const next = !prev;
-                                    if (next) {
-                                        goalSeekAnnualPayout();
-                                    } else {
-                                        // Slå av målsøk utbetaling: nullstill ønsket årlig uttak til forbruk
-                                        setState(s => ({
-                                            ...s,
-                                            desiredAnnualConsumptionPayout: 0,
-                                            desiredAnnualWealthTaxPayout: 0,
-                                            goalSeekPayoutResult: 0,
-                                            goalSeekPayoutDrainFinalYear: false,
-                                        }));
-                                    }
-                                    return next;
-                                });
-                            }}
+                            onClick={toggleGoalSeekAnnualPayout}
                             className={`bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${utbToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-xs font-bold">Utb.</span>
@@ -4728,41 +4785,7 @@ return () => document.removeEventListener('keydown', onKey);
                         <button
                             type="button"
                             title="Denne funksjonen beregner hvor stor Portefølje I må være for å tilfredstille det du har lagt inn av utbetalinger i utbetalingsperioden."
-                            onClick={() => {
-                                setPortToolButtonMarked((prev) => {
-                                    const next = !prev;
-                                    if (next) {
-                                        portBeforeGoalSeekRef.current = {
-                                            pre: {
-                                                initialPortfolioSize: state.initialPortfolioSize,
-                                                goalSeekPortfolio1Result: state.goalSeekPortfolio1Result,
-                                            },
-                                            post: null,
-                                        };
-                                        goalSeekPortfolio1();
-                                    } else {
-                                        const snap = portBeforeGoalSeekRef.current;
-                                        if (snap && snap.pre) {
-                                            const post = snap.post;
-                                            const resultEq = (a, b) =>
-                                                (Number(a) || 0) === (Number(b) || 0);
-                                            const unchangedSinceGoalSeek =
-                                                post != null &&
-                                                state.initialPortfolioSize === post.initialPortfolioSize &&
-                                                resultEq(state.goalSeekPortfolio1Result, post.goalSeekPortfolio1Result);
-                                            if (unchangedSinceGoalSeek) {
-                                                setState((s) => ({
-                                                    ...s,
-                                                    initialPortfolioSize: snap.pre.initialPortfolioSize,
-                                                    goalSeekPortfolio1Result: snap.pre.goalSeekPortfolio1Result,
-                                                }));
-                                            }
-                                        }
-                                        portBeforeGoalSeekRef.current = null;
-                                    }
-                                    return next;
-                                });
-                            }}
+                            onClick={toggleGoalSeekPortfolio1}
                             className={`bg-[#4A6D8C] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${portToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
                             <span className="text-xs font-bold">Port.</span>
@@ -4858,20 +4881,20 @@ return () => document.removeEventListener('keydown', onKey);
                             </div>
                     <button
                         type="button"
-                        onClick={goalSeekAnnualSavings}
+                        onClick={toggleGoalSeekAnnualSavings}
                         title="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
                         aria-label="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
-                        className="xl:hidden bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5"
+                        className={`xl:hidden h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 ${spToolButtonMarked ? 'bg-[#888888] text-white border border-[#888888] mbh-side-tool-active shadow-md' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'}`}
                     >
                         Målsøk sparing
                     </button>
                     <div className="hidden xl:flex items-center gap-3 w-full">
                     <button
                         type="button"
-                        onClick={goalSeekAnnualSavings}
+                        onClick={toggleGoalSeekAnnualSavings}
                         title="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
                         aria-label="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
-                        className="bg-[#888888] border border-[#DDDDDD] text-white hover:bg-[#777777] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        className={`bg-[#888888] border border-[#DDDDDD] text-white hover:bg-[#777777] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${spToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />sparing
@@ -4902,10 +4925,10 @@ return () => document.removeEventListener('keydown', onKey);
                     </div>
                     <button
                         type="button"
-                        onClick={goalSeekAnnualPayout}
+                        onClick={toggleGoalSeekAnnualPayout}
                         title="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
                         aria-label="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
-                        className="bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        className={`bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${utbToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />utbetaling
@@ -4917,10 +4940,10 @@ return () => document.removeEventListener('keydown', onKey);
                     </div>
                     <button
                         type="button"
-                        onClick={goalSeekPortfolio1}
+                        onClick={toggleGoalSeekPortfolio1}
                         title="Ved å trykke på denne vil modellen beregne hvor stor Portefølje I må være, for at porteføljen totalt sett ikke skal gå i minus siste år av utbetalingsperioden. Om porteføljen ikke går i minus siste år, vil denne knappen ikke ha en funksjon."
                         aria-label="Ved å trykke på denne vil modellen beregne hvor stor Portefølje I må være, for at porteføljen totalt sett ikke skal gå i minus siste år av utbetalingsperioden. Om porteføljen ikke går i minus siste år, vil denne knappen ikke ha en funksjon."
-                        className="bg-[#4A6D8C] border border-[#DDDDDD] text-white hover:bg-[#3A5D7C] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0"
+                        className={`bg-[#4A6D8C] border border-[#DDDDDD] text-white hover:bg-[#3A5D7C] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${portToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
                         Målsøk<br />Portefølje I
