@@ -352,14 +352,25 @@ function getFilteredData() {
     return filteredData;
 }
 
+function getHistoricalYearBounds() {
+    let minYear = 1994;
+    let maxYear = new Date().getFullYear();
+    if (state.data && state.data.length > 0) {
+        minYear = Math.min(1994, state.data[0].date.getFullYear());
+        maxYear = state.data[state.data.length - 1].date.getFullYear();
+    }
+    return { minYear, maxYear };
+}
+
 function getPeriodLabel() {
+    const { minYear, maxYear } = getHistoricalYearBounds();
     const labels = {
         'ytd': 'YTD',
         '12m': 'Siste 12 mnd',
         '3y': 'Siste 3 år',
         '5y': 'Siste 5 år',
         '10y': 'Siste 10 år',
-        'max': 'Maks (2001-2025)'
+        'max': `Maks (${minYear}–${maxYear})`
     };
     return labels[state.selectedPeriod] || labels['max'];
 }
@@ -3654,19 +3665,13 @@ function createNurseChart(tabNumber = 1) {
     // For tab 2: gold index (portfolio value / gold price in NOK per unse)
     // For tab 4: BigMac index (portfolio value / BigMac price)
     // Calculate for all data points for tooltip, but filter display to January 1st for smoother line
-    const lastValue = newValues[newValues.length - 1];
     const indexAll = newValues.map(v => {
         let index = 0;
         let referenceValue = 0;
         
         if (isGoldTab) {
             // For gold: portfolio value (NOK) / gold price (NOK per unse) = unser gull
-            // For last data point (01.12.2025), use hardcoded gold price 4336
-            if (v === lastValue) {
-                referenceValue = 4336; // Hardcoded end value for 01.12.2025
-            } else {
-                referenceValue = v.goldPrice || 0;
-            }
+            referenceValue = v.goldPrice || 0;
             index = referenceValue > 0 ? v.value / referenceValue : 0;
         } else if (isBigMacTab) {
             // For BigMac: portfolio value / BigMac price = antall BigMac
@@ -3709,7 +3714,7 @@ function createNurseChart(tabNumber = 1) {
             value: v.value,
             referenceValue: referenceValue,
             nurseSalary: v.nurseSalary,
-            goldPrice: isGoldTab && v === lastValue ? 4336 : v.goldPrice,
+            goldPrice: v.goldPrice,
             bigMacPrice: v.bigMacPrice,
             oilPrice: v.oilPrice,
             m2Oslo: v.m2Oslo,
@@ -4027,8 +4032,13 @@ function createNurseChart(tabNumber = 1) {
     let endReferenceValue = 0;
     const endData = filteredData[filteredData.length - 1];
     if (isGoldTab) {
-        // For gold, use hardcoded end value (01.12.2025)
-        endReferenceValue = 4336; // 4336 USD
+        if (endData && endData.goldPrice != null && !isNaN(parseFloat(endData.goldPrice))) {
+            endReferenceValue = parseFloat(endData.goldPrice);
+        } else if (newValues.length > 0 && newValues[newValues.length - 1].goldPrice != null) {
+            endReferenceValue = parseFloat(newValues[newValues.length - 1].goldPrice);
+        } else {
+            endReferenceValue = 0;
+        }
     } else if (isBigMacTab) {
         // For BigMac, use price from end date of filtered period, or 79.00 as fallback
         if (endData && endData.bigMacPrice) {
@@ -4400,16 +4410,7 @@ function calculateYearlyPortfolioReturns(portfolio) {
     const yearlyData = [];
     
     // Generate years exactly like populateYearByYearTable does
-    // populateYearByYearTable always generates years from 1994 to 2025
-    let minYear = 1994;
-    let maxYear = 2025;
-    if (state.data.length > 0) {
-        const firstYear = state.data[0].date.getFullYear();
-        const lastYear = state.data[state.data.length - 1].date.getFullYear();
-        minYear = Math.min(1994, firstYear);
-        // Always use 2025 as maxYear, same as populateYearByYearTable
-        maxYear = 2025;
-    }
+    const { minYear, maxYear } = getHistoricalYearBounds();
     
     // Generate all years from minYear to maxYear (same as populateYearByYearTable)
     const allYears = [];
@@ -4420,7 +4421,6 @@ function calculateYearlyPortfolioReturns(portfolio) {
     // Determine which years to include based on selected period
     let targetYears = allYears;
     if (state.selectedPeriod === '3y') {
-        // For "siste 3 år", get the last 3 years: 2023, 2024, 2025
         targetYears = allYears.slice(-3);
     } else if (state.selectedPeriod === '5y') {
         targetYears = allYears.slice(-5);
@@ -4458,15 +4458,7 @@ function calculateHalfYearPortfolioReturns(portfolio) {
     const halfYearData = [];
     
     // Generate years exactly like populateYearByYearTable does
-    // populateYearByYearTable always generates years from 1994 to 2025
-    let minYear = 1994;
-    let maxYear = 2025;
-    if (state.data.length > 0) {
-        const firstYear = state.data[0].date.getFullYear();
-        minYear = Math.min(1994, firstYear);
-        // Always use 2025 as maxYear, same as populateYearByYearTable
-        maxYear = 2025;
-    }
+    const { minYear, maxYear } = getHistoricalYearBounds();
     
     // Generate all years from minYear to maxYear (same as populateYearByYearTable)
     const allYears = [];
@@ -4517,15 +4509,7 @@ function calculateQuarterlyPortfolioReturns(portfolio) {
     const quarterlyData = [];
     
     // Generate years exactly like populateYearByYearTable does
-    // populateYearByYearTable always generates years from 1994 to 2025
-    let minYear = 1994;
-    let maxYear = 2025;
-    if (state.data.length > 0) {
-        const firstYear = state.data[0].date.getFullYear();
-        minYear = Math.min(1994, firstYear);
-        // Always use 2025 as maxYear, same as populateYearByYearTable
-        maxYear = 2025;
-    }
+    const { minYear, maxYear } = getHistoricalYearBounds();
     
     // Generate all years from minYear to maxYear (same as populateYearByYearTable)
     const allYears = [];
@@ -5011,10 +4995,8 @@ function createKPIStackedBarChart(ctx, tabNumber) {
     // Determine year range from ALL data
     // For KPI chart, we want to show all history from 1994
     let minYear = 1994;
-    let maxYear = 2025;
+    let maxYear = new Date().getFullYear();
     if (allData.length > 0) {
-        // Find the first year with data (but always start from 1994 for KPI chart)
-        const firstDataYear = allData[0].date.getFullYear();
         minYear = 1994; // Always start from 1994 for KPI chart
         maxYear = allData[allData.length - 1].date.getFullYear();
     }
@@ -6490,7 +6472,8 @@ const kpiData = {
     2022: 5.8,
     2023: 5.5,
     2024: 3.1,
-    2025: 3.1
+    2025: 3.1,
+    2026: 3.4
 };
 
 // Global variables for money value
@@ -7260,17 +7243,9 @@ function calculateQuarterlyReturns(year, portfolio) {
 function populateYearByYearTable(tableBody) {
     tableBody.innerHTML = '';
     
-    // Generate years from 1994 to 2025 (all available history)
+    // Generate years from minYear through last year in dataset (typically 1994–…)
     const years = [];
-    // Get the actual year range from data
-    let minYear = 1994;
-    let maxYear = 2025;
-    if (state.data.length > 0) {
-        const firstYear = state.data[0].date.getFullYear();
-        const lastYear = state.data[state.data.length - 1].date.getFullYear();
-        minYear = Math.min(1994, firstYear);
-        maxYear = lastYear;
-    }
+    const { minYear, maxYear } = getHistoricalYearBounds();
     
     for (let year = minYear; year <= maxYear; year++) {
         years.push(year);
