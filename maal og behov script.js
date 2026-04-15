@@ -2042,6 +2042,8 @@ function App() {
     const [henteAltFraPensionActive, setHenteAltFraPensionActive] = useState(MaalOgBehovState.henteAltFraPensionActive ?? false);
     const savedStateBeforePensionRef = React.useRef(null);
     const portBeforeGoalSeekRef = React.useRef(null);
+    /** Lagrer uttak/målsøk-felt før første «Utb.»-trykk; gjenopprettes ved av. */
+    const utbBeforeGoalSeekRef = React.useRef(null);
     const [showChartImageModal, setShowChartImageModal] = useState(false);
     const [chartImageCopied, setChartImageCopied] = useState(false);
     const chartExportCanvasRef = React.useRef(null);
@@ -2226,6 +2228,10 @@ function App() {
     }, [computeInitialStockPct]);
 
     const handleResetAll = useCallback(() => {
+        setSpToolButtonMarked(false);
+        setUtbToolButtonMarked(false);
+        utbBeforeGoalSeekRef.current = null;
+        setPortToolButtonMarked(false);
         setState({
             ...INITIAL_APP_STATE,
             initialPortfolioSize: 0,
@@ -3857,71 +3863,114 @@ return () => document.removeEventListener('keydown', onKey);
         const shouldDrainFinalYear = state.deferredInterestTax !== true;
 
         const simulateLastPrincipal = (consumptionPayoutValue) => {
-            const p = calculatePrognosis({ 
-                ...state, 
+            const p = calculatePrognosis({
+                ...state,
                 desiredAnnualConsumptionPayout: consumptionPayoutValue,
-                desiredAnnualWealthTaxPayout: 0,  // Sett hele beløpet i forbruksutbetaling
+                desiredAnnualWealthTaxPayout: 0,
                 goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
             }, false, null);
-            return p.finalPortfolioValue;
+            const v = p.finalPortfolioValue;
+            return Number.isFinite(v) ? v : NaN;
         };
 
-        // Finn øvre grense med dobling
-        let low = 0;
-        let high = Math.max(state.desiredAnnualConsumptionPayout || 0, 10000);
-        let last = simulateLastPrincipal(high);
-        let attempts = 0;
-        while (last >= 0 && high < 100000000 && attempts < 20) {
-            high *= 2;
-            last = simulateLastPrincipal(high);
-            attempts++;
+        const applyResult = (result) => {
+            const rounded = Math.round(Math.max(0, result) * 100) / 100;
+            setState((s) => ({
+                ...s,
+                desiredAnnualConsumptionPayout: rounded,
+                desiredAnnualWealthTaxPayout: 0,
+                goalSeekPayoutResult: rounded,
+                goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
+            }));
+        };
+
+        const f0 = simulateLastPrincipal(0);
+        if (!Number.isFinite(f0) || f0 < 0) {
+            applyResult(0);
+            return;
         }
 
-        if (last >= 0) {
-            high = 10000000; // Maks 10MNOK
+        const w0 = Math.max(state.desiredAnnualConsumptionPayout || 0, 10000);
+        const fW0 = simulateLastPrincipal(w0);
+        const MAX_ABS_PAYOUT = 1e15;
+        const MAX_DOUBLING = 55;
+
+        let bracketLo;
+        let bracketHi;
+
+        if (fW0 < 0) {
+            // Sluttverdi er allerede negativ ved utgangspunktet — søk mellom 0 og w0
+            bracketLo = 0;
+            bracketHi = w0;
         } else {
-            // Binærsøk med flyttall for nøyaktig resultat (unngår at saldo blir negativ pga heltallsavrunding)
-            const tolerance = 0.01; // 1 øre
-            for (let i = 0; i < 150; i++) {
-                if (high - low <= tolerance) break;
-                const mid = (low + high) / 2;
-                const v = simulateLastPrincipal(mid);
-                if (v >= 0) {
-                    low = mid;
-                } else {
-                    high = mid;
-                }
+            let attempts = 0;
+            bracketLo = w0;
+            bracketHi = w0;
+            while (simulateLastPrincipal(bracketHi) >= 0 && bracketHi < MAX_ABS_PAYOUT && attempts < MAX_DOUBLING) {
+                bracketLo = bracketHi;
+                bracketHi *= 2;
+                attempts++;
+            }
+            const fTop = simulateLastPrincipal(bracketHi);
+            if (fTop >= 0) {
+                applyResult(Math.min(bracketHi, MAX_ABS_PAYOUT));
+                return;
             }
         }
-        // Bruk lav verdi avrundet til 2 desimaler slik at saldo ikke blir negativ
-        const result = Math.round(low * 100) / 100;
-        setState(s => ({ 
-            ...s, 
-            desiredAnnualConsumptionPayout: result,
-            desiredAnnualWealthTaxPayout: 0,
-            goalSeekPayoutResult: result,
-            goalSeekPayoutDrainFinalYear: shouldDrainFinalYear
-        }));
+
+        let low = bracketLo;
+        let high = bracketHi;
+        const tolerance = 0.01;
+        for (let i = 0; i < 150; i++) {
+            if (high - low <= tolerance) break;
+            const mid = (low + high) / 2;
+            const v = simulateLastPrincipal(mid);
+            if (!Number.isFinite(v)) {
+                high = mid;
+            } else if (v >= 0) {
+                low = mid;
+            } else {
+                high = mid;
+            }
+        }
+        applyResult(low);
     }, [state, prognosis.data.hovedstol]);
 
-    /** Samme logikk som sideknappen «Utb.»: veksler på/av, kjører målsøk utbetaling ved på, nullstiller uttak ved av. */
+    /** Samme logikk som sideknappen «Utb.»: ved på lagres utgangspunkt, målsøk kjøres; ved av gjenopprettes verdier før målsøk og ringen fjernes. */
     const toggleGoalSeekAnnualPayout = useCallback(() => {
         setUtbToolButtonMarked((prev) => {
             const next = !prev;
             if (next) {
+                utbBeforeGoalSeekRef.current = {
+                    desiredAnnualConsumptionPayout: state.desiredAnnualConsumptionPayout,
+                    desiredAnnualWealthTaxPayout: state.desiredAnnualWealthTaxPayout,
+                    goalSeekPayoutResult: state.goalSeekPayoutResult,
+                    goalSeekPayoutDrainFinalYear: state.goalSeekPayoutDrainFinalYear
+                };
                 goalSeekAnnualPayout();
             } else {
-                setState((s) => ({
-                    ...s,
-                    desiredAnnualConsumptionPayout: 0,
-                    desiredAnnualWealthTaxPayout: 0,
-                    goalSeekPayoutResult: 0,
-                    goalSeekPayoutDrainFinalYear: false,
-                }));
+                const snap = utbBeforeGoalSeekRef.current;
+                utbBeforeGoalSeekRef.current = null;
+                if (snap) {
+                    setState((s) => ({
+                        ...s,
+                        desiredAnnualConsumptionPayout: snap.desiredAnnualConsumptionPayout,
+                        desiredAnnualWealthTaxPayout: snap.desiredAnnualWealthTaxPayout,
+                        goalSeekPayoutResult: snap.goalSeekPayoutResult,
+                        goalSeekPayoutDrainFinalYear: snap.goalSeekPayoutDrainFinalYear
+                    }));
+                }
             }
             return next;
         });
-    }, [goalSeekAnnualPayout, setState]);
+    }, [
+        goalSeekAnnualPayout,
+        setState,
+        state.desiredAnnualConsumptionPayout,
+        state.desiredAnnualWealthTaxPayout,
+        state.goalSeekPayoutResult,
+        state.goalSeekPayoutDrainFinalYear
+    ]);
 
     // Målsøk: finn størrelse på Portefølje I som får porteføljen til å gå akkurat i null i siste utbetalingsår
     const goalSeekPortfolio1 = useCallback(() => {
@@ -4780,7 +4829,7 @@ return () => document.removeEventListener('keydown', onKey);
                         {/* Målsøk utbetaling */}
                         <button
                             type="button"
-                            title="Aktiverer Målsøk utbetaling. Har du valgt antall år utbetaling, vil denne funksjonen beregne hvor mye du maksimalt kan ta ut hvert år i denne perioden før porteføljen er tømt"
+                            title="Aktiverer Målsøk utbetaling. Har du valgt antall år utbetaling, vil denne funksjonen beregne hvor mye du maksimalt kan ta ut hvert år i denne perioden før porteføljen er tømt. Trykk igjen for å gå tilbake til verdiene før målsøk."
                             onClick={toggleGoalSeekAnnualPayout}
                             className={`bg-[#66CC99] text-white shadow-lg h-10 w-10 rounded-lg flex items-center justify-center cursor-pointer hover:opacity-90 transition-[opacity,box-shadow] outline-none ${utbToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         >
@@ -4818,12 +4867,12 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I (NOK)" value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
+                            <SliderInput id="initialPortfolioSize" label="Portefølje I" value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
                             <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II (NOK)" value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
+                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
                             </div>
 <div className="mt-3">
-<SliderInput id="additionalPensionAmount" label="Bankinnskudd/Likviditetsfond (NOK)" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#88CCEE" />
+<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#88CCEE" />
 </div>
                     </div>
                     <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
@@ -4932,8 +4981,8 @@ return () => document.removeEventListener('keydown', onKey);
                     <button
                         type="button"
                         onClick={toggleGoalSeekAnnualPayout}
-                        title="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
-                        aria-label="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk"
+                        title="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Trykk igjen for å gjenopprette verdiene fra før målsøk."
+                        aria-label="Ved å trykke på denne, vil modellen beregne hva du maksimalt kan ta ut netto hvert år i hele utbetalingsperioden. Dette forutsetter at antall år med utbetaling er mer enn 0. Husk at det er netto utbetalinger og at modellen automatisk beregner skatteregningen som et tillegg. Skatteberegningen kan du også skru av, da vil netto og brutto være identisk. Trykk igjen for å gå tilbake til verdiene før målsøk."
                         className={`bg-[#66CCDD] border border-[#DDDDDD] text-white hover:bg-[#3388CC] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${utbToolButtonMarked ? 'mbh-side-tool-active' : ''}`}
                         style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
                     >
@@ -5035,7 +5084,7 @@ return () => document.removeEventListener('keydown', onKey);
                     {/* Fallback for mindre skjermer: plasser slider under */}
                     <div className="xl:hidden mt-2">
                         <div className="w-[740px] max-w-full mx-auto">
-                            <SliderInput id="annualSavings" label="Sparing" value={state.annualSavings} min={0} max={5000000} step={10000} onChange={handleStateChange} isCurrency inline />
+                            <SliderInput id="annualSavings" label="Sparing" value={state.annualSavings} min={0} max={5000000} step={10000} onChange={handleStateChange} isCurrency allowDirectInput inline />
                         </div>
                     </div>
                         </div>
@@ -6269,7 +6318,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     {/* Assumptions Panel */}
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
-                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency thumbColor="#4A6D8C" />
+                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
                         <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={60} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                         <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                          
@@ -6286,7 +6335,8 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                      step={100000}
                                      onChange={handleStateChange}
                                      isCurrency
-                                    thumbColor="#4A6D8C"
+                                     allowDirectInput
+                                     thumbColor="#4A6D8C"
                                  />
                                 <SliderInput
                                     id="desiredAnnualWealthTaxPayout"
@@ -6297,6 +6347,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                     step={50000}
                                     onChange={handleStateChange}
                                     isCurrency
+                                    allowDirectInput
                                     thumbColor="#4A6D8C"
                                 />
                                 {/* Hent fra T‑konto knapp under formuesskatt-slideren */}
