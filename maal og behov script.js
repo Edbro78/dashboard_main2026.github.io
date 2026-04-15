@@ -214,6 +214,7 @@ const INITIAL_APP_STATE = {
     initialStockAllocation: 0,
     stockReturnRate: 8.0,
     bondReturnRate: 5.0,
+    bankDepositRate: 3.0, // Forventet rente bankinnskudd (UI; ikke brukt i beregninger ennå)
     shieldingRate: 3.9,
     taxRate: 37.84,
     annualSavings: 0,
@@ -229,7 +230,7 @@ const INITIAL_APP_STATE = {
     goalSeekPayoutDrainFinalYear: false, // Tøm porteføljen i siste utbetalingsår ved målsøk utbetaling
     goalSeekPortfolio1Result: 0, // Resultat fra målsøk Portefølje I
     kpiRate: 0.0, // Ny slider for forventet KPI
-    deferredInterestTax: false, // Utsatt skatt på renter (kun Privat)
+    deferredInterestTax: true, // Utsatt skatt på renter (kun Privat); standard Ja
     advisoryFeeRate: 0.0, // Rådgivningshonorar (prosentpoeng)
     // Uavhengige valg for aksjeandel per rad (UI)
     row1StockAllocation: 0,
@@ -477,9 +478,14 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                 stockReturnRateForYear = state.stockReturnRate / 100;
                 bondReturnRateForYear = state.bondReturnRate / 100;
             }
+            const bankDepositRateForYear = state.bankDepositRate / 100;
             
             const grossStockReturn = stockValue * stockReturnRateForYear;
-            const grossBondReturn = bondValue * bondReturnRateForYear;
+            const p1StockPct = state.row1StockAllocation || 0;
+            const p2StockPct = state.row2StockAllocation || 0;
+            const p1bVal = portfolio1Value * ((100 - p1StockPct) / 100);
+            const p2bVal = portfolio2Value * ((100 - p2StockPct) / 100);
+            const grossBondReturn = p1bVal * bondReturnRateForYear + p2bVal * bondReturnRateForYear + portfolio3Value * bankDepositRateForYear;
             totalGrossReturn = grossStockReturn + grossBondReturn;
 
             const stockKpiReduction = stockValue * kpiRate;
@@ -504,9 +510,6 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             }
            
             if (totalPortfolioValue > 0) {
-                const p1StockPct = state.row1StockAllocation || 0;
-                const p2StockPct = state.row2StockAllocation || 0;
-                const p3StockPct = 0;
                 const useDef = useDeferredBondTax;
                
                 const p1Return = portfolio1Value * ((p1StockPct / 100) * stockReturnRateForYear + ((100 - p1StockPct) / 100) * bondReturnRateForYear) -
@@ -515,8 +518,8 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                 const p2Return = portfolio2Value * ((p2StockPct / 100) * stockReturnRateForYear + ((100 - p2StockPct) / 100) * bondReturnRateForYear) -
                                  portfolio2Value * kpiRate - portfolio2Value * advisoryFeeRate -
                                  (portfolio2Value * ((100 - p2StockPct) / 100) * bondReturnRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
-                const p3Return = portfolio3Value * bondReturnRateForYear - portfolio3Value * kpiRate - portfolio3Value * advisoryFeeRate -
-                                 (portfolio3Value * bondReturnRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
+                const p3Return = portfolio3Value * bankDepositRateForYear - portfolio3Value * kpiRate - portfolio3Value * advisoryFeeRate -
+                                 (portfolio3Value * bankDepositRateForYear * (useDef ? 0 : (taxesEnabled ? bondTaxRate : 0)));
                
                 portfolio1Value += p1Return;
                 portfolio2Value += p2Return;
@@ -792,7 +795,8 @@ return isNaN(num) ? 0 : num;
 
 const handleBlur = () => {
 if (!allowDirectInput) return;
-const parsed = isCurrency ? parseCurrencyInput(textValue) : parseFloat(String(textValue).replace(/[^0-9.\-]/g, '')) || 0;
+let parsed = isCurrency ? parseCurrencyInput(textValue) : parseFloat(String(textValue).replace(/[^0-9.\-]/g, '')) || 0;
+parsed = Math.min(max, Math.max(min, parsed));
 onChange(id, parsed);
 setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${unit ? ` ${unit}` : ''}`);
 };
@@ -1204,7 +1208,7 @@ function TKontoDashboard() {
             <div className="app" style={{ height: '100%', minHeight: '100%' }}>
                 <aside className="sidebar" aria-label="Hovednavigasjon">
                     <div className="brand">
-                        <h1 className="brand-title">T‑konto</h1>
+                        <h1 className="brand-title">Kartlegging</h1>
                     </div>
                     <nav className="nav" role="navigation">
                         <button className="nav-item is-active" data-section="Forside">
@@ -1716,6 +1720,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle tre faner
 function TabContainer() {
+    // Fane 0 = T-konto (standard ved oppstart), 1 = Mål og behov
     const [activeTab, setActiveTab] = useState(0);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1742,12 +1747,12 @@ function TabContainer() {
     }, []);
 
     const tabs = [
-        { name: 'Mål og behov', content: <App /> },
         { name: 'T-konto', content: <TKontoDashboard /> },
+        { name: 'Mål og behov', content: <App /> },
         { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Oppsummeringsrapport', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={5} /> }
+        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={5} /> }
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -2001,7 +2006,7 @@ function TabContainer() {
 function App() {
     // Bruk lagret state hvis den finnes, ellers bruk initial state
     const [state, setState] = useState(() => {
-        return MaalOgBehovState.appState ? { ...MaalOgBehovState.appState } : INITIAL_APP_STATE;
+        return MaalOgBehovState.appState ? { ...INITIAL_APP_STATE, ...MaalOgBehovState.appState } : INITIAL_APP_STATE;
     });
     const [showDistributionGraphic, setShowDistributionGraphic] = useState(MaalOgBehovState.showDistributionGraphic);
     const [showStockPortionGraphic, setShowStockPortionGraphic] = useState(MaalOgBehovState.showStockPortionGraphic);
@@ -2302,7 +2307,7 @@ function App() {
                     row1StockAllocation: aksjeandel,
                     initialStockAllocation: aksjeandel,
                     annualSavings: Math.max(0, data.aarligSparing || 0),
-                    investmentYears: Math.max(1, Math.min(30, data.yearsToRetirement ?? INITIAL_APP_STATE.investmentYears)),
+                    investmentYears: Math.max(1, Math.min(60, data.yearsToRetirement ?? INITIAL_APP_STATE.investmentYears)),
                     payoutYears: Math.max(0, Math.min(30, data.payoutYears ?? INITIAL_APP_STATE.payoutYears)),
                     desiredAnnualConsumptionPayout: bruttoArligUtbetaling, // Brutto årlig utbetaling utover pensjon → Ønsket årlig uttak til forbruk
                     taxCalculationEnabled: false,
@@ -3398,8 +3403,8 @@ lines.push(`2 Aksjeandel Portefølje I : ${formatNumberRaw(state.row1StockAlloca
 lines.push(`3 Portefølje II : ${formatCurrencyValue(state.pensionPortfolioSize)}`);
 // 4. Aksjeandel Portefølje II
 lines.push(`4 Aksjeandel Portefølje II : ${formatNumberRaw(state.row2StockAllocation)}`);
-// 5. Likviditetsfond
-lines.push(`5 Likviditetsfond : ${formatCurrencyValue(state.additionalPensionAmount)}`);
+// 5. Bankinnskudd/Likviditetsfond
+lines.push(`5 Bankinnskudd/Likviditetsfond : ${formatCurrencyValue(state.additionalPensionAmount)}`);
 // 6. Årlig sparing
 lines.push(`6 Årlig sparing : ${formatCurrencyValue(state.annualSavings)}`);
 // 7. Innskutt kapital
@@ -3412,10 +3417,10 @@ lines.push(`9 Antall år med utbetaling : ${formatNumberRaw(state.payoutYears)}`
 lines.push(`10 Ønsket årlig uttak til Forbruk : ${formatCurrencyValue(state.desiredAnnualConsumptionPayout)}`);
 // 11. Ønsket årlig uttak til Formuesskatt
 lines.push(`11 Ønsket årlig uttak til Formuesskatt : ${formatCurrencyValue(state.desiredAnnualWealthTaxPayout)}`);
-// 12. Forventet avkastning aksjer
-lines.push(`12 Forventet avkastning aksjer : ${state.stockReturnRate.toFixed(1)}`);
-// 13. Forventet avkastning renter
-lines.push(`13 Forventet avkastning renter : ${state.bondReturnRate.toFixed(1)}`);
+// 12. Forventet avkastning aksjeportefølje
+lines.push(`12 Forventet avkastning aksjeportefølje : ${state.stockReturnRate.toFixed(1)}`);
+// 13. Forventet avkastning renteportefølje
+lines.push(`13 Forventet avkastning renteportefølje : ${state.bondReturnRate.toFixed(1)}`);
 // 14. Forventet KPI
 lines.push(`14 Forventet KPI : ${state.kpiRate.toFixed(1)}`);
 // 15. Rådgivningshonorar
@@ -3601,7 +3606,7 @@ break;
 case 4: // Aksjeandel Portefølje II
 updates.row2StockAllocation = parseNumber(value);
 break;
-case 5: // Likviditetsfond
+case 5: // Bankinnskudd/Likviditetsfond
 updates.additionalPensionAmount = parseNumber(value);
 break;
 case 6: // Årlig sparing
@@ -3622,10 +3627,10 @@ break;
 case 11: // Ønsket årlig uttak til Formuesskatt
 updates.desiredAnnualWealthTaxPayout = parseNumber(value);
 break;
-case 12: // Forventet avkastning aksjer
+case 12: // Forventet avkastning aksjeportefølje
 updates.stockReturnRate = parseNumber(value);
 break;
-case 13: // Forventet avkastning renter
+case 13: // Forventet avkastning renteportefølje
 updates.bondReturnRate = parseNumber(value);
 break;
 case 14: // Forventet KPI
@@ -4261,6 +4266,7 @@ return () => document.removeEventListener('keydown', onKey);
                 stockRetRateForYear = state.stockReturnRate / 100;
                 bondRetRateForYear = state.bondReturnRate / 100;
             }
+            const bankRetRateForYear = state.bankDepositRate / 100;
            
             const p1StockPct = state.row1StockAllocation || 0;
             const p2StockPct = state.row2StockAllocation || 0;
@@ -4275,7 +4281,7 @@ return () => document.removeEventListener('keydown', onKey);
             const p2StockReturn = p2StockValue * (stockRetRateForYear - kpi - fee);
             const p2BondReturn = p2BondValue * (bondRetRateForYear - kpi - fee);
            
-            const p3BondReturn = portfolio3Val * (bondRetRateForYear - kpi - fee);
+            const p3BondReturn = portfolio3Val * (bankRetRateForYear - kpi - fee);
            
             aksjeAvkastningAnnual[i] = Math.round(p1StockReturn + p2StockReturn);
             renteAvkastningAnnual[i] = Math.round(p1BondReturn + p2BondReturn + p3BondReturn);
@@ -4414,7 +4420,7 @@ return () => document.removeEventListener('keydown', onKey);
             stockReturnSeries: stockReturn,
             bondReturnSeries: bondReturn,
         };
-    }, [startValuesAllYears.length, stockPctAllYears, prognosis.data.sparing, prognosis.data.event_total, prognosis.data.nettoUtbetaling, prognosis.data.skatt2, prognosis.data.renteskatt, startOfYearStockValues, startOfYearBondValues, state.stockReturnRate, state.bondReturnRate, state.initialPortfolioSize, state.investorType, state.deferredInterestTax, simButtonActive, activeSimulatedReturns]);
+    }, [startValuesAllYears.length, stockPctAllYears, prognosis.data.sparing, prognosis.data.event_total, prognosis.data.nettoUtbetaling, prognosis.data.skatt2, prognosis.data.renteskatt, startOfYearStockValues, startOfYearBondValues, state.stockReturnRate, state.bondReturnRate, state.bankDepositRate, state.initialPortfolioSize, state.investorType, state.deferredInterestTax, simButtonActive, activeSimulatedReturns]);
 
     // Beregn akkumulert avkastning basert på simulerte avkastninger og aksjeandel
     const accumulatedReturnData = useMemo(() => {
@@ -4798,7 +4804,7 @@ return () => document.removeEventListener('keydown', onKey);
                     <div className="absolute inset-0 z-0 bg-white border border-[#DDDDDD] rounded-xl pointer-events-none"></div>
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative z-10">
 <div className="p-6 flex flex-col gap-6 relative" style={{ minHeight: '350px' }}>
-                            <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
+                            <h2 className="typo-h2 text-[#4A6D8C]">Samlet forvaltning</h2>
                         <button
                             onClick={() => setShowAssumptionsGraphic(true)}
                             className="absolute top-4 right-4 bg-white hover:bg-gray-50 text-[#4A6D8C] rounded-xl p-2.5 shadow-sm border border-[#DDDDDD]"
@@ -4812,12 +4818,12 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I (NOK)" value={state.initialPortfolioSize} min={1000000} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
+                            <SliderInput id="initialPortfolioSize" label="Portefølje I (NOK)" value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
                             <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II (NOK)" value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency thumbColor="#3388CC" />
+                                <SliderInput id="pensionPortfolioSize" label="Portefølje II (NOK)" value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
                             </div>
 <div className="mt-3">
-<SliderInput id="additionalPensionAmount" label="Likviditetsfond (NOK)" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency thumbColor="#88CCEE" />
+<SliderInput id="additionalPensionAmount" label="Bankinnskudd/Likviditetsfond (NOK)" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#88CCEE" />
 </div>
                     </div>
                     <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
@@ -6264,7 +6270,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
                         <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency thumbColor="#4A6D8C" />
-                        <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                        <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={60} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                         <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                          
                          {/* Ønsket årlig utbetaling */}
@@ -6329,7 +6335,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                             <h3 className="typo-h2 text-[#4A6D8C] mb-4">Forventet avkastning</h3>
                             <SliderInput
                                 id="stockReturnRate"
-                                label="Forventet avkastning aksjer"
+                                label="Forventet avkastning aksjeportefølje"
                                 value={state.stockReturnRate}
                                 min={5}
                                 max={10}
@@ -6340,13 +6346,24 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                             />
                             <SliderInput
                                 id="bondReturnRate"
-                                label="Forventet avkastning renter"
+                                label="Forventet avkastning renteportefølje"
                                 value={state.bondReturnRate}
                                 min={3}
                                 max={9}
                                 step={0.1}
                                 onChange={handleStateChange}
                                 displayValue={`${state.bondReturnRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="bankDepositRate"
+                                label="Forventet rente Bankinnskudd"
+                                value={state.bankDepositRate}
+                                min={3}
+                                max={9}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.bankDepositRate.toFixed(1)}%`}
                                 thumbColor="#4A6D8C"
                             />
                             <SliderInput

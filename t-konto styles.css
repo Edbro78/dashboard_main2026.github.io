@@ -103,7 +103,7 @@ body {
   margin: 0;
   font-family: var(--font-sans);
   font-weight: 900;
-  font-size: clamp(1.26rem, 2.52vw, 2.86rem);
+  font-size: clamp(1.07rem, 2.14vw, 2.43rem);
   line-height: 1.1;
   letter-spacing: 0;
   color: var(--sp-blue);
