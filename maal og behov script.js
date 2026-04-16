@@ -1718,9 +1718,9 @@ function TabBar({ tabs, activeTab, onTabClick }) {
     );
 }
 
-// TabContainer component that manages tabs and content – felles Input/Output for alle tre faner
+// TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fane 0 = T-konto (standard ved oppstart), 1 = Mål og behov
+    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Risikosimulering, 3 Pensjon, 4 Formuesskatt, 5 Fremtidige verdier
     const [activeTab, setActiveTab] = useState(0);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1791,14 +1791,15 @@ function TabContainer() {
                 formuesskatt = (txt && String(txt).trim()) ? txt : INGEN_DATA;
             }
         } catch (_) {}
-        let gradvis = INGEN_DATA;
-        // Oppsummeringsrapport – placeholder for fremtidig innhold
+        // Fremtidige verdier (tidligere «Oppsummeringsrapport»): ingen egen serialisering – fanen bygger på Mål og behov + T-konto
+        const fremtidigeVerdier = 'Fanen «Fremtidige verdier» er utledet fra Mål og behov og T-konto. Bruk seksjonene over for å lagre og laste innstillinger.';
+        // Samme rekkefølge som fanene (0–5); eldre lagrede filer med Mål før T-konto parses fortsatt (se handleLoadInput)
         return [
-            '--- Mål og behov ---',
-            maal,
-            '',
             '--- T-konto ---',
             tkonto,
+            '',
+            '--- Mål og behov ---',
+            maal,
             '',
             '--- Risikosimulering ---',
             risiko,
@@ -1809,8 +1810,8 @@ function TabContainer() {
             '--- Formuesskatt ---',
             formuesskatt,
             '',
-            '--- Oppsummeringsrapport ---',
-            gradvis
+            '--- Fremtidige verdier ---',
+            fremtidigeVerdier
         ].join('\n');
     }, []);
 
@@ -1853,26 +1854,27 @@ function TabContainer() {
             return;
         }
         const full = inputText.trim();
-        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', gradvis: '' };
-        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*T-konto\s*---|$)/i;
-        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*Risikosimulering\s*---|$)/i;
-        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:Pensjonsgapet|Pensjon)\s*---|$)/i;
-        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*Formuesskatt\s*---|$)/i;
-        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reGradvis = /---\s*(?:Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*)$/i;
+        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', fremtidigeVerdier: '' };
+        // Neste seksjon kan komme i vilkårlig rekkefølge (ny eksport = T-konto først; gamle filer kan ha Mål først)
+        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*(?:Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*(?:T-konto|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*)$/i;
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
         const m4 = full.match(rePensjonsgapet);
         const m5 = full.match(reFormuesskatt);
-        const m6 = full.match(reGradvis);
+        const m6 = full.match(reFremtidigeVerdier);
         if (m1) sections.maal = m1[1].trim();
         if (m2) sections.tkonto = m2[1].trim();
         if (m3) sections.risiko = m3[1].trim();
         if (m4) sections.pensjonsgapet = m4[1].trim();
         if (m5) sections.formuesskatt = m5[1].trim();
-        if (m6) sections.gradvis = m6[1].trim();
-        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.gradvis) {
+        if (m6) sections.fremtidigeVerdier = m6[1].trim();
+        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.fremtidigeVerdier) {
             sections.maal = full;
         }
         try {
@@ -1931,7 +1933,7 @@ function TabContainer() {
                     </div>
                 ))}
             </div>
-            {/* Felles Input/Output – synlige på alle tre faner */}
+            {/* Felles Input/Output – synlige på alle faner */}
             <button
                 type="button"
                 className="fixed bottom-4 z-[100] px-3 py-1.5 text-xs font-medium rounded-full bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
@@ -1973,7 +1975,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn output fra Output-knappen. Format: --- Mål og behov ---, --- T-konto ---, --- Risikosimulering ---, --- Pensjon ---, --- Formuesskatt ---, --- Oppsummeringsrapport ---. Alle seksjoner lastes inn i respektive faner.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Risikosimulering ---, --- Pensjon ---, --- Formuesskatt ---, --- Fremtidige verdier ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -1989,7 +1991,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Alle inputfelt fane for fane: Mål og behov, T-konto, Risikosimulering, Pensjon, Formuesskatt, Oppsummeringsrapport. Kopier og lim inn i Input for å laste tilbake.</p>
+                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Risikosimulering, Pensjon, Formuesskatt, Fremtidige verdier (informativ tekst). Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
