@@ -271,6 +271,9 @@ const MaalOgBehovState = {
 };
 if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState; }
 
+/** Samme som h1 i Mål og behov; brukes også som overskrift på første panel i Fremtidige verdier. */
+const MAAL_PANEL_TITLE_DEFAULT = 'Samlet forvaltning - fremtidige verdier';
+
 const STOCK_ALLOCATION_OPTIONS = [
     { label: '100% Renter', value: 0 },
     { label: '20% Aksjer', value: 20 },
@@ -1221,7 +1224,7 @@ function TKontoDashboard() {
                             <span className="nav-icon" aria-hidden="true">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="8" y="4" width="8" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><rect x="4" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><rect x="14" y="14" width="6" height="6" rx="1" stroke="currentColor" strokeWidth="2"/><path d="M12 10v4M8 14h8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
                             </span>
-                            <span className="nav-label">Struktur</span>
+                            <span className="nav-label">Familieforhold - organisering</span>
                         </button>
                         <button className="nav-item" data-section="Eiendeler">
                             <span className="nav-icon" aria-hidden="true">
@@ -1428,7 +1431,7 @@ function TKontoDashboard() {
 
 // Oppsummeringsrapport: fire containere – Mål og behov, Eiendeler år for år, Finansiering år for år, Kontantstrøm år for år
 // Kontantstrøm år for år hentes alltid fra T-konto (fasit) – identisk med «Årlig kontantstrøm» i T-konto.
-function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 5 }) {
+function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 3 }) {
     const appState = MaalOgBehovState.appState || {};
     const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
@@ -1443,6 +1446,29 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
 
     const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
     const [tkontoDataRefreshKey, setTkontoDataRefreshKey] = useState(0);
+    const [reportMaalPanelTitle, setReportMaalPanelTitle] = useState(
+        () => MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT
+    );
+
+    useEffect(() => {
+        const syncMaalPanelTitle = () => {
+            setReportMaalPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
+        };
+        if (typeof window !== 'undefined') {
+            window.addEventListener('maal-og-behov-panel-title-changed', syncMaalPanelTitle);
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.removeEventListener('maal-og-behov-panel-title-changed', syncMaalPanelTitle);
+            }
+        };
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === oppsummeringsrapportTabIndex) {
+            setReportMaalPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
+        }
+    }, [activeTab, oppsummeringsrapportTabIndex]);
 
     useEffect(() => {
         if (tkontoLoaded || typeof window === 'undefined') return;
@@ -1651,7 +1677,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
         <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ width: '100%', height: '100%', minHeight: 0, paddingRight: '2rem' }}>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Mål og behov</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">{reportMaalPanelTitle}</h3>
                     <div className="relative h-[280px]">
                         {maalOgBehovChartDataForReport && latestOptions ? (
                             <Bar data={maalOgBehovChartDataForReport} options={{ ...latestOptions, maintainAspectRatio: false }} />
@@ -1663,7 +1689,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Eiendeler år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Eiendeler - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {assetsChartData ? (
                             <Bar data={assetsChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
@@ -1675,7 +1701,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Finansiering år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Finansiering - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {financingChartData ? (
                             <Bar data={financingChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
@@ -1687,7 +1713,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             </div>
             <div className="relative">
                 <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Kontantstrøm år for år</h3>
+                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Kontantstrøm - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {cashflowChartData ? (
                             <Bar data={cashflowChartData} options={{ ...cashflowOptions, maintainAspectRatio: false }} />
@@ -1720,7 +1746,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Risikosimulering, 3 Pensjon, 4 Formuesskatt, 5 Fremtidige verdier
+    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Risikoevne og risikovilje, 3 Fremtidige verdier, 4 Pensjon, 5 Formuesskatt
     const [activeTab, setActiveTab] = useState(0);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1749,10 +1775,10 @@ function TabContainer() {
     const tabs = [
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
-        { name: 'Risikosimulering', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikosimulering" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Risikoevne og risikovilje', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoevne, risikovilje og risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={5} /> }
+        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -1804,14 +1830,14 @@ function TabContainer() {
             '--- Risikosimulering ---',
             risiko,
             '',
+            '--- Fremtidige verdier ---',
+            fremtidigeVerdier,
+            '',
             '--- Pensjon ---',
             pensjonsgapet,
             '',
             '--- Formuesskatt ---',
-            formuesskatt,
-            '',
-            '--- Fremtidige verdier ---',
-            fremtidigeVerdier
+            formuesskatt
         ].join('\n');
     }, []);
 
@@ -1861,7 +1887,7 @@ function TabContainer() {
         const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
         const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
         const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*)$/i;
+        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
@@ -1975,7 +2001,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Risikosimulering ---, --- Pensjon ---, --- Formuesskatt ---, --- Fremtidige verdier ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Risikosimulering --- (data fra fanen Risikoevne og risikovilje), --- Fremtidige verdier ---, --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -1991,7 +2017,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Risikosimulering, Pensjon, Formuesskatt, Fremtidige verdier (informativ tekst). Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
+                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Risikoevne og risikovilje, Fremtidige verdier (informativ tekst), Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
@@ -2016,7 +2042,7 @@ function App() {
     const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
     // Disclaimer er fjernet fra UI. Vi holder den alltid av for å hindre modal-rendering.
     const [showDisclaimer, setShowDisclaimer] = useState(false);
-    const [panelTitle, setPanelTitle] = useState(MaalOgBehovState.panelTitle || 'Mål og behov');
+    const [panelTitle, setPanelTitle] = useState(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
     const [editingTitle, setEditingTitle] = useState(false);
     const titleInputRef = React.useRef(null);
     const [showOutputModal, setShowOutputModal] = useState(MaalOgBehovState.showOutputModal);
@@ -2089,6 +2115,9 @@ function App() {
 
     useEffect(() => {
         MaalOgBehovState.panelTitle = panelTitle;
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('maal-og-behov-panel-title-changed'));
+        }
     }, [panelTitle]);
 
     useEffect(() => {
@@ -3525,7 +3554,7 @@ lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'N
 // 28. Skatteberegning
 lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
 // 29. Overskrift
-lines.push(`29 Overskrift : ${panelTitle || 'Mål og behov'}`);
+lines.push(`29 Overskrift : ${panelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
 
 return lines.join('\n');
 }, [state, prognosis, panelTitle]);
@@ -3721,7 +3750,7 @@ case 28: // Skatteberegning
 updates.taxCalculationEnabled = parseBoolean(value);
 break;
 case 29: // Overskrift
-updates._panelTitle = value || 'Mål og behov';
+updates._panelTitle = value || MAAL_PANEL_TITLE_DEFAULT;
 break;
 }
 }
@@ -4784,7 +4813,7 @@ return () => document.removeEventListener('keydown', onKey);
                             value={panelTitle}
                             onChange={e => setPanelTitle(e.target.value)}
                             onBlur={() => setEditingTitle(false)}
-                            onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); if (e.key === 'Escape') { setPanelTitle(MaalOgBehovState.panelTitle || 'Mål og behov'); setEditingTitle(false); } }}
+                            onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); if (e.key === 'Escape') { setPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT); setEditingTitle(false); } }}
                             className="typo-h1 text-center maal-panel-title maal-panel-title-editable mb-4 w-full bg-transparent border-b-2 outline-none"
                         />
                     ) : (
