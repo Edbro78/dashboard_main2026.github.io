@@ -1260,7 +1260,7 @@ function TKontoDashboard() {
                             <span className="nav-icon" aria-hidden="true">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l8 3v6c0 4.4-3 8.4-8 9-5-0.6-8-4.6-8-9V6l8-3Z" stroke="currentColor" strokeWidth="2"/><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </span>
-                            <span className="nav-label">Tapsbærende evne</span>
+                            <span className="nav-label">Risikoevne</span>
                         </button>
                         <button className="nav-item" data-section="Analyse">
                             <span className="nav-icon" aria-hidden="true">
@@ -1431,7 +1431,7 @@ function TKontoDashboard() {
 
 // Oppsummeringsrapport: fire containere – Mål og behov, Eiendeler år for år, Finansiering år for år, Kontantstrøm år for år
 // Kontantstrøm år for år hentes alltid fra T-konto (fasit) – identisk med «Årlig kontantstrøm» i T-konto.
-function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 3 }) {
+function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 2 }) {
     const appState = MaalOgBehovState.appState || {};
     const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
@@ -1746,7 +1746,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Risikoevne og risikovilje, 3 Fremtidige verdier, 4 Pensjon, 5 Formuesskatt
+    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Fremtidige verdier, 3 Risikoprofil, 4 Pensjon, 5 Formuesskatt
     const [activeTab, setActiveTab] = useState(0);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1775,8 +1775,8 @@ function TabContainer() {
     const tabs = [
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
-        { name: 'Risikoevne og risikovilje', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoevne, risikovilje og risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
+        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={2} /> },
+        { name: 'Risikoprofil', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
@@ -1827,11 +1827,11 @@ function TabContainer() {
             '--- Mål og behov ---',
             maal,
             '',
-            '--- Risikosimulering ---',
-            risiko,
-            '',
             '--- Fremtidige verdier ---',
             fremtidigeVerdier,
+            '',
+            '--- Risikosimulering ---',
+            risiko,
             '',
             '--- Pensjon ---',
             pensjonsgapet,
@@ -2001,7 +2001,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Risikosimulering --- (data fra fanen Risikoevne og risikovilje), --- Fremtidige verdier ---, --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -2017,7 +2017,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Risikoevne og risikovilje, Fremtidige verdier (informativ tekst), Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
+                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
