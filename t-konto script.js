@@ -2111,7 +2111,9 @@ function computeAssetProjection(yearVal) {
   const rBilBat = (exp.bilbat || 0) / 100;
   const rOther = (exp.andreEiendeler || 0) / 100;
   const routing = ensureCashflowRoutingState();
-  const cashflow = computeAnnualCashflowBreakdownForYear(Number(yearVal) || 2026);
+  const cashflow = computeAnnualCashflowBreakdownForYear(Number(yearVal) || 2026, {
+    kontantstromStartAlignsDebtWith2026: true
+  });
   const netPositive = Math.max(0, Math.round(cashflow.net || 0));
   const customAllocation = Math.max(0, Math.min(netPositive, Math.round(routing.customAmount || 0)));
 
@@ -3073,12 +3075,16 @@ function renderCashflowTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) 
     }
   });
   
-  // Beregn årlig gjeldsbetaling for det valgte året
+  // Beregn årlig gjeldsbetaling for det valgte året (samme «start»-regel som Kontantstrøm-waterfall)
   const debts = AppState.debts || [];
   let annualDebtPayment = 0;
-  
+  const Ycf = Number(yearVal);
+  const alignStart =
+    Number.isFinite(Ycf) && Ycf === 2025;
+
   debts.forEach((debt) => {
-    const eff = getDebtScheduleElapsed(debt, yearVal);
+    const calYear = alignStart ? getDebtScheduleStartYear(debt) : Ycf;
+    const eff = getDebtScheduleElapsed(debt, calYear);
     const debtProjection = projectDebtYear(debt, eff);
     annualDebtPayment += debtProjection.payment || 0;
   });
@@ -5522,7 +5528,7 @@ function aggregateCashflowBaseForYear(calendarYear) {
 /**
  * @param {number} calendarYear
  * @param {{ kontantstromStartAlignsDebtWith2026?: boolean }} [options]
- *   Kontantstrøm-waterfall: ved «start» (2025) skal renter/avdrag være like som for 2026 (gjeld starter typisk 2026).
+ *   Kontantstrøm-waterfall: ved «start» (2025) skal renter/avdrag per gjeldspost være like som i det årets første nedbetalingsår (typisk 2026).
  */
 function computeAnnualCashflowBreakdownForYear(calendarYear, options) {
   const o = options && typeof options === "object" ? options : {};
@@ -5530,10 +5536,12 @@ function computeAnnualCashflowBreakdownForYear(calendarYear, options) {
   const year = Number.isFinite(Y) ? Y : 2026;
   const base = aggregateCashflowBaseForYear(year);
   const debts = AppState.debts || [];
-  const debtYear =
-    o.kontantstromStartAlignsDebtWith2026 && year === 2025 ? 2026 : year;
-  const annualPayment = calculateTotalAnnualDebtPaymentForYear(debts, debtYear);
-  const interestCost = calculateTotalAnnualInterestForYear(debts, debtYear);
+  const debtOpts =
+    o.kontantstromStartAlignsDebtWith2026 === true && year === 2025
+      ? { kontantstromStartAlignsDebtWith2026: true }
+      : undefined;
+  const annualPayment = calculateTotalAnnualDebtPaymentForYear(debts, year, debtOpts);
+  const interestCost = calculateTotalAnnualInterestForYear(debts, year, debtOpts);
   const principalCost = Math.max(0, annualPayment - interestCost);
   const costItems = base.individualCosts && base.individualCosts.length > 0
     ? base.individualCosts
@@ -5609,7 +5617,7 @@ function projectDebtYear(debt, yearIndex) {
     const amortYears = type === "Avdragsfrihet" ? 0 : years;
     const totalDuration = interestOnlyYears + amortYears;
 
-    if (idx >= totalDuration) {
+    if (idx > totalDuration) {
       return { interest: 0, principal: 0, payment: 0, remaining: 0 };
     }
 
@@ -5626,13 +5634,13 @@ function projectDebtYear(debt, yearIndex) {
 
     if (rate === 0) {
       const principal = amount / amortYears;
-      if (n >= amortYears) return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+      if (n > amortYears) return { interest: 0, principal: 0, payment: 0, remaining: 0 };
       const remainingBefore = Math.max(0, amount - principal * n);
       const remaining = Math.max(0, remainingBefore - principal);
       return { interest: 0, principal, payment: principal, remaining };
     }
 
-    if (n >= amortYears) return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+    if (n > amortYears) return { interest: 0, principal: 0, payment: 0, remaining: 0 };
     const annuity = amount * (rate / (1 - Math.pow(1 + rate, -amortYears)));
     const remainingBefore = amount * Math.pow(1 + rate, n) - annuity * ((Math.pow(1 + rate, n) - 1) / rate);
     const interest = remainingBefore * rate;
@@ -5642,7 +5650,7 @@ function projectDebtYear(debt, yearIndex) {
     return { interest, principal, payment: annuity, remaining };
   }
 
-  if (idx >= years) {
+  if (idx > years) {
     return { interest: 0, principal: 0, payment: 0, remaining: 0 };
   }
 
@@ -5685,9 +5693,11 @@ function computeCashflowForecastSeries(startYear, yearsCount) {
     const income = incomeTotal * factor;
     const costs = costTotal * factor;
     const calendarYear = startYear + i;
+    const alignStart = calendarYear === 2025;
     const debtAgg = debts.reduce(
       (acc, debt) => {
-        const eff = getDebtScheduleElapsed(debt, calendarYear);
+        const calYear = alignStart ? getDebtScheduleStartYear(debt) : calendarYear;
+        const eff = getDebtScheduleElapsed(debt, calYear);
         const detail = projectDebtYear(debt, eff);
         acc.interest += detail.interest;
         acc.principal += detail.principal;
@@ -5770,8 +5780,11 @@ function getCashflowForecastNetForYear(yearVal) {
     });
 
     let annualDebtPayment = 0;
+    const Ynet = Number(yearVal);
+    const alignStart = Number.isFinite(Ynet) && Ynet === 2025;
     debts.forEach((debt) => {
-      const eff = getDebtScheduleElapsed(debt, yearVal);
+      const calYear = alignStart ? getDebtScheduleStartYear(debt) : Ynet;
+      const eff = getDebtScheduleElapsed(debt, calYear);
       const debtProjection = projectDebtYear(debt, eff);
       annualDebtPayment += debtProjection.payment || 0;
     });
@@ -8414,10 +8427,14 @@ function calculateAnnualDebtPayment(debt) {
   }
 }
 
-function calculateTotalAnnualDebtPaymentForYear(debts, yearVal) {
+function calculateTotalAnnualDebtPaymentForYear(debts, yearVal, debtAlignOptions) {
   const Y = Number(yearVal) || 2026;
+  const align =
+    debtAlignOptions &&
+    debtAlignOptions.kontantstromStartAlignsDebtWith2026 === true;
   return (debts || AppState.debts || []).reduce((sum, debt) => {
-    const eff = getDebtScheduleElapsed(debt, Y);
+    const calYear = align && Y === 2025 ? getDebtScheduleStartYear(debt) : Y;
+    const eff = getDebtScheduleElapsed(debt, calYear);
     if (eff < 0) return sum;
     return sum + (projectDebtYear(debt, eff).payment || 0);
   }, 0);
@@ -8427,10 +8444,14 @@ function calculateTotalAnnualDebtPayment(debts) {
   return calculateTotalAnnualDebtPaymentForYear(debts, 2026);
 }
 
-function calculateTotalAnnualInterestForYear(debts, yearVal) {
+function calculateTotalAnnualInterestForYear(debts, yearVal, debtAlignOptions) {
   const Y = Number(yearVal) || 2026;
+  const align =
+    debtAlignOptions &&
+    debtAlignOptions.kontantstromStartAlignsDebtWith2026 === true;
   return (debts || AppState.debts || []).reduce((sum, debt) => {
-    const eff = getDebtScheduleElapsed(debt, Y);
+    const calYear = align && Y === 2025 ? getDebtScheduleStartYear(debt) : Y;
+    const eff = getDebtScheduleElapsed(debt, calYear);
     if (eff < 0) return sum;
     return sum + (projectDebtYear(debt, eff).interest || 0);
   }, 0);
@@ -9604,10 +9625,7 @@ function generateOutputText() {
       Array.isArray(fd.companies)
     ) {
       try {
-        const payload = JSON.stringify(fd);
-        const b64 = btoa(unescape(encodeURIComponent(payload)));
-        lines.push(`${counter}: Struktur - Familiediagram (base64): ${b64}`);
-        counter++;
+        counter = appendFamiliediagramExportLines(fd, lines, counter);
       } catch (e) {
         console.warn("Struktur: kunne ikke serialisere familiediagram til output", e);
       }
@@ -9783,6 +9801,146 @@ function initInputUI() {
   });
 }
 
+/** Tab-separerte felt i Output/Input (unngår rot i én lang JSON-linje). */
+function escapeFamiliediagramCell(v) {
+  return String(v ?? "")
+    .replace(/\t/g, " ")
+    .replace(/\r?\n/g, " ")
+    .trim();
+}
+
+function countStrukturCompaniesNested(arr) {
+  let n = 0;
+  (arr || []).forEach((co) => {
+    n += 1;
+    n += countStrukturCompaniesNested(co.children);
+  });
+  return n;
+}
+
+function appendFamiliediagramExportLines(fd, lines, counterStart) {
+  let c = counterStart;
+  const esc = escapeFamiliediagramCell;
+  const np = (fd.partners && fd.partners.length) || 0;
+  const nch = (fd.children && fd.children.length) || 0;
+  const nco = countStrukturCompaniesNested(fd.companies);
+  lines.push(
+    `${c}: Struktur - Familiediagram: ${np} partnere · ${nch} barn · ${nco} selskap`
+  );
+  c += 1;
+  (fd.partners || []).forEach((p) => {
+    lines.push(
+      `${c}: Struktur - Familiediagram partner: ${esc(p.id)}\t${esc(p.name)}\t${esc(p.info)}\t${esc(p.sector)}\t${esc(p.relationType)}`
+    );
+    c += 1;
+  });
+  (fd.children || []).forEach((ch) => {
+    const ids = Array.isArray(ch.parentIds) ? ch.parentIds.join(",") : "";
+    lines.push(
+      `${c}: Struktur - Familiediagram barn: ${esc(ch.id)}\t${esc(ch.name)}\t${esc(ch.info)}\t${esc(ch.sector)}\t${esc(ch.parentType)}\t${ids}`
+    );
+    c += 1;
+  });
+  function walkCo(arr, parentRef) {
+    (arr || []).forEach((co) => {
+      const sh =
+        co.shares && typeof co.shares === "object"
+          ? Object.keys(co.shares)
+              .sort()
+              .map((k) => `${k}=${co.shares[k]}`)
+              .join(",")
+          : "";
+      lines.push(
+        `${c}: Struktur - Familiediagram selskap: ${esc(co.id)}\t${esc(co.name)}\t${esc(co.info)}\t${esc(co.sector)}\t${sh}\t${parentRef}`
+      );
+      c += 1;
+      if (co.children && co.children.length) walkCo(co.children, esc(co.id));
+    });
+  }
+  walkCo(fd.companies, "-");
+  return c;
+}
+
+function parseSharesFamiliediagramExport(s) {
+  const shares = {};
+  String(s || "")
+    .split(",")
+    .map((x) => x.trim())
+    .filter(Boolean)
+    .forEach((pair) => {
+      const eq = pair.indexOf("=");
+      if (eq <= 0) return;
+      const k = pair.slice(0, eq).trim();
+      const v = pair.slice(eq + 1).trim();
+      if (k) shares[k] = Number(v) || 0;
+    });
+  return shares;
+}
+
+function buildCompanyTreeFromFamiliediagramExportRows(rows) {
+  if (!rows.length) return [];
+  const nodes = new Map();
+  rows.forEach((r) => {
+    nodes.set(r.id, {
+      id: r.id,
+      name: r.name,
+      info: r.info || "",
+      sector: r.sector || "",
+      shares: r.shares && typeof r.shares === "object" ? r.shares : {},
+      children: []
+    });
+  });
+  const roots = [];
+  rows.forEach((r) => {
+    const node = nodes.get(r.id);
+    const p = r.parentId;
+    if (!p || p === "-") roots.push(node);
+    else {
+      const parent = nodes.get(p);
+      if (parent) parent.children.push(node);
+      else roots.push(node);
+    }
+  });
+  return roots;
+}
+
+/** Bruker parsed familiediagram fra Output/Input (json eller legacy base64). */
+function applyParsedStrukturFamiliediagram(data) {
+  if (
+    !data ||
+    typeof data !== "object" ||
+    !Array.isArray(data.partners) ||
+    !Array.isArray(data.children) ||
+    !Array.isArray(data.companies)
+  ) {
+    return false;
+  }
+  try {
+    AppState.strukturDashboardFamilyData = JSON.parse(JSON.stringify(data));
+    const partners = (data.partners || []).slice(0, 2).map((p, index) => ({
+      id: p.id,
+      name: String(p.name || "").trim() || (index === 0 ? "Ektefelle I" : "Ektefelle II")
+    }));
+    const companiesFlat = [];
+    const collectCompanies = (arr) => {
+      (arr || []).forEach((c) => {
+        companiesFlat.push({
+          id: c.id,
+          name: String(c.name || "").trim() || "Selskap"
+        });
+        if (c.children && c.children.length) collectCompanies(c.children);
+      });
+    };
+    collectCompanies(data.companies || []);
+    syncStructurePartnersFromDashboard(partners);
+    syncStructureCompaniesFromDashboard(companiesFlat);
+    return true;
+  } catch (e) {
+    console.warn("Struktur: kunne ikke bruke familiediagram-data", e);
+    return false;
+  }
+}
+
 function parseInputText(text) {
   if (!text || !text.trim()) return false;
   
@@ -9799,7 +9957,10 @@ function parseInputText(text) {
   const assetTypeMap = new Map(); // Map for å holde styr på assetType for hver eiendel
   const entityMap = new Map(); // Map for å holde styr på entity-tilordning for hver eiendel
   const structureData = {}; // Struktur-data fra input
-  
+  const fdPartnersIn = [];
+  const fdChildrenIn = [];
+  const fdCompaniesIn = [];
+
   for (const line of lines) {
     // Format: "1: BANK: 2 MNOK" eller "1: BANK: 2 000 000 kr"
     const match = line.match(/^\d+:\s*(.+?):\s*(.+)$/);
@@ -9811,38 +9972,70 @@ function parseInputText(text) {
       try {
         const jsonStr = decodeURIComponent(escape(atob(String(valueStr).trim())));
         const data = JSON.parse(jsonStr);
-        if (
-          data &&
-          typeof data === "object" &&
-          Array.isArray(data.partners) &&
-          Array.isArray(data.children) &&
-          Array.isArray(data.companies)
-        ) {
-          AppState.strukturDashboardFamilyData = JSON.parse(JSON.stringify(data));
-          const partners = (data.partners || []).slice(0, 2).map((p, index) => ({
-            id: p.id,
-            name: String(p.name || "").trim() || (index === 0 ? "Ektefelle I" : "Ektefelle II")
-          }));
-          const companiesFlat = [];
-          const collectCompanies = (arr) => {
-            (arr || []).forEach((c) => {
-              companiesFlat.push({
-                id: c.id,
-                name: String(c.name || "").trim() || "Selskap"
-              });
-              if (c.children && c.children.length) collectCompanies(c.children);
-            });
-          };
-          collectCompanies(data.companies || []);
-          syncStructurePartnersFromDashboard(partners);
-          syncStructureCompaniesFromDashboard(companiesFlat);
-        }
+        applyParsedStrukturFamiliediagram(data);
       } catch (e) {
-        console.warn("Struktur: kunne ikke lese familiediagram fra input", e);
+        console.warn("Struktur: kunne ikke lese familiediagram (base64) fra input", e);
       }
       continue;
     }
-    
+    if (name === "Struktur - Familiediagram (json)") {
+      try {
+        const data = JSON.parse(String(valueStr).trim());
+        applyParsedStrukturFamiliediagram(data);
+      } catch (e) {
+        console.warn("Struktur: kunne ikke lese familiediagram (json) fra input", e);
+      }
+      continue;
+    }
+    if (name === "Struktur - Familiediagram") {
+      continue;
+    }
+    if (name === "Struktur - Familiediagram partner") {
+      const cols = String(valueStr).split("\t");
+      if (cols.length >= 5) {
+        fdPartnersIn.push({
+          id: cols[0].trim(),
+          name: cols[1] || "",
+          info: cols[2] || "",
+          sector: cols[3] || "",
+          relationType: cols[4] || ""
+        });
+      }
+      continue;
+    }
+    if (name === "Struktur - Familiediagram barn") {
+      const cols = String(valueStr).split("\t");
+      if (cols.length >= 6) {
+        const parentIds = String(cols[5] || "")
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean);
+        fdChildrenIn.push({
+          id: cols[0].trim(),
+          name: cols[1] || "",
+          info: cols[2] || "",
+          sector: cols[3] || "",
+          parentType: cols[4] || "",
+          parentIds
+        });
+      }
+      continue;
+    }
+    if (name === "Struktur - Familiediagram selskap") {
+      const cols = String(valueStr).split("\t");
+      if (cols.length >= 6) {
+        fdCompaniesIn.push({
+          id: cols[0].trim(),
+          name: cols[1] || "",
+          info: cols[2] || "",
+          sector: cols[3] || "",
+          shares: parseSharesFamiliediagramExport(cols[4]),
+          parentId: String(cols[5] || "").trim()
+        });
+      }
+      continue;
+    }
+
       // Gjeld med navn og beløp (før låneparametere)
       if (!name.includes(" - ") && !name.includes("Forventet avkastning") && name !== "Kontantstrøm - Tilpasset beløp") {
         const upperName = name.toUpperCase();
@@ -10194,7 +10387,15 @@ function parseInputText(text) {
 
     syncAllHoldingOwnershipLengths(privatArray);
   }
-  
+
+  if (fdPartnersIn.length || fdChildrenIn.length || fdCompaniesIn.length) {
+    applyParsedStrukturFamiliediagram({
+      partners: fdPartnersIn,
+      children: fdChildrenIn,
+      companies: buildCompanyTreeFromFamiliediagramExportRows(fdCompaniesIn)
+    });
+  }
+
   // Signaliser at T-konto-data er oppdatert (Oppsummeringsrapport leser kontantstrøm herfra)
   try {
     if (typeof window.dispatchEvent === "function") {
