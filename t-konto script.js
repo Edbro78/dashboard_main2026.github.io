@@ -2,8 +2,15 @@
 let __nextId = 1;
 function genId() { return __nextId++; }
 
+/** Standardraden som henter verdier fra Mål og behov; skal gjenkjennes uavhengig av visningsnavn (farge #002359, ikke slettes). */
+function isMaalOgBehovPortfolioAsset(a) {
+  if (!a || typeof a !== "object") return false;
+  if (a.maalOgBehovPortfolio === true) return true;
+  return /investeringer\s*mål\s*og\s*behov/i.test(String(a.name || "").trim());
+}
+
 // Default eiendeler: navn er låst (noRename) og kan ikke slettes.
-// Unntak: "Investeringer Mål og behov" henter beløp fra Mål og behov og er også låst mot sletting.
+// Unntak: «Investeringer Mål og behov»-raden henter beløp fra Mål og behov og er også låst mot sletting (stabil flagg `maalOgBehovPortfolio`).
 const DEFAULT_ASSET_NAMES = ["Bankinnskudd", "Primærbolig", "Fritidseiendom", "Sekundærbolig", "Tomt"];
 
 const AppState = {
@@ -13,15 +20,22 @@ const AppState = {
     { id: genId(), name: "Fritidseiendom", amount: 2000000, assetType: "fritidseiendom", noRename: true, noDelete: true },
     { id: genId(), name: "Sekundærbolig", amount: 3000000, assetType: "sekundaereiendom", noRename: true, noDelete: true },
     { id: genId(), name: "Tomt", amount: 3000000, assetType: "tomt", noRename: true, noDelete: true },
-    { id: genId(), name: "Investeringer Mål og behov", amount: 0, assetType: "investeringer", noDelete: true }
+    {
+      id: genId(),
+      name: "Investeringer Mål og behov",
+      amount: 0,
+      assetType: "investeringer",
+      maalOgBehovPortfolio: true,
+      noDelete: true
+    }
   ],
   debts: [
     { id: genId(), name: "BOLIGLÅN", amount: 10000000, debtParams: { type: "Annuitetslån", years: 25, rate: 0.04 } }
   ],
   incomes: [
     { id: genId(), name: "LØNNSINNTEKT", amount: 1500000 },
-    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
     { id: genId(), name: "UTBYTTER", amount: 0 },
+    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
     { id: genId(), name: "Skattefrie inntekter", amount: 0 },
     { id: genId(), name: "Inntektsskatt", amount: 0 },
     { id: genId(), name: "Utbytteskatt", amount: 0 },
@@ -747,9 +761,12 @@ window.getTKontoDataForFormuesskatt = function () {
     var totalMaalOgBehov = getMaalOgBehovSum2026();
     function isInvesteringerAsset(a) {
       var n = nameOf(a);
-      return a.assetType === "investeringer" ||
+      return (
+        isMaalOgBehovPortfolioAsset(a) ||
+        a.assetType === "investeringer" ||
         /^INVESTERINGER$/i.test(n) ||
-        /INVESTERINGER\s*m[åa]l\s*og\s*behov/i.test(n);
+        /INVESTERINGER\s*m[åa]l\s*og\s*behov/i.test(n)
+      );
     }
 
     var privatPorteføljeASK = 0;
@@ -757,7 +774,7 @@ window.getTKontoDataForFormuesskatt = function () {
     assets.forEach(function (a) {
       if (!isInvesteringerAsset(a)) return;
       var entity = a.entity || "privat";
-      var amt = a.noDelete ? totalMaalOgBehov : (Number(a.amount) || 0);
+      var amt = isMaalOgBehovPortfolioAsset(a) ? totalMaalOgBehov : (Number(a.amount) || 0);
       if (isPrivatEntity(entity)) privatPorteføljeASK += amt;
       else aksjeselskapAS += amt;
     });
@@ -947,6 +964,21 @@ function getRomanNumeral(num) {
   return String(num);
 }
 
+/** Eiendel knyttet til begge ektefeller (felles / særeie som vises samlet). */
+const ENTITY_PRIVAT_BEGGE = "privat-begge";
+
+function isPrivatBeggeEntity(entity) {
+  return entity === ENTITY_PRIVAT_BEGGE;
+}
+
+function getPrivatBeggeOptionLabel(privatArray) {
+  const p0 = privatArray && privatArray[0];
+  const p1 = privatArray && privatArray[1];
+  const n0 = (p0 && String(p0.name || "").trim()) || "Ektefelle I";
+  const n1 = (p1 && String(p1.name || "").trim()) || "Ektefelle II";
+  return `${n0} + ${n1}`;
+}
+
 // Hjelpefunksjon for å få privat-indeks fra entity-verdi
 function getPrivatIndexFromEntity(entity) {
   if (!entity || entity === "privat" || entity === "privat-0") {
@@ -970,6 +1002,10 @@ function getDashboardCompanyName(entity) {
 }
 
 function getEntityDisplayName(entity) {
+  if (isPrivatBeggeEntity(entity)) {
+    const privatArray = Array.isArray(AppState.structure.privat) ? AppState.structure.privat : [AppState.structure.privat];
+    return getPrivatBeggeOptionLabel(privatArray);
+  }
   if (isPrivatEntity(entity)) {
     const privatArray = Array.isArray(AppState.structure.privat) ? AppState.structure.privat : [AppState.structure.privat];
     const privatIndex = getPrivatIndexFromEntity(entity);
@@ -1562,6 +1598,9 @@ function renderStrukturModule(root) {
             if (asset.entity === `privat-${index}`) {
               asset.entity = "privat";
             }
+            if (asset.entity === ENTITY_PRIVAT_BEGGE) {
+              asset.entity = "privat";
+            }
           });
         }
         syncAllHoldingOwnershipLengths(privatArray);
@@ -2067,11 +2106,12 @@ function renderExpectationsModule(root) {
 
 // Felles funksjon for å få standardfarge basert på eiendelsnavn/type
 // Dette sikrer konsistent fargebruk i både T-konto og Treemap (samme som TKONTO_CHART_COLORS)
-function getAssetColorByName(name, assetType) {
+function getAssetColorByName(name, assetType, asset) {
   const U = String(name || "").toUpperCase();
   const nameStr = String(name || "").trim();
 
-  // Spesifikt «Investeringer mål og behov» (standardraden) → match Hovedstol-fargen i Mål og behov
+  // Mål og behov-porteføljen (standardrad) → match Hovedstol-fargen i Mål og behov, uavhengig av visningsnavn
+  if (asset && asset.maalOgBehovPortfolio === true) return "#002359";
   if (/investeringer\s*mål\s*og\s*behov/i.test(nameStr)) return "#002359";
 
   // Sjekk assetType (kategori lagres og brukes også etter navnendring, farger fra S&P-palett)
@@ -2132,10 +2172,10 @@ function computeAssetProjection(yearVal) {
     const U = name.toUpperCase();
     // "Investeringer mål og behov" skal kun gjenkjennes på navn (ikke på `noDelete`).
     // Vi bruker `noDelete` også på standard eiendeler for å skjule sletteknappen, så den må ikke styre beregningen.
-    const isMaalOgBehov = /investeringer\s*mål\s*og\s*behov/i.test(name);
+    const isMaalOgBehov = isMaalOgBehovPortfolioAsset(a);
     if (isMaalOgBehov) {
       const value = getMaalOgBehovHovedstolForYear(yearVal);
-      return { key: name, value, color: getAssetColorByName(name, a.assetType) };
+      return { key: name, value, color: getAssetColorByName(name, a.assetType, a) };
     }
     let rate = rOther;
     const isLiquidity = /LIKVID|BANK|KONTANT|CASH/.test(U);
@@ -2159,7 +2199,7 @@ function computeAssetProjection(yearVal) {
       else if (routing.mode === "custom") contribution = customAllocation;
     }
     const value = projectWithContribution(base, rate, yearsFromStart, contribution);
-    return { key: name, value, color: getAssetColorByName(name, a.assetType) };
+    return { key: name, value, color: getAssetColorByName(name, a.assetType, a) };
   });
 }
 
@@ -2268,10 +2308,12 @@ function renderGraphicsModule(root) {
     function nameOf(a) { return String(a && a.name != null ? a.name : "").trim(); }
     function isInvesteringerAsset(a) {
       var n = nameOf(a);
-      return a && (
-        a.assetType === "investeringer" ||
-        /^INVESTERINGER$/i.test(n) ||
-        /INVESTERINGER\s*m[åa]l\s*og\s*behov/i.test(n)
+      return (
+        a &&
+        (isMaalOgBehovPortfolioAsset(a) ||
+          a.assetType === "investeringer" ||
+          /^INVESTERINGER$/i.test(n) ||
+          /INVESTERINGER\s*m[åa]l\s*og\s*behov/i.test(n))
       );
     }
 
@@ -2296,7 +2338,7 @@ function renderGraphicsModule(root) {
       categories.push({
         key: name,
         value: value,
-        color: getAssetColorByName(name, a.assetType) // Bruk standardfarger basert på navn/type
+        color: getAssetColorByName(name, a.assetType, a) // Bruk standardfarger basert på navn/type
       });
     });
 
@@ -3065,9 +3107,12 @@ function renderCashflowTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) 
       });
       totalCosts += adjustedAmount;
     } else {
+      const isSkattefrieMoBRad = /^SKATTEFRIE\s*INNTEKTER$/i.test(String(item.name || "").normalize("NFC").trim());
       incomeItems.push({
         id: item.id || String(Math.random()),
-        label: item.name,
+        label: isSkattefrieMoBRad
+          ? (item._maalOgBehovUtbetalingToggleUI ? "Utbetalinger fra mål og behov" : "Annen inntekt")
+          : item.name,
         value: adjustedAmount,
         type: 'income'
       });
@@ -3872,7 +3917,7 @@ function renderAssetsTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) {
         label: projection.key || asset?.name || `Eiendel ${idx + 1}`,
         value: projection.value || 0,
       type: 'asset',
-        color: projection.color || getAssetColorByName(projection.key, asset?.assetType) // Bruk standardfarger basert på navn/type
+        color: projection.color || getAssetColorByName(projection.key, asset?.assetType, asset) // Bruk standardfarger basert på navn/type
       };
     })
     .filter(item => item.value > 0); // Filtrer etter at vi har laget items med farge
@@ -5261,6 +5306,12 @@ function renderWaterfallModule(root) {
       { kontantstromStartAlignsDebtWith2026: true }
     );
 
+    const skattefrieMoBItem = (AppState.incomes || []).find((it) =>
+      /^SKATTEFRIE\s*INNTEKTER$/i.test(String(it && it.name ? it.name : "").normalize("NFC").trim())
+    );
+    const otherIncomeUsesMoBLabel =
+      otherIncome > 0 && skattefrieMoBItem && skattefrieMoBItem._maalOgBehovUtbetalingToggleUI === true;
+
     const padX = 80; const padTop = 70; const padBottom = net < 0 ? 96 : 64;
     const chartW = vbW - padX * 2; const chartH = vbH - padTop - padBottom;
 
@@ -5268,7 +5319,18 @@ function renderWaterfallModule(root) {
     if (wage > 0) steps.push({ type: "up", key: "Lønnsinntekt", value: wage });
     if (pension > 0) steps.push({ type: "up", key: "Pensjonsinntekt", value: pension });
     if (dividends > 0) steps.push({ type: "up", key: "Utbytter", value: dividends });
-    if (otherIncome > 0) steps.push({ type: "up", key: "Skattefrie inntekter", value: otherIncome });
+    if (otherIncome > 0) {
+      if (otherIncomeUsesMoBLabel) {
+        steps.push({
+          type: "up",
+          key: "Utbetalinger fra mål og behov",
+          labelLines: CASHFLOW_MOB_NETTO_LABEL_LINES,
+          value: otherIncome
+        });
+      } else {
+        steps.push({ type: "up", key: "Annen inntekt", value: otherIncome });
+      }
+    }
     costs.forEach(c => { if (c.value > 0) steps.push({ type: "down", key: c.key, value: -c.value }); });
     steps.push({ type: "end", key: "Årlig kontantstrøm", value: net });
 
@@ -5276,7 +5338,13 @@ function renderWaterfallModule(root) {
     if (wage > 0) tempSteps.push({ type: "up", value: wage, key: "Lønnsinntekt" });
     if (pension > 0) tempSteps.push({ type: "up", value: pension, key: "Pensjonsinntekt" });
     if (dividends > 0) tempSteps.push({ type: "up", value: dividends, key: "Utbytter" });
-    if (otherIncome > 0) tempSteps.push({ type: "up", value: otherIncome, key: "Skattefrie inntekter" });
+    if (otherIncome > 0) {
+      tempSteps.push({
+        type: "up",
+        value: otherIncome,
+        key: otherIncomeUsesMoBLabel ? "Utbetalinger fra mål og behov" : "Annen inntekt"
+      });
+    }
     (costs || []).forEach(c => { if (c.value > 0) tempSteps.push({ type: "down", value: -c.value, key: c.key }); });
     let lvl = 0; const levels = [0];
     tempSteps.forEach(s => { lvl += s.value; levels.push(lvl); });
@@ -5342,11 +5410,24 @@ function renderWaterfallModule(root) {
 
       const lab = document.createElementNS(svgNS, "text");
       lab.setAttribute("class", "wf-label");
-      lab.setAttribute("x", String(cursorX + colW / 2));
-      const labelY = Math.min(vbH - 8, y + Math.max(2, h) + 14); // plasser under nederste kant
+      const cxLab = cursorX + colW / 2;
+      lab.setAttribute("x", String(cxLab));
+      const lineCount = Array.isArray(s.labelLines) && s.labelLines.length ? s.labelLines.length : 1;
+      const bottomPad = 8 + (lineCount > 1 ? (lineCount - 1) * 13 : 0);
+      const labelY = Math.min(vbH - bottomPad, y + Math.max(2, h) + 14);
       lab.setAttribute("y", String(labelY));
       lab.setAttribute("text-anchor", "middle");
-      lab.textContent = s.key;
+      if (Array.isArray(s.labelLines) && s.labelLines.length) {
+        s.labelLines.forEach((line, i) => {
+          const tsp = document.createElementNS(svgNS, "tspan");
+          tsp.setAttribute("x", String(cxLab));
+          if (i > 0) tsp.setAttribute("dy", "1.05em");
+          tsp.textContent = line;
+          lab.appendChild(tsp);
+        });
+      } else {
+        lab.textContent = s.key;
+      }
       svg.appendChild(lab);
 
       const val = document.createElementNS(svgNS, "text");
@@ -5400,6 +5481,9 @@ function aggregateCashflowBase() {
   incomeItems.forEach((item) => {
     const name = upper(item.name);
     let raw = Number(item.amount) || 0;
+    if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+      raw = getMaalOgBehovNettoUtbetalingForYear(2026);
+    }
     if (pen.pensionModeActive) {
       if (/L[ØO]NN/.test(name)) {
         if (yearsFrom2026 >= pen.yearsToRetirement) raw = 0;
@@ -5471,6 +5555,9 @@ function aggregateCashflowBaseForYear(calendarYear) {
   incomeItems.forEach((item) => {
     const name = upper(item.name);
     let raw = Math.max(0, Number(item.amount) || 0);
+    if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+      raw = getMaalOgBehovNettoUtbetalingForYear(year);
+    }
     if (pen.pensionModeActive) {
       if (/L[ØO]NN/.test(name)) {
         if (yearsFrom2026 >= pen.yearsToRetirement) raw = 0;
@@ -5479,8 +5566,9 @@ function aggregateCashflowBaseForYear(calendarYear) {
         else raw = pen.activeAnnualPension;
       }
     }
+    const useMoBNettoSkattefrie = /^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true;
     const shouldKeepNominal = postRetirementPen && /PENSJON/.test(name);
-    const amount = shouldKeepNominal ? raw : raw * inflationFactor;
+    const amount = shouldKeepNominal || useMoBNettoSkattefrie ? raw : raw * inflationFactor;
     if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
       // Fra pensjonsstart: tabellbasert inntektsskatt på lønn erstattes med flat skatt på årlig pensjon (synlig i kontantstrøm per år).
       if (postRetirementPen && pen.pensionModeActive && /INNTEKTSSKATT/.test(name)) {
@@ -5594,6 +5682,36 @@ function getDebtScheduleElapsed(debt, calendarYear) {
   return Y - S + 1;
 }
 
+/**
+ * Ett års annuitetsprosjeksjon (samme indeksering som projectDebtYear: idx 1..scheduleYears).
+ */
+function projectAnnuitetYear(amount, rate, scheduleYears, idx) {
+  const P = Number(amount) || 0;
+  if (P <= 0) {
+    return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+  }
+  const nYears = Math.max(1, Number(scheduleYears) || 1);
+  const rawIdx = Math.floor(Number(idx));
+  if (rawIdx < 1 || rawIdx > nYears) {
+    return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+  }
+  const r = Number(rate) || 0;
+  if (r === 0) {
+    const principal = P / nYears;
+    const remainingBefore = Math.max(0, P - principal * rawIdx);
+    const remaining = Math.max(0, remainingBefore - principal);
+    return { interest: 0, principal, payment: principal, remaining };
+  }
+  const annuity = P * (r / (1 - Math.pow(1 + r, -nYears)));
+  const remainingBefore =
+    P * Math.pow(1 + r, rawIdx) - annuity * ((Math.pow(1 + r, rawIdx) - 1) / r);
+  const interest = remainingBefore * r;
+  const rawPrincipal = annuity - interest;
+  const principal = Math.min(Math.max(0, rawPrincipal), Math.max(0, remainingBefore));
+  const remaining = Math.max(0, remainingBefore - principal);
+  return { interest, principal, payment: annuity, remaining };
+}
+
 function projectDebtYear(debt, yearIndex) {
   const amount = Number(debt && debt.amount) || 0;
   if (amount <= 0) {
@@ -5650,6 +5768,34 @@ function projectDebtYear(debt, yearIndex) {
     return { interest, principal, payment: annuity, remaining };
   }
 
+  if (/Ballonglån/.test(type)) {
+    const match = /Ballonglån\s+(\d+)/i.exec(type);
+    const balloonYears = match ? Math.max(1, Number(match[1])) : 1;
+
+    if (idx > balloonYears) {
+      return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+    }
+
+    if (idx === balloonYears) {
+      let opening = amount;
+      if (balloonYears > 1) {
+        const prev = projectAnnuitetYear(amount, rate, years, balloonYears - 1);
+        opening = prev.remaining;
+      }
+      if (opening <= 0) {
+        return { interest: 0, principal: 0, payment: 0, remaining: 0 };
+      }
+      return {
+        interest: 0,
+        principal: opening,
+        payment: opening,
+        remaining: 0
+      };
+    }
+
+    return projectAnnuitetYear(amount, rate, years, idx);
+  }
+
   if (idx > years) {
     return { interest: 0, principal: 0, payment: 0, remaining: 0 };
   }
@@ -5665,20 +5811,7 @@ function projectDebtYear(debt, yearIndex) {
   }
 
   // Annuitetslån (default)
-  if (rate === 0) {
-    const principal = amount / years;
-    const remainingBefore = Math.max(0, amount - principal * idx);
-    const remaining = Math.max(0, remainingBefore - principal);
-    return { interest: 0, principal, payment: principal, remaining };
-  }
-
-  const annuity = amount * (rate / (1 - Math.pow(1 + rate, -years)));
-  const remainingBefore = amount * Math.pow(1 + rate, idx) - annuity * ((Math.pow(1 + rate, idx) - 1) / rate);
-  const interest = remainingBefore * rate;
-  const rawPrincipal = annuity - interest;
-  const principal = Math.min(Math.max(0, rawPrincipal), Math.max(0, remainingBefore));
-  const remaining = Math.max(0, remainingBefore - principal);
-  return { interest, principal, payment: annuity, remaining };
+  return projectAnnuitetYear(amount, rate, years, idx);
 }
 
 function computeCashflowForecastSeries(startYear, yearsCount) {
@@ -5742,6 +5875,9 @@ function getCashflowForecastNetForYear(yearVal) {
     incomes.forEach((item) => {
       const name = upper(item.name);
       let baseAmount = Math.max(0, Number(item.amount) || 0);
+      if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+        baseAmount = getMaalOgBehovNettoUtbetalingForYear(Number(yearVal) || 2026);
+      }
 
       // I pensjonsårene skal inntektsskatt være eksakt flat sats av aktiv pensjon (nominelt).
       // Håndteres eksplisitt her for å unngå at gamle verdier lekker inn.
@@ -5770,8 +5906,9 @@ function getCashflowForecastNetForYear(yearVal) {
       if (baseAmount <= 0) return;
       // Når pensjonsmodus er aktiv etter pensjonsalder skal pensjon vises nominelt
       // (og skatt er allerede håndtert nominelt i blokken over).
+      const useMoBNettoSkattefrie = /^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true;
       const shouldKeepNominal = postRetirement && /PENSJON/.test(name);
-      const adjustedAmount = shouldKeepNominal ? baseAmount : (baseAmount * inflationFactor);
+      const adjustedAmount = shouldKeepNominal || useMoBNettoSkattefrie ? baseAmount : (baseAmount * inflationFactor);
       if ((/SKATT|KOSTNAD/.test(name)) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
         totalCosts += adjustedAmount;
       } else {
@@ -5989,9 +6126,10 @@ var TKONTO_CHART_COLORS = {
   GJELD: "#F2BFB8"
 };
 
-function getTKontoColorForAsset(name) {
+function getTKontoColorForAsset(name, asset) {
   var k = String(name || "").toUpperCase();
   var nameStr = String(name || "").trim();
+  if (asset && asset.maalOgBehovPortfolio === true) return TKONTO_CHART_COLORS["INVESTERINGER MÅL OG BEHOV"];
   if (/^BANKINNSKUDD$/i.test(k)) return TKONTO_CHART_COLORS["BANKINNSKUDD"];
   if (/^BANK$/i.test(k)) return TKONTO_CHART_COLORS.BANK;
   if (/^PRIMÆRBOLIG$/i.test(k)) return TKONTO_CHART_COLORS["PRIMÆRBOLIG"];
@@ -6037,11 +6175,11 @@ function getTKontoAssetSegments(yearVal) {
   }
 
   var individualSegs = projected
-    .map(function (item) {
+    .map(function (item, i) {
       return {
         key: item.key,
         value: item.value || 0,
-        color: item.color || getTKontoColorForAsset(item.key)
+        color: item.color || getTKontoColorForAsset(item.key, assets[i])
       };
     })
     .filter(function (seg) { return (seg.value || 0) > 0; });
@@ -7752,6 +7890,53 @@ function getMaalOgBehovHovedstolForYear(yearVal) {
   }
 }
 
+/**
+ * Beløp fra Mål og behov til T-konto per kalenderår (positivt): netto utbetaling + summen av negative hendelser
+ * (positive hendelser inngår ikke). Indeks som maalOgBehovHovedstolPerYear.
+ */
+function getMaalOgBehovNettoUtbetalingForYear(calendarYear) {
+  const Y = Number(calendarYear);
+  if (!Number.isFinite(Y)) return 0;
+  const idx = Y - 2026 + 1;
+  try {
+    const raw = localStorage.getItem("maalOgBehovNettoUtbetalingTilTKontoPerYear");
+    if (raw == null) return 0;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr) || arr.length === 0) return 0;
+    if (idx < 1) return Math.max(0, Math.round(Number(arr[0]) || 0));
+    if (idx >= arr.length) return 0;
+    return Math.max(0, Math.round(Number(arr[idx]) || 0));
+  } catch (e) {
+    return 0;
+  }
+}
+
+/** Vannrett etikett under søyler i Kontantstrøm-waterfall (to linjer, ikke «Skattefrie inntekter»). */
+const CASHFLOW_MOB_NETTO_LABEL_LINES = ["Utbetalinger fra", "mål og behov"];
+
+function syncSkattefrieMoBAmountFromToggle() {
+  const item = (AppState.incomes || []).find((x) =>
+    /^SKATTEFRIE\s*INNTEKTER$/i.test(String(x && x.name ? x.name : "").normalize("NFC").trim())
+  );
+  if (!item) return;
+  if (item._maalOgBehovUtbetalingToggleUI === true) {
+    item.amount = getMaalOgBehovNettoUtbetalingForYear(2026);
+  } else {
+    item.amount = 0;
+  }
+}
+
+function refreshTkontoViewsAfterMoBPrognosis() {
+  const moduleRoot = document.getElementById("module-root");
+  const currentNav = document.querySelector(".nav-item.is-active");
+  if (!moduleRoot || !currentNav) return;
+  const section = currentNav.getAttribute("data-section") || currentNav.textContent || "";
+  if (section === "Kontantstrøm" && typeof renderWaterfallModule === "function") renderWaterfallModule(moduleRoot);
+  else if (section === "Fremtidig utvikling" && typeof renderFutureModule === "function") renderFutureModule(moduleRoot);
+  else if (section === "T-Konto" && typeof renderGraphicsModule === "function") renderGraphicsModule(moduleRoot);
+  else if (section === "Inntekter" && typeof renderIncomeModule === "function") renderIncomeModule(moduleRoot);
+}
+
 /** Eksporter årlig formuesskatt (inntekter-fanen) til Mål og behov via localStorage. */
 function setFormuesskattForMaalOgBehov(value) {
   try {
@@ -7794,12 +7979,12 @@ function createItemRow(collectionName, item) {
   // Lagre originalnavn for å identifisere investeringer
   const originalName = item.name || "";
 
-  // "Investeringer Mål og behov" er spesialraden som skal være read-only.
+  // «Investeringer Mål og behov»-porteføljen er spesialrad (read-only beløp fra Mål og behov).
   // `noDelete` skal kun skjule sletteknappen, ikke stoppe sliderne.
-  const isMaalOgBehovRow =
-    collectionName === "assets" && /investeringer\s*mål\s*og\s*behov/i.test(String(item.name || ""));
+  const isMaalOgBehovRow = collectionName === "assets" && isMaalOgBehovPortfolioAsset(item);
   const isMaalOgBehovReadOnly = isMaalOgBehovRow;
   if (isMaalOgBehovRow) {
+    item.maalOgBehovPortfolio = true; // stabilt etter navneendring (farge / T-konto / eksport)
     item.noDelete = true; // sikre at lagret state beholder flagget
     item.amount = getMaalOgBehovSum2026();
   }
@@ -7822,6 +8007,7 @@ function createItemRow(collectionName, item) {
       item.assetType = "eiendom";
     } else if (/^INVESTERINGER$/i.test(nameUpper) || /INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(nameUpper)) {
       item.assetType = "investeringer";
+      if (/INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(nameUpper)) item.maalOgBehovPortfolio = true;
     } else if (/^BIL\/BÅT$/i.test(nameUpper)) {
       item.assetType = "bilbat";
     } else if (/^ANDRE\s*EIENDELER$/i.test(nameUpper)) {
@@ -7846,6 +8032,20 @@ function createItemRow(collectionName, item) {
   const isPensionIncomeRow =
     collectionName === "incomes" &&
     String(item.name || "").normalize("NFC").toUpperCase() === "PENSJONSINNTEKT";
+  const isMoBUtbetalingDisplayNavnRow =
+    collectionName === "incomes" &&
+    /^SKATTEFRIE\s*INNTEKTER$/i.test(String(item.name || "").normalize("NFC").trim());
+  const incomeNameKey = collectionName === "incomes" ? normalizeIncomeNameKey(item.name) : "";
+  const isIncomeStandardReadonly =
+    collectionName === "incomes" &&
+    (incomeNameKey === "LØNNSINNTEKT" ||
+      incomeNameKey === "UTBYTTER" ||
+      incomeNameKey === "PENSJONSINNTEKT" ||
+      /^SKATTEFRIE\s*INNTEKTER$/.test(incomeNameKey) ||
+      incomeNameKey === "INNTEKTSSKATT" ||
+      incomeNameKey === "UTBYTTESKATT" ||
+      incomeNameKey === "FORMUESSKATT" ||
+      incomeNameKey === "ÅRLIGE KOSTNADER");
 
   const col = document.createElement("div");
   col.className = "asset-col";
@@ -7859,12 +8059,20 @@ function createItemRow(collectionName, item) {
   name.value = item.name || "";
   name.setAttribute("aria-label", `Navn på ${collectionName.slice(0, -1)}`);
   const isNameLocked = collectionName === "assets" && item.noRename;
-  if (isNameLocked || isPensionIncomeRow) {
+  if (isNameLocked || isIncomeStandardReadonly) {
     name.readOnly = true;
     name.title = isPensionIncomeRow
       ? "Årlig pensjon i prognose hentes fra Pensjon-fanen når bryteren er på"
+      : isMoBUtbetalingDisplayNavnRow
+      ? "Visningsnavn for raden Skattefrie inntekter. Logisk rad er uendret i modellen."
+      : collectionName === "incomes"
+      ? "Standard inntekt: navn kan ikke endres"
       : "Default-eiendel: navn kan ikke endres";
     name.classList.add("asset-name-readonly");
+    if (isMoBUtbetalingDisplayNavnRow) {
+      name.value = "Utbetalinger fra Mål og behov";
+      name.setAttribute("aria-label", "Utbetalinger fra Mål og behov");
+    }
   } else {
     name.addEventListener("input", () => { 
       item.name = name.value; 
@@ -7905,6 +8113,11 @@ function createItemRow(collectionName, item) {
       
       // Legg til alle Privat-bokser i nedtrekksmenyen
       const privatArray = AppState.structure.privat;
+      if (item.entity === ENTITY_PRIVAT_BEGGE) {
+        if (!isPrivatEntryActive(privatArray[1], 1)) {
+          item.entity = "privat";
+        }
+      }
       if (item.entity && item.entity.startsWith("privat-")) {
         const pi = getPrivatIndexFromEntity(item.entity);
         if (pi > 0 && !isPrivatEntryActive(privatArray[pi], pi)) {
@@ -7929,6 +8142,17 @@ function createItemRow(collectionName, item) {
         
         entitySelect.appendChild(privatOption);
       });
+
+      if (isPrivatEntryActive(privatArray[0], 0) && isPrivatEntryActive(privatArray[1], 1)) {
+        const beggeOption = document.createElement("option");
+        beggeOption.value = ENTITY_PRIVAT_BEGGE;
+        beggeOption.textContent = getPrivatBeggeOptionLabel(privatArray);
+        const currentValue = item.entity || "privat";
+        if (currentValue === ENTITY_PRIVAT_BEGGE) {
+          beggeOption.selected = true;
+        }
+        entitySelect.appendChild(beggeOption);
+      }
       
       // Hvis ingen er valgt, sett default til første privat
       if (!entitySelect.value) {
@@ -7993,7 +8217,7 @@ function createItemRow(collectionName, item) {
   }
   // "Investeringer Mål og behov"-linjen skal ikke kunne slettes
   // Inntekter/kostnader kan ikke slettes i T-konto-fanen
-  if (collectionName !== "incomes" && !(collectionName === "assets" && (item.noDelete || /investeringer\s*mål\s*og\s*behov/i.test(String(item.name || ""))))) {
+  if (collectionName !== "incomes" && !(collectionName === "assets" && (item.noDelete || isMaalOgBehovPortfolioAsset(item)))) {
     const del = document.createElement("button");
     del.className = "asset-delete";
     del.setAttribute("aria-label", `Slett ${collectionName.slice(0, -1)}`);
@@ -8012,7 +8236,7 @@ function createItemRow(collectionName, item) {
   amount.className = "asset-amount";
   amount.textContent = formatNOK(Number(isMaalOgBehovReadOnly ? (item.amount || 0) : 0));
 
-  if (!isMaalOgBehovReadOnly && !isPensionIncomeRow) {
+  if (!isMaalOgBehovReadOnly && !isPensionIncomeRow && !isMoBUtbetalingDisplayNavnRow) {
     range = document.createElement("input");
     range.className = "asset-range";
     range.type = "range";
@@ -8026,8 +8250,14 @@ function createItemRow(collectionName, item) {
     setRangeBounds = function () {
       if (collectionName === "incomes") {
         const label = String(item.name || name.value || "").normalize("NFC").toUpperCase();
-        if (/L[ØO]NN|PENSJON|SKATT|UTBYT|SKATTEFRIE\s*INNTEKTER|KOSTNAD/.test(label)) range.max = "10000000";
-        else range.max = "50000000";
+        const incomeKey = normalizeIncomeNameKey(item.name || name.value || "");
+        if (incomeKey === "LØNNSINNTEKT" || incomeKey === "UTBYTTER") {
+          range.max = "20000000";
+        } else if (/L[ØO]NN|PENSJON|SKATT|UTBYT|SKATTEFRIE\s*INNTEKTER|KOSTNAD/.test(label)) {
+          range.max = "10000000";
+        } else {
+          range.max = "50000000";
+        }
 
         // Ikke la skatte-/kostnadsverdier "snappe" til nearest step ved re-render.
         // Problemet ditt: f.eks. 378400 -> rundes til nærmeste 50k/100k når range.step = 50000.
@@ -8041,7 +8271,11 @@ function createItemRow(collectionName, item) {
         const label = String(item.name || name.value || "").toUpperCase();
         const originalLabel = String(originalName || "").toUpperCase();
         const assetType = item.assetType;
-        const isInvestment = assetType === "investeringer" || /^INVESTERINGER$/i.test(label) || /^INVESTERINGER$/i.test(originalLabel);
+        const isInvestment =
+          item.maalOgBehovPortfolio === true ||
+          assetType === "investeringer" ||
+          /^INVESTERINGER$/i.test(label) ||
+          /^INVESTERINGER$/i.test(originalLabel);
         const isEiendom = assetType === "eiendom" || assetType === "fritidseiendom" || assetType === "sekundaereiendom" || assetType === "tomt" || (/^EIENDOM$/i.test(label) && !/FAST/i.test(label));
         const isFastEiendom = /^FAST\s*EIENDOM$/i.test(label);
         const isAndreEiendeler = assetType === "andre" || /^ANDRE\s*EIENDELER$/i.test(label);
@@ -8157,8 +8391,12 @@ function createItemRow(collectionName, item) {
       pensionToggleGroup.className = "income-pension-toggle-group";
 
       const pensionToggleLabel = document.createElement("span");
-      pensionToggleLabel.className = "income-pension-toggle-label";
+      pensionToggleLabel.className =
+        "income-pension-toggle-label income-pension-toggle-label--has-tooltip";
       pensionToggleLabel.textContent = "Aktivere årlig pensjon i kontanstrøm?";
+      pensionToggleLabel.title =
+        "Ved å aktivere denne, vil Lønnsinntekten bli byttet ut med pensjonsinntekt det året personen går av med pensjon. Dette året definerer du i fanen : Pensjon\n\n" +
+        "Dette vil påvirke kontantstrømmen fra det året pensjon overtar for lønn. Inntektsskatt blir også fra dette tidspunktet satt til 30% på pensjonsinntekt.";
 
       const toggleSwitch = document.createElement("label");
       toggleSwitch.className = "asset-toggle-switch";
@@ -8191,6 +8429,67 @@ function createItemRow(collectionName, item) {
       pensionToggleGroup.appendChild(pensionToggleState);
 
       amountWrapper.appendChild(pensionToggleGroup);
+
+      row.appendChild(col);
+      row.appendChild(amountWrapper);
+    } else if (isMoBUtbetalingDisplayNavnRow) {
+      // Skattefrie inntekter vises som «Utbetalinger fra Mål og behov» – henter netto utbetaling per år fra Mål og behov når på.
+      row.classList.add("asset-row--pension-toggle-only");
+
+      if (item._maalOgBehovUtbetalingToggleUI === true) {
+        item.amount = getMaalOgBehovNettoUtbetalingForYear(2026);
+      } else {
+        item.amount = 0;
+      }
+
+      const amountWrapper = document.createElement("div");
+      amountWrapper.className = "asset-amount-wrapper income-pension-amount-wrapper";
+
+      const moBToggleGroup = document.createElement("div");
+      moBToggleGroup.className = "income-pension-toggle-group";
+
+      const moBToggleLabel = document.createElement("span");
+      moBToggleLabel.className =
+        "income-pension-toggle-label income-pension-toggle-label--has-tooltip";
+      moBToggleLabel.textContent = "Aktivere utbetalinger fra Mål og behov?";
+      moBToggleLabel.title =
+        "ved å aktivere denne, vil netto utbetalinger og Hendelser (utbetalinger) fra Mål og behov bli en del av den årlige kontantstrømmen.\n\n" +
+        "En netto utbetaling i f.eks år 2030 vil da påvirke kontantstrømmen i år 2030.";
+
+      const toggleSwitch = document.createElement("label");
+      toggleSwitch.className = "asset-toggle-switch";
+      toggleSwitch.setAttribute("aria-label", "Aktivere utbetalinger fra Mål og behov");
+
+      const toggleInput = document.createElement("input");
+      toggleInput.type = "checkbox";
+      toggleInput.checked = item._maalOgBehovUtbetalingToggleUI === true;
+
+      const toggleSlider = document.createElement("span");
+      toggleSlider.className = "asset-toggle-slider";
+
+      const moBToggleState = document.createElement("span");
+      moBToggleState.className = "income-pension-toggle-state";
+      moBToggleState.textContent = toggleInput.checked ? "Ja" : "Nei";
+
+      toggleInput.addEventListener("change", () => {
+        item._maalOgBehovUtbetalingToggleUI = toggleInput.checked;
+        moBToggleState.textContent = toggleInput.checked ? "Ja" : "Nei";
+        if (item._maalOgBehovUtbetalingToggleUI === true) {
+          item.amount = getMaalOgBehovNettoUtbetalingForYear(2026);
+        } else {
+          item.amount = 0;
+        }
+        notifyCashflowRoutingChange("Inntekter");
+        updateTopSummaries();
+      });
+
+      toggleSwitch.appendChild(toggleInput);
+      toggleSwitch.appendChild(toggleSlider);
+      moBToggleGroup.appendChild(moBToggleLabel);
+      moBToggleGroup.appendChild(toggleSwitch);
+      moBToggleGroup.appendChild(moBToggleState);
+
+      amountWrapper.appendChild(moBToggleGroup);
 
       row.appendChild(col);
       row.appendChild(amountWrapper);
@@ -8372,6 +8671,28 @@ function remainingBalanceAfterYears(debt, elapsedYears) {
     return Math.max(0, balance);
   }
 
+  if (/Ballonglån/.test(type)) {
+    const match = /Ballonglån\s+(\d+)/i.exec(type);
+    const balloonYears = match ? Math.max(1, Number(match[1])) : 1;
+    const scheduleYears = years;
+    const clampedT = Math.min(Math.max(0, t), balloonYears);
+    if (clampedT >= balloonYears) {
+      return 0;
+    }
+    const annuitetT = Math.min(clampedT, scheduleYears);
+    if (annuitetT === 0) {
+      return amount;
+    }
+    if (rate === 0) {
+      return Math.max(0, amount * (1 - annuitetT / scheduleYears));
+    }
+    const annuity = amount * (rate / (1 - Math.pow(1 + rate, -scheduleYears)));
+    const balance =
+      amount * Math.pow(1 + rate, annuitetT) -
+      annuity * ((Math.pow(1 + rate, annuitetT) - 1) / rate);
+    return Math.max(0, balance);
+  }
+
   if (type === "Serielån") {
     const clampedT = Math.min(t, years);
     const principalPortion = amount / years;
@@ -8421,7 +8742,7 @@ function calculateAnnualDebtPayment(debt) {
   } else if (type === "Serielån") {
     return P / n + (P * r) / 2; // Gjennomsnittlig avdrag + gjennomsnittlig renter
   } else {
-    // Annuitetslån
+    // Annuitetslån, Ballonglån (ordinære år) m.m.
     if (r === 0) return P / n;
     return P * (r / (1 - Math.pow(1 + r, -n)));
   }
@@ -8489,7 +8810,17 @@ function createDebtRow(debt) {
   const typeWrap = document.createElement("div");
   typeWrap.className = "select";
   const select = document.createElement("select");
-  ["Annuitetslån", "Serielån", "Avdragsfrihet", "Avdragsfrihet 3 år", "Avdragsfrihet 5 år", "Avdragsfrihet 10 år"].forEach((t) => {
+  [
+    "Annuitetslån",
+    "Serielån",
+    "Avdragsfrihet",
+    "Avdragsfrihet 3 år",
+    "Avdragsfrihet 5 år",
+    "Avdragsfrihet 10 år",
+    "Ballonglån 3 år",
+    "Ballonglån 5 år",
+    "Ballonglån 10 år"
+  ].forEach((t) => {
     const opt = document.createElement("option");
     opt.value = t;
     opt.textContent = t.toUpperCase();
@@ -8655,9 +8986,37 @@ function renderDebtModule(root) {
   updateTopSummaries();
 }
 
+/** Fast visningsrekkefølge for standard inntektslinjer (øvrige sorteres til slutt, alfabetisk). */
+function normalizeIncomeNameKey(name) {
+  return String(name || "").trim().normalize("NFC").toUpperCase();
+}
+
+const INCOME_DISPLAY_ORDER = new Map([
+  ["LØNNSINNTEKT", 0],
+  ["UTBYTTER", 1],
+  ["PENSJONSINNTEKT", 2],
+  ["SKATTEFRIE INNTEKTER", 3],
+  ["INNTEKTSSKATT", 4],
+  ["UTBYTTESKATT", 5],
+  ["FORMUESSKATT", 6],
+  ["ÅRLIGE KOSTNADER", 7]
+]);
+
+function reorderIncomesForDisplay() {
+  const list = AppState.incomes;
+  if (!Array.isArray(list) || list.length < 2) return;
+  list.sort((a, b) => {
+    const oa = INCOME_DISPLAY_ORDER.get(normalizeIncomeNameKey(a.name)) ?? 100;
+    const ob = INCOME_DISPLAY_ORDER.get(normalizeIncomeNameKey(b.name)) ?? 100;
+    if (oa !== ob) return oa - ob;
+    return normalizeIncomeNameKey(a.name).localeCompare(normalizeIncomeNameKey(b.name), "nb");
+  });
+}
+
 // --- Inntekter modul ---
 function renderIncomeModule(root) {
   root.innerHTML = "";
+  reorderIncomesForDisplay();
 
   const panel = document.createElement("div");
   panel.className = "panel panel-income";
@@ -9650,6 +10009,10 @@ function generateOutputText() {
         lines.push(`${counter}: ${assetName} - Entity: ${orIngenData(asset.entity)}`);
         counter++;
       }
+      if (asset.maalOgBehovPortfolio === true) {
+        lines.push(`${counter}: ${assetName} - MaalOgBehovPortefølje: ja`);
+        counter++;
+      }
     }
   });
   
@@ -9663,7 +10026,16 @@ function generateOutputText() {
     const debtParams = debt.debtParams || AppState.debtParams;
     lines.push(`${counter}: ${debtName} - Lånetype: ${orIngenData(debtParams.type) || "Annuitetslån"}`);
     counter++;
-    
+
+    let exportStartY = debtParams.startYear;
+    if (exportStartY == null || exportStartY === "" || !Number.isFinite(Number(exportStartY))) {
+      exportStartY = 2026;
+    } else {
+      exportStartY = Math.min(2035, Math.max(2026, Number(exportStartY)));
+    }
+    lines.push(`${counter}: ${debtName} - Startår: ${exportStartY}`);
+    counter++;
+
     // Lånetid (år) - slider
     lines.push(`${counter}: ${debtName} - Lånetid: ${debtParams.years || 25} år`);
     counter++;
@@ -9941,6 +10313,26 @@ function applyParsedStrukturFamiliediagram(data) {
   }
 }
 
+/** Samme verdier som i gjeld-modulens lånetype-nedtrekk (case-insensitiv ved import). */
+function normalizeDebtLanetypeFromInput(raw) {
+  const t = String(raw ?? "").trim();
+  if (!t) return "Annuitetslån";
+  const canon = [
+    "Annuitetslån",
+    "Serielån",
+    "Avdragsfrihet",
+    "Avdragsfrihet 3 år",
+    "Avdragsfrihet 5 år",
+    "Avdragsfrihet 10 år",
+    "Ballonglån 3 år",
+    "Ballonglån 5 år",
+    "Ballonglån 10 år"
+  ];
+  const lower = t.toLowerCase();
+  const hit = canon.find((c) => c.toLowerCase() === lower);
+  return hit || t;
+}
+
 function parseInputText(text) {
   if (!text || !text.trim()) return false;
   
@@ -9956,6 +10348,7 @@ function parseInputText(text) {
   const debtMap = new Map(); // Map for å holde styr på gjeldsposter
   const assetTypeMap = new Map(); // Map for å holde styr på assetType for hver eiendel
   const entityMap = new Map(); // Map for å holde styr på entity-tilordning for hver eiendel
+  const maalOgBehovPortfolioMap = new Map(); // Mål og behov-portefølje-rad (uavhengig av visningsnavn)
   const structureData = {}; // Struktur-data fra input
   const fdPartnersIn = [];
   const fdChildrenIn = [];
@@ -10066,14 +10459,30 @@ function parseInputText(text) {
     // Gjeld parametere
     if (name.includes(" - Lånetype")) {
       const debtName = name.replace(" - Lånetype", "");
+      const normalizedType = normalizeDebtLanetypeFromInput(valueStr);
       if (!debtMap.has(debtName)) {
         debtMap.set(debtName, {
           name: debtName,
           amount: 0,
-          debtParams: { type: valueStr.trim(), years: 25, rate: 0.04 }
+          debtParams: { type: normalizedType, years: 25, rate: 0.04 }
         });
       } else {
-        debtMap.get(debtName).debtParams.type = valueStr.trim();
+        debtMap.get(debtName).debtParams.type = normalizedType;
+      }
+    } else if (name.includes(" - Startår")) {
+      const debtName = name.replace(" - Startår", "");
+      const startY = parseInt(String(valueStr).trim(), 10);
+      if (!isNaN(startY)) {
+        const clamped = Math.min(2035, Math.max(2026, startY));
+        if (!debtMap.has(debtName)) {
+          debtMap.set(debtName, {
+            name: debtName,
+            amount: 0,
+            debtParams: { type: "Annuitetslån", years: 25, rate: 0.04, startYear: clamped }
+          });
+        } else {
+          debtMap.get(debtName).debtParams.startYear = clamped;
+        }
       }
     } else if (name.includes(" - Lånetid")) {
       const debtName = name.replace(" - Lånetid", "");
@@ -10122,6 +10531,9 @@ function parseInputText(text) {
       // Lagre entity-tilordning for eiendel
       const assetName = name.replace(" - Entity", "");
       entityMap.set(assetName, valueStr.trim());
+    } else if (name.includes(" - MaalOgBehovPortefølje")) {
+      const assetName = name.replace(" - MaalOgBehovPortefølje", "");
+      maalOgBehovPortfolioMap.set(assetName, /^(ja|yes|true|1)$/i.test(String(valueStr).trim()));
     } else if (name.startsWith("Struktur - ")) {
       // Parse struktur-data
       // Håndter alle Privat-bokser (Privat navn, Privat II navn, Privat III navn, osv.)
@@ -10234,6 +10646,9 @@ function parseInputText(text) {
           asset.assetType = "tomt";
         } else if (/^EIENDOM$/i.test(a.name) && !/FAST/i.test(a.name)) {
           asset.assetType = "eiendom";
+        } else if (/INVESTERINGER\s*MÅL\s*OG\s*BEHOV/i.test(upperName)) {
+          asset.assetType = "investeringer";
+          asset.maalOgBehovPortfolio = true;
         } else if (/^INVESTERINGER$/i.test(upperName)) {
           asset.assetType = "investeringer";
         } else if (/^BIL\/BÅT$/i.test(upperName)) {
@@ -10245,6 +10660,11 @@ function parseInputText(text) {
       // Legg til entity-tilordning hvis den er satt
       if (entityMap.has(a.name)) {
         asset.entity = entityMap.get(a.name);
+      }
+      if (maalOgBehovPortfolioMap.has(a.name)) {
+        asset.maalOgBehovPortfolio = maalOgBehovPortfolioMap.get(a.name) === true;
+      } else if (/investeringer\s*mål\s*og\s*behov/i.test(String(asset.name || ""))) {
+        asset.maalOgBehovPortfolio = true;
       }
       return asset;
     });
@@ -10265,6 +10685,7 @@ function parseInputText(text) {
       name: i.name,
       amount: i.amount
     }));
+    reorderIncomesForDisplay();
     const wealthTaxAfterRestore = AppState.incomes.find(i => i.name === "Formuesskatt");
     if (wealthTaxAfterRestore) setFormuesskattForMaalOgBehov(wealthTaxAfterRestore.amount);
   }
@@ -10434,6 +10855,18 @@ window.TKontoRefreshAfterInputLoad = function () {
     }
   } catch (e) {}
 };
+
+(function initMaalOgBehovNettoPrognosisListener() {
+  if (typeof window === "undefined" || window.__tkontoMoBNettoPrognosisListener) return;
+  window.__tkontoMoBNettoPrognosisListener = true;
+  window.addEventListener("maal-og-behov-prognosis-exported", function () {
+    try {
+      syncSkattefrieMoBAmountFromToggle();
+      if (typeof updateTopSummaries === "function") updateTopSummaries();
+      refreshTkontoViewsAfterMoBPrognosis();
+    } catch (e) {}
+  });
+})();
 
 function parseValue(str) {
   if (!str) return 0;

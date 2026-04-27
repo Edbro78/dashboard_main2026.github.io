@@ -133,8 +133,9 @@
       <div class="modal-panel" role="document">
         <button class="modal-close" aria-label="Lukk" data-close="true">×</button>
         <h3 id="input-title">Input</h3>
+        <p class="modal-hint">Samme format som Output: for hver gjeldspost følger beløp med linjer for lånetype (Annuitetslån, Serielån, avdragsfrihet, Ballonglån 3/5/10 år), startår (2026–2035), lånetid og rente.</p>
         <div class="output-editor">
-          <textarea id="input-text" class="output-textarea" aria-label="Lim inn input data" spellcheck="false" placeholder="Lim inn listen fra Output her..."></textarea>
+          <textarea id="input-text" class="output-textarea" aria-label="Lim inn input data" spellcheck="false" placeholder="Lim inn listen fra Output her (gjeld inkl. startår og lånetype)…"></textarea>
           <button id="apply-input" class="copy-btn" type="button">
             <span class="copy-icon" aria-hidden="true">✓</span>
             <span class="copy-label">Bruk</span>
@@ -149,6 +150,7 @@
       <div class="modal-panel" role="document">
         <button class="modal-close" aria-label="Lukk" data-close="true">×</button>
         <h3 id="output-title">Output</h3>
+        <p class="modal-hint">Gjeld listes per post med lånetype (inkl. Ballonglån 3/5/10 år), startår, lånetid og rente – bruk samme tekst i Input for å gjenopprette.</p>
         <div class="output-editor">
           <textarea id="output-text" class="output-textarea" readonly aria-label="Generert output" spellcheck="false"></textarea>
           <button id="copy-output" class="copy-btn" type="button">

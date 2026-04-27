@@ -312,7 +312,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
     const labels = [];
     const data = {
         hovedstol: [], avkastning: [], sparing: [], nettoUtbetaling: [],
-        renteskatt: [], event_total: [], skatt2: [],
+        renteskatt: [], event_total: [], eventNegativeOutflow: [], skatt2: [],
         annualStockPercentages: [], annualBondPercentages: [], investedCapitalHistory: []
     };
 
@@ -353,6 +353,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
     data.avkastning.push(0);
     data.sparing.push(0);
     data.event_total.push(0);
+    data.eventNegativeOutflow.push(0);
     data.nettoUtbetaling.push(0);
     data.skatt2.push(0);
     data.renteskatt.push(0);
@@ -394,10 +395,14 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         let totalInflow = isInvestmentYear ? state.annualSavings : 0;
         let eventWithdrawal = 0;
         let netEventAmountForChart = 0;
+        let negativeEventBelopSum = 0; // Kun negative hendelser (utbetaling fra portefølje)
 
         state.events.forEach(event => {
             if (year >= event.startAar && year <= event.sluttAar) {
                 netEventAmountForChart += event.belop;
+                if (event.belop < 0) {
+                    negativeEventBelopSum += event.belop;
+                }
                 if (event.belop > 0) {
                     totalInflow += event.belop;
                 } else {
@@ -584,10 +589,9 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                
                 if (taxesEnabled) {
                     if (state.investorType === 'AS') {
-                        // AS: ((uttak - innskutt) × 0,3784). Skatt = skattepliktig beløp × rate (kaskade ved betaling)
-                        const stockNet = remainingDesiredNet * stockShare;
+                        // AS: Hele skattepliktig uttak beskattes som utbytte, uavhengig av aksje-/renteandel.
                         const bondNet = remainingDesiredNet * bondShare;
-                        const dividendTax = stockNet * taxRate;
+                        const dividendTax = remainingDesiredNet * taxRate;
                         let bondRealizationTax = 0;
                         if (state.deferredInterestTax === true && bondShare > 0) {
                             bondRealizationTax = realizeDeferredBondReturn(bondNet) * bondTaxRate;
@@ -720,10 +724,10 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
             currentPortfolioValue -= realizedBondTaxThisYear;
         }
 
-        // Innskutt kapital: (forrige år - uttak) × (1 + skjermingsrente) + innskudd
+        // Innskutt kapital: (forrige år × (1 + skjermingsrente) - uttak) + innskudd
         // Uttak = Hendelser + Netto utbetaling + Skatt på hendelser
         const totalUttak = uttakFromNetto + uttakFromHendelser + uttakFromGoalSeekFinalDrain + uttakFromSkattHendelser;
-        taxFreeCapitalRemaining = Math.max(0, (prevYearInvestedCapital - totalUttak) * (1 + shieldingRate));
+        taxFreeCapitalRemaining = Math.max(0, (prevYearInvestedCapital * (1 + shieldingRate)) - totalUttak);
         if (state.investorType === 'Privat') {
             taxFreeCapitalRemaining += savingsPart + addToInvestedFromEvents * portfolio1StockPctForCap;
         } else {
@@ -761,13 +765,14 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         data.avkastning.push(Math.round(totalNetReturnBeforeTax));
         data.sparing.push(Math.round(isInvestmentYear ? state.annualSavings : 0));
         data.event_total.push(Math.round(netEventAmountForChart));
+        data.eventNegativeOutflow.push(Math.round(negativeEventBelopSum));
         data.nettoUtbetaling.push(Math.round(-annualNetWithdrawalAmountForChart));
         data.skatt2.push(Math.round(-(taxesEnabled ? eventTaxToPayThisYear : 0))); // Only event tax paid THIS year
         const bondTaxPaidThisYear = taxesEnabled ? (bondTaxToPayThisYear + annualBondTaxAmount + realizedBondTaxThisYear) : 0; // Løpende skatt på årets renter + realisert renteavkastning
         data.renteskatt.push(Math.round(-bondTaxPaidThisYear));
         data.annualStockPercentages.push(Math.round(annualStockPercentage));
         data.annualBondPercentages.push(Math.round(annualBondPercentage));
-        // Innskutt kapital sluttsum: (forrige - uttak) × (1+skjerming) + innskudd
+        // Innskutt kapital sluttsum: (forrige × (1+skjerming) - uttak) + innskudd
         data.investedCapitalHistory.push(Math.round(taxFreeCapitalRemaining));
     }
 
@@ -2001,7 +2006,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto. T-konto gjeld per post: beløp, lånetype (Annuitetslån, Serielån, avdragsfrihetsvarianter, Ballonglån 3/5/10 år), startår (2026–2035), lånetid og rente – se nummerert liste i T-konto-Output.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -2017,7 +2022,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto, Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
+                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto (struktur, eiendeler, gjeld med lånetype inkl. ballonglån, startår, lånetid og rente, inntekter, forventninger, ev. kontantstrøm-justering), Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
@@ -3415,12 +3420,27 @@ function App() {
         const sparing = d.sparing || [];
         const event_total = d.event_total || [];
         const nettoUtbetaling = d.nettoUtbetaling || [];
+        const eventNegativeOutflow = d.eventNegativeOutflow || [];
         const skatt2 = d.skatt2 || [];
         const renteskatt = d.renteskatt || [];
         const totalPerYear = hovedstol.map((h, i) =>
             Math.round((h || 0) + (avkastning[i] || 0) + (sparing[i] || 0) + (event_total[i] || 0) + (nettoUtbetaling[i] || 0) + (skatt2[i] || 0) + (renteskatt[i] || 0))
         );
-        try { localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(totalPerYear)); } catch (e) {}
+        // T-konto: netto utbetaling + kun negative hendelser (utbetaling), som positive beløp – samme indeks [start, 2026, …]
+        const nettoTilTKontoPerYear = hovedstol.map((_, i) => {
+            const n = Number(nettoUtbetaling[i]) || 0;
+            const en = Number(eventNegativeOutflow[i]) || 0; // sum(belop < 0), alltid ≤ 0
+            return Math.round(-n + (-en));
+        });
+        try {
+            localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(totalPerYear));
+            localStorage.setItem('maalOgBehovNettoUtbetalingTilTKontoPerYear', JSON.stringify(nettoTilTKontoPerYear));
+        } catch (e) {}
+        try {
+            if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+                window.dispatchEvent(new CustomEvent('maal-og-behov-prognosis-exported'));
+            }
+        } catch (e) {}
     }, [prognosis]);
 
 // --- Output generation & clipboard helpers --- //
@@ -4265,7 +4285,25 @@ return () => document.removeEventListener('keydown', onKey);
         datasets: [{ label: 'Innskutt kapital', data: prognosis.data.investedCapitalHistory, backgroundColor: CHART_COLORS.innskutt_kapital, borderColor: CHART_COLORS.innskutt_kapital, borderRadius: 4, borderSkipped: false }],
     };
 
-    const capitalChartOptions = { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, stacked: false } }, plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: '#333333' } } } };
+    const capitalChartOptions = {
+        ...chartOptions,
+        scales: {
+            ...chartOptions.scales,
+            y: { ...chartOptions.scales.y, stacked: false }
+        },
+        plugins: {
+            ...chartOptions.plugins,
+            legend: { display: true, labels: { color: '#333333' } },
+            tooltip: {
+                ...chartOptions.plugins.tooltip,
+                callbacks: {
+                    title: () => '',
+                    label: (context) => formatCurrency(context.parsed?.y ?? context.raw ?? 0),
+                    footer: () => ''
+                }
+            }
+        }
+    };
    
     // --- Stacked bar for ALL years: Aksjer, Aksjeavkastning, Renter, Renteavkastning ---
     const labelsAllYears = useMemo(() => prognosis.labels, [prognosis.labels]); // Include 'start'

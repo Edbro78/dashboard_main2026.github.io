@@ -310,6 +310,12 @@ p { /* Avsnitt */
   margin-bottom: 12px;
   color: var(--GRAY_TEXT_DARK);
 }
+.modal-panel .modal-hint {
+  margin: -4px 0 12px 0;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--GRAY_TEXT_SECONDARY);
+}
 .modal-close {
   position: absolute;
   right: 12px;
@@ -1492,6 +1498,11 @@ p { /* Avsnitt */
   font-weight: var(--weight-medium);
   color: var(--GRAY_TEXT_DARK);
   text-transform: none;
+}
+
+.income-pension-toggle-label.income-pension-toggle-label--has-tooltip {
+  cursor: help;
+  border-bottom: 1px dotted rgba(0, 0, 0, 0.28);
 }
 
 .income-pension-toggle-state {
