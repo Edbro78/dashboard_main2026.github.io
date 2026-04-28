@@ -35,8 +35,9 @@ const AppState = {
   incomes: [
     { id: genId(), name: "LØNNSINNTEKT", amount: 1500000 },
     { id: genId(), name: "UTBYTTER", amount: 0 },
-    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
     { id: genId(), name: "Skattefrie inntekter", amount: 0 },
+    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
+    { id: genId(), name: "Utbetalinger fra Mål og behov", amount: 0, _isMoBUtbetalingRow: true, _maalOgBehovUtbetalingToggleUI: true },
     { id: genId(), name: "Inntektsskatt", amount: 0 },
     { id: genId(), name: "Utbytteskatt", amount: 0 },
     { id: genId(), name: "Formuesskatt", amount: 0 },
@@ -422,8 +423,7 @@ function initTKontoDashboard() {
     { key: "Inntekter" },
     { key: "Kontantstrøm" },
     { key: "T-Konto" },
-    { key: "Risikoevne" },
-    { key: "Analyse" }
+    { key: "Risikoevne" }
   ];
   function renderStepper(currentKey) {
     if (!stepperList) return;
@@ -3107,7 +3107,7 @@ function renderCashflowTreemap(svg, x, y, width, height, svgNS, yearVal = 2026) 
       });
       totalCosts += adjustedAmount;
     } else {
-      const isSkattefrieMoBRad = /^SKATTEFRIE\s*INNTEKTER$/i.test(String(item.name || "").normalize("NFC").trim());
+      const isSkattefrieMoBRad = isMoBUtbetalingIncomeRow(item);
       incomeItems.push({
         id: item.id || String(Math.random()),
         label: isSkattefrieMoBRad
@@ -5301,16 +5301,10 @@ function renderWaterfallModule(root) {
     // Clear dynamic content except styles/panel (first three nodes: style, bg, panel)
     while (svg.childNodes.length > 3) svg.removeChild(svg.lastChild);
 
-    const { costs, net, wage, pension, dividends, otherIncome } = computeAnnualCashflowBreakdownForYear(
+    const { costs, net, wage, pension, dividends, skattefrieIncome, moBUtbetalingIncome, otherIncome } = computeAnnualCashflowBreakdownForYear(
       waterfallChartSelectedYear,
       { kontantstromStartAlignsDebtWith2026: true }
     );
-
-    const skattefrieMoBItem = (AppState.incomes || []).find((it) =>
-      /^SKATTEFRIE\s*INNTEKTER$/i.test(String(it && it.name ? it.name : "").normalize("NFC").trim())
-    );
-    const otherIncomeUsesMoBLabel =
-      otherIncome > 0 && skattefrieMoBItem && skattefrieMoBItem._maalOgBehovUtbetalingToggleUI === true;
 
     const padX = 80; const padTop = 70; const padBottom = net < 0 ? 96 : 64;
     const chartW = vbW - padX * 2; const chartH = vbH - padTop - padBottom;
@@ -5319,17 +5313,17 @@ function renderWaterfallModule(root) {
     if (wage > 0) steps.push({ type: "up", key: "Lønnsinntekt", value: wage });
     if (pension > 0) steps.push({ type: "up", key: "Pensjonsinntekt", value: pension });
     if (dividends > 0) steps.push({ type: "up", key: "Utbytter", value: dividends });
+    if (skattefrieIncome > 0) steps.push({ type: "up", key: "Skattefrie inntekter", value: skattefrieIncome });
+    if (moBUtbetalingIncome > 0) {
+      steps.push({
+        type: "up",
+        key: "Utbetalinger fra mål og behov",
+        labelLines: CASHFLOW_MOB_NETTO_LABEL_LINES,
+        value: moBUtbetalingIncome
+      });
+    }
     if (otherIncome > 0) {
-      if (otherIncomeUsesMoBLabel) {
-        steps.push({
-          type: "up",
-          key: "Utbetalinger fra mål og behov",
-          labelLines: CASHFLOW_MOB_NETTO_LABEL_LINES,
-          value: otherIncome
-        });
-      } else {
-        steps.push({ type: "up", key: "Annen inntekt", value: otherIncome });
-      }
+      steps.push({ type: "up", key: "Annen inntekt", value: otherIncome });
     }
     costs.forEach(c => { if (c.value > 0) steps.push({ type: "down", key: c.key, value: -c.value }); });
     steps.push({ type: "end", key: "Årlig kontantstrøm", value: net });
@@ -5338,12 +5332,12 @@ function renderWaterfallModule(root) {
     if (wage > 0) tempSteps.push({ type: "up", value: wage, key: "Lønnsinntekt" });
     if (pension > 0) tempSteps.push({ type: "up", value: pension, key: "Pensjonsinntekt" });
     if (dividends > 0) tempSteps.push({ type: "up", value: dividends, key: "Utbytter" });
+    if (skattefrieIncome > 0) tempSteps.push({ type: "up", value: skattefrieIncome, key: "Skattefrie inntekter" });
+    if (moBUtbetalingIncome > 0) {
+      tempSteps.push({ type: "up", value: moBUtbetalingIncome, key: "Utbetalinger fra mål og behov" });
+    }
     if (otherIncome > 0) {
-      tempSteps.push({
-        type: "up",
-        value: otherIncome,
-        key: otherIncomeUsesMoBLabel ? "Utbetalinger fra mål og behov" : "Annen inntekt"
-      });
+      tempSteps.push({ type: "up", value: otherIncome, key: "Annen inntekt" });
     }
     (costs || []).forEach(c => { if (c.value > 0) tempSteps.push({ type: "down", value: -c.value, key: c.key }); });
     let lvl = 0; const levels = [0];
@@ -5472,6 +5466,8 @@ function aggregateCashflowBase() {
   let wage = 0;
   let pension = 0;
   let dividends = 0;
+  let skattefrieIncome = 0;
+  let moBUtbetalingIncome = 0;
   let otherIncome = 0;
   let annualTax = 0;
   let annualCosts = 0;
@@ -5481,7 +5477,7 @@ function aggregateCashflowBase() {
   incomeItems.forEach((item) => {
     const name = upper(item.name);
     let raw = Number(item.amount) || 0;
-    if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+    if (isMoBUtbetalingIncomeRow(item) && item._maalOgBehovUtbetalingToggleUI === true) {
       raw = getMaalOgBehovNettoUtbetalingForYear(2026);
     }
     if (pen.pensionModeActive) {
@@ -5509,6 +5505,8 @@ function aggregateCashflowBase() {
         if (/PENSJON/.test(name)) pension += amount;
         else if (/L[ØO]NN/.test(name)) wage += amount;
         else if (/UTBYT/.test(name)) dividends += amount;
+        else if (isMoBUtbetalingIncomeRow(item)) moBUtbetalingIncome += amount;
+        else if (/^SKATTEFRIE\s*INNTEKTER$/.test(name)) skattefrieIncome += amount;
         else otherIncome += amount;
       }
     }
@@ -5518,6 +5516,8 @@ function aggregateCashflowBase() {
     wage,
     pension,
     dividends,
+    skattefrieIncome,
+    moBUtbetalingIncome,
     otherIncome,
     incomeTotal,
     annualTax,
@@ -5546,6 +5546,8 @@ function aggregateCashflowBaseForYear(calendarYear) {
   let wage = 0;
   let pension = 0;
   let dividends = 0;
+  let skattefrieIncome = 0;
+  let moBUtbetalingIncome = 0;
   let otherIncome = 0;
   let annualTax = 0;
   let annualCosts = 0;
@@ -5555,7 +5557,7 @@ function aggregateCashflowBaseForYear(calendarYear) {
   incomeItems.forEach((item) => {
     const name = upper(item.name);
     let raw = Math.max(0, Number(item.amount) || 0);
-    if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+    if (isMoBUtbetalingIncomeRow(item) && item._maalOgBehovUtbetalingToggleUI === true) {
       raw = getMaalOgBehovNettoUtbetalingForYear(year);
     }
     if (pen.pensionModeActive) {
@@ -5566,7 +5568,7 @@ function aggregateCashflowBaseForYear(calendarYear) {
         else raw = pen.activeAnnualPension;
       }
     }
-    const useMoBNettoSkattefrie = /^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true;
+    const useMoBNettoSkattefrie = isMoBUtbetalingIncomeRow(item) && item._maalOgBehovUtbetalingToggleUI === true;
     const shouldKeepNominal = postRetirementPen && /PENSJON/.test(name);
     const amount = shouldKeepNominal || useMoBNettoSkattefrie ? raw : raw * inflationFactor;
     if (/SKATT/.test(name) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
@@ -5594,6 +5596,8 @@ function aggregateCashflowBaseForYear(calendarYear) {
         if (/PENSJON/.test(name)) pension += amount;
         else if (/L[ØO]NN/.test(name)) wage += amount;
         else if (/UTBYT/.test(name)) dividends += amount;
+        else if (isMoBUtbetalingIncomeRow(item)) moBUtbetalingIncome += amount;
+        else if (/^SKATTEFRIE\s*INNTEKTER$/.test(name)) skattefrieIncome += amount;
         else otherIncome += amount;
       }
     }
@@ -5603,6 +5607,8 @@ function aggregateCashflowBaseForYear(calendarYear) {
     wage,
     pension,
     dividends,
+    skattefrieIncome,
+    moBUtbetalingIncome,
     otherIncome,
     incomeTotal,
     annualTax,
@@ -5647,6 +5653,8 @@ function computeAnnualCashflowBreakdownForYear(calendarYear, options) {
     wage: base.wage,
     pension: base.pension,
     dividends: base.dividends,
+    skattefrieIncome: base.skattefrieIncome || 0,
+    moBUtbetalingIncome: base.moBUtbetalingIncome || 0,
     otherIncome: base.otherIncome,
     totalIncome: base.incomeTotal,
     annualTax: base.annualTax,
@@ -5875,7 +5883,7 @@ function getCashflowForecastNetForYear(yearVal) {
     incomes.forEach((item) => {
       const name = upper(item.name);
       let baseAmount = Math.max(0, Number(item.amount) || 0);
-      if (/^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true) {
+      if (isMoBUtbetalingIncomeRow(item) && item._maalOgBehovUtbetalingToggleUI === true) {
         baseAmount = getMaalOgBehovNettoUtbetalingForYear(Number(yearVal) || 2026);
       }
 
@@ -5906,7 +5914,7 @@ function getCashflowForecastNetForYear(yearVal) {
       if (baseAmount <= 0) return;
       // Når pensjonsmodus er aktiv etter pensjonsalder skal pensjon vises nominelt
       // (og skatt er allerede håndtert nominelt i blokken over).
-      const useMoBNettoSkattefrie = /^SKATTEFRIE\s*INNTEKTER$/.test(name) && item._maalOgBehovUtbetalingToggleUI === true;
+      const useMoBNettoSkattefrie = isMoBUtbetalingIncomeRow(item) && item._maalOgBehovUtbetalingToggleUI === true;
       const shouldKeepNominal = postRetirement && /PENSJON/.test(name);
       const adjustedAmount = shouldKeepNominal || useMoBNettoSkattefrie ? baseAmount : (baseAmount * inflationFactor);
       if ((/SKATT|KOSTNAD/.test(name)) && !/SKATTEFRIE\s*INNTEKTER/.test(name)) {
@@ -7914,10 +7922,50 @@ function getMaalOgBehovNettoUtbetalingForYear(calendarYear) {
 /** Vannrett etikett under søyler i Kontantstrøm-waterfall (to linjer, ikke «Skattefrie inntekter»). */
 const CASHFLOW_MOB_NETTO_LABEL_LINES = ["Utbetalinger fra", "mål og behov"];
 
-function syncSkattefrieMoBAmountFromToggle() {
-  const item = (AppState.incomes || []).find((x) =>
+function isMoBUtbetalingIncomeRow(item) {
+  if (!item || typeof item !== "object") return false;
+  if (item._isMoBUtbetalingRow === true) return true;
+  const name = String(item.name || "").normalize("NFC").trim();
+  // Bakoverkompatibilitet: eldre data brukte "Skattefrie inntekter" for denne raden.
+  return /^SKATTEFRIE\s*INNTEKTER$/i.test(name) && typeof item._maalOgBehovUtbetalingToggleUI === "boolean";
+}
+
+function ensureIncomeRows() {
+  if (!Array.isArray(AppState.incomes)) AppState.incomes = [];
+  const incomes = AppState.incomes;
+
+  let moBRow = incomes.find(isMoBUtbetalingIncomeRow);
+  if (!moBRow) {
+    moBRow = {
+      id: genId(),
+      name: "Utbetalinger fra Mål og behov",
+      amount: 0,
+      _isMoBUtbetalingRow: true,
+      _maalOgBehovUtbetalingToggleUI: true
+    };
+    incomes.push(moBRow);
+  } else {
+    moBRow._isMoBUtbetalingRow = true;
+    moBRow.name = "Utbetalinger fra Mål og behov";
+    if (typeof moBRow._maalOgBehovUtbetalingToggleUI !== "boolean") {
+      moBRow._maalOgBehovUtbetalingToggleUI = true;
+    }
+  }
+
+  const hasManualSkattefrie = incomes.some((x) =>
+    !isMoBUtbetalingIncomeRow(x) &&
     /^SKATTEFRIE\s*INNTEKTER$/i.test(String(x && x.name ? x.name : "").normalize("NFC").trim())
   );
+  if (!hasManualSkattefrie) {
+    const manualRow = { id: genId(), name: "Skattefrie inntekter", amount: 0 };
+    const utbytterIndex = incomes.findIndex((x) => /^UTBYTTER$/i.test(String(x && x.name ? x.name : "").trim()));
+    if (utbytterIndex >= 0) incomes.splice(utbytterIndex + 1, 0, manualRow);
+    else incomes.push(manualRow);
+  }
+}
+
+function syncSkattefrieMoBAmountFromToggle() {
+  const item = (AppState.incomes || []).find((x) => isMoBUtbetalingIncomeRow(x));
   if (!item) return;
   if (item._maalOgBehovUtbetalingToggleUI === true) {
     item.amount = getMaalOgBehovNettoUtbetalingForYear(2026);
@@ -8033,8 +8081,7 @@ function createItemRow(collectionName, item) {
     collectionName === "incomes" &&
     String(item.name || "").normalize("NFC").toUpperCase() === "PENSJONSINNTEKT";
   const isMoBUtbetalingDisplayNavnRow =
-    collectionName === "incomes" &&
-    /^SKATTEFRIE\s*INNTEKTER$/i.test(String(item.name || "").normalize("NFC").trim());
+    collectionName === "incomes" && isMoBUtbetalingIncomeRow(item);
   const incomeNameKey = collectionName === "incomes" ? normalizeIncomeNameKey(item.name) : "";
   const isIncomeStandardReadonly =
     collectionName === "incomes" &&
@@ -8042,6 +8089,7 @@ function createItemRow(collectionName, item) {
       incomeNameKey === "UTBYTTER" ||
       incomeNameKey === "PENSJONSINNTEKT" ||
       /^SKATTEFRIE\s*INNTEKTER$/.test(incomeNameKey) ||
+      incomeNameKey === "UTBETALINGER FRA MÅL OG BEHOV" ||
       incomeNameKey === "INNTEKTSSKATT" ||
       incomeNameKey === "UTBYTTESKATT" ||
       incomeNameKey === "FORMUESSKATT" ||
@@ -8243,8 +8291,12 @@ function createItemRow(collectionName, item) {
     range.min = "0";
     range.max = "50000000";
     range.step = "50000";
-    if (collectionName === "incomes" && incomeSliderUseFineStep(item.name, name.value)) {
-      range.step = "1";
+    if (collectionName === "incomes") {
+      range.step = isIncomeStandardReadonly
+        ? "10000"
+        : incomeSliderUseFineStep(item.name, name.value)
+        ? "1"
+        : "50000";
     }
 
     setRangeBounds = function () {
@@ -8259,13 +8311,19 @@ function createItemRow(collectionName, item) {
           range.max = "50000000";
         }
 
-        // Ikke la skatte-/kostnadsverdier "snappe" til nearest step ved re-render.
-        // Problemet ditt: f.eks. 378400 -> rundes til nærmeste 50k/100k når range.step = 50000.
-        range.step = incomeSliderUseFineStep(item.name, name.value) ? "1" : "50000";
+        // Standard inntektsrader (read-only navn) dras i 10 000-intervaler.
+        // Andre rader beholder fin/grov step-logikken.
+        range.step = isIncomeStandardReadonly
+          ? "10000"
+          : incomeSliderUseFineStep(item.name, name.value)
+          ? "1"
+          : "50000";
 
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
-          if (amount) amount.textContent = formatNOK(Number(range.value));
+          // Hold AppState synkronisert når verdi må clamps til max.
+          item.amount = Number(range.max);
+          if (amount) amount.textContent = formatNOK(item.amount);
         }
       } else if (collectionName === "assets") {
         const label = String(item.name || name.value || "").toUpperCase();
@@ -8287,7 +8345,9 @@ function createItemRow(collectionName, item) {
         else range.max = "50000000";
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
-          if (amount) amount.textContent = formatNOK(Number(range.value));
+          // Hold AppState synkronisert når verdi må clamps til max.
+          item.amount = Number(range.max);
+          if (amount) amount.textContent = formatNOK(item.amount);
         }
       }
     };
@@ -8296,7 +8356,11 @@ function createItemRow(collectionName, item) {
     range.value = String(item.amount || 0);
     if (Number(range.value) > Number(range.max)) range.value = range.max;
     if (collectionName === "incomes") setRangeBounds();
-    amount.textContent = formatNOK(Number(range.value));
+    // For eiendeler skal manuelt tastet beløp vises eksakt ved re-render.
+    // Slideren kan fortsatt være grov og overstyre ved dragging.
+    amount.textContent = formatNOK(
+      collectionName === "assets" ? Number(item.amount || 0) : Number(range.value)
+    );
 
     range.addEventListener("input", () => {
       const v = Number(range.value);
@@ -8435,6 +8499,11 @@ function createItemRow(collectionName, item) {
     } else if (isMoBUtbetalingDisplayNavnRow) {
       // Skattefrie inntekter vises som «Utbetalinger fra Mål og behov» – henter netto utbetaling per år fra Mål og behov når på.
       row.classList.add("asset-row--pension-toggle-only");
+
+      // Default skal være "Ja" med mindre bruker eksplisitt har slått den av.
+      if (typeof item._maalOgBehovUtbetalingToggleUI !== "boolean") {
+        item._maalOgBehovUtbetalingToggleUI = true;
+      }
 
       if (item._maalOgBehovUtbetalingToggleUI === true) {
         item.amount = getMaalOgBehovNettoUtbetalingForYear(2026);
@@ -8841,6 +8910,10 @@ function createDebtRow(debt) {
   startYearHint.className = "debt-startyear-hint";
   startYearHint.textContent =
     "(husk å sette inn en motpost til fremtidig gjeld i mål og behov)";
+  startYearHint.title =
+    "Setter du inn et annet startår enn 2026, betyr det at gjelden vil oppstå på et senere tidspunkt.\n\n" +
+    "Om gjelden f.eks skal starte i 2029, må denne gjelden ha en motpost. Pengene du låner må ende opp et sted.\n\n" +
+    "I modellen må denne kapitalen ende opp i mål og behov. Tar du opp et lån på 5 MNOK med start 2029, må du legge inn en hendelse i 2029 der det kommer inn 5 MNOK i porteføljen.";
   startYearLabel.appendChild(startYearHint);
   startYearLabel.style.marginTop = "16px";
   container.appendChild(startYearLabel);
@@ -8994,12 +9067,13 @@ function normalizeIncomeNameKey(name) {
 const INCOME_DISPLAY_ORDER = new Map([
   ["LØNNSINNTEKT", 0],
   ["UTBYTTER", 1],
-  ["PENSJONSINNTEKT", 2],
-  ["SKATTEFRIE INNTEKTER", 3],
-  ["INNTEKTSSKATT", 4],
-  ["UTBYTTESKATT", 5],
-  ["FORMUESSKATT", 6],
-  ["ÅRLIGE KOSTNADER", 7]
+  ["SKATTEFRIE INNTEKTER", 2],
+  ["PENSJONSINNTEKT", 3],
+  ["UTBETALINGER FRA MÅL OG BEHOV", 4],
+  ["INNTEKTSSKATT", 5],
+  ["UTBYTTESKATT", 6],
+  ["FORMUESSKATT", 7],
+  ["ÅRLIGE KOSTNADER", 8]
 ]);
 
 function reorderIncomesForDisplay() {
@@ -9016,6 +9090,7 @@ function reorderIncomesForDisplay() {
 // --- Inntekter modul ---
 function renderIncomeModule(root) {
   root.innerHTML = "";
+  ensureIncomeRows();
   reorderIncomesForDisplay();
 
   const panel = document.createElement("div");
@@ -10444,7 +10519,7 @@ function parseInputText(text) {
             amount: value,
             debtParams: { type: "Annuitetslån", years: 25, rate: 0.04 }
           });
-        } else if (/L[ØO]NN|PENSJON|UTBYT|SKATTEFRIE\s*INNTEKTER|SKATT|KOSTNAD/i.test(upperName)) {
+        } else if (/L[ØO]NN|PENSJON|UTBYT|SKATTEFRIE\s*INNTEKTER|UTBETALINGER?\s*FRA\s*M[ÅA]L\s*OG\s*BEHOV|SKATT|KOSTNAD/i.test(upperName)) {
           // Inntekt - sjekk først for å unngå feilklassifisering
           const value = parseValue(valueStr);
           incomes.push({ name: name, amount: value });

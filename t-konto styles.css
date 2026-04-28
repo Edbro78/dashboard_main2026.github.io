@@ -82,6 +82,7 @@ body {
   min-height: 100vh;
   display: grid;
   grid-template-columns: 260px 1fr;
+  background: var(--BG_OUTER);
 }
 
 /* Sidebar */
@@ -91,11 +92,24 @@ body {
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--BORDER_LIGHT);
+  margin-top: 16px;
+  margin-bottom: 24px;
+  height: calc(100% - 40px);
+  border-top: 1px solid var(--BORDER_LIGHT);
+  border-bottom: 1px solid var(--BORDER_LIGHT);
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
+  overflow: hidden;
 }
 
 .brand {
-  padding: var(--space-5) var(--space-4);
+  margin-top: 16px;
+  height: 64px;
+  padding: 0 var(--space-4);
   border-bottom: 1px solid var(--BORDER_LIGHT);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -114,6 +128,9 @@ body {
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-2);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
 }
 .nav-sep {
   height: 1px;
@@ -1487,10 +1504,12 @@ p { /* Avsnitt */
 }
 
 .income-pension-toggle-group {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  justify-content: flex-start;
 }
 
 .income-pension-toggle-label {
@@ -1498,6 +1517,8 @@ p { /* Avsnitt */
   font-weight: var(--weight-medium);
   color: var(--GRAY_TEXT_DARK);
   text-transform: none;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .income-pension-toggle-label.income-pension-toggle-label--has-tooltip {
@@ -1611,7 +1632,9 @@ p { /* Avsnitt */
   gap: calc(19px * 0.855);
 }
 .panel-income .asset-row {
-  padding: calc(11.5px * 0.855);
+  padding: calc(11.5px * 0.855 * 0.5);
+  min-height: calc(66px * 0.5);
+  box-sizing: border-box;
 }
 .panel-income .asset-col {
   gap: calc(6.5px * 0.855);
