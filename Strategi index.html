@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategisk Dashboard - Kapitalforvaltning</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* OKLCH Color Definitions */
+            --bg-color: oklch(0.96 0.00 0.0);
+            --tile-white: oklch(1.0 0.00 0.0);
+            --tile-cyan-20: oklch(0.92 0.03 210);
+            --coal: oklch(0.32 0.00 0.0);
+            --dark-blue: oklch(0.25 0.07 260);
+            --cyan-40: oklch(0.85 0.08 210);
+
+            /* Typography fallbacks for Whitney */
+            --font-main: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--coal);
+            font-family: var(--font-main);
+            font-size: 120%;
+            margin: 0;
+            -webkit-font-smoothing: antialiased;
+            zoom: 0.9;
+        }
+
+        /* Whitney Medium, STORE BOKSTAVER, 10% spacing */
+        .label-style {
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-size: 0.75rem;
+            color: var(--coal);
+            opacity: 0.7;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        /* Whitney Black for store tall */
+        .value-large {
+            font-weight: 900;
+            color: var(--dark-blue);
+            line-height: 1.1;
+        }
+
+        /* Whitney Book for brodtekst */
+        .body-text {
+            font-weight: 400;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            color: var(--coal);
+        }
+
+        .tile {
+            background: var(--tile-white);
+            border-radius: 4px;
+            padding: 2rem;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10);
+            transition: transform 0.2s ease;
+        }
+
+        .tile-cyan {
+            background: var(--tile-cyan-20);
+        }
+
+        .hero-tile {
+            background: linear-gradient(rgba(0, 35, 89, 0.7), rgba(0, 35, 89, 0.85)),
+                        url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=2000');
+            background-size: cover;
+            background-position: center;
+            color: white;
+        }
+
+        .hero-tile .label-style {
+            color: var(--cyan-40);
+            opacity: 1;
+        }
+
+        .hero-tile .value-large {
+            color: white;
+        }
+
+        /* Custom Button: Variant 2 Outline */
+        .btn-outline {
+            border: 1px solid var(--dark-blue);
+            color: var(--dark-blue);
+            padding: 0.75rem 1.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.2s ease;
+            display: inline-block;
+            margin-top: 1rem;
+        }
+
+        .btn-outline:hover {
+            background: var(--dark-blue);
+            color: white;
+        }
+
+        /* Donut Chart Simulation */
+        .donut-container {
+            position: relative;
+            width: 143px;
+            height: 143px;
+        }
+
+        .progress-ring__circle {
+            transition: stroke-dashoffset 0.35s;
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+        }
+
+        /* Timeline Styles */
+        .timeline-bar {
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            position: relative;
+            margin: 2rem 0;
+        }
+
+        .timeline-progress {
+            height: 100%;
+            background: var(--dark-blue);
+            border-radius: 2px;
+            width: 65%;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            top: -6px;
+            width: 16px;
+            height: 16px;
+            background: var(--dark-blue);
+            border: 3px solid white;
+            border-radius: 50%;
+            left: 65%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-8 md:p-16">
+
+    <!-- Dashboard Grid -->
+    <main class="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-min">
+
+        <!-- Mandat-flis (Hero) -->
+        <section class="tile hero-tile md:col-span-3 md:row-span-2 flex flex-col justify-end min-h-[400px]">
+            <span class="label-style">Mandat</span>
+            <h1 id="totalt-mandat-value" class="value-large text-5xl md:text-7xl mb-4">0 MNOK</h1>
+        </section>
+
+        <!-- Struktur-flis -->
+        <section class="tile flex flex-col justify-between">
+            <div>
+                <span class="label-style">Struktur</span>
+                <div class="mt-4 space-y-6">
+                    <div id="strategi-company-block">
+                        <h4 id="strategi-struktur-company" class="font-bold text-sm">Invest Holding AS</h4>
+                        <p class="body-text text-xs opacity-70">Kapitalen investeres igjennom eget AS.</p>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm">Privat portefolje</h4>
+                        <p class="body-text text-xs opacity-70">Investeres via Aksjesparekonto (ASK).</p>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-gray-50">
+                <span class="label-style text-[10px]">Status: Optimalisert</span>
+            </div>
+        </section>
+
+        <!-- Tidshorisont-flis -->
+        <section class="tile tile-cyan">
+            <span class="label-style">Tidshorisont</span>
+            <div class="mt-4">
+                <span id="strategi-tidshorisont-value" class="value-large text-4xl">0 år</span>
+                <div class="timeline-bar">
+                    <div class="timeline-progress"></div>
+                    <div class="timeline-marker"></div>
+                </div>
+                <div class="flex justify-between label-style text-[10px]">
+                    <span>I dag</span>
+                    <span id="strategi-end-year">2036</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Risikobudsjett-flis (Endret fra Fondseksponering) -->
+        <section class="tile md:col-span-2">
+            <span class="label-style">Risikobudsjett</span>
+            <div class="mt-6 flex flex-col sm:flex-row items-center sm:items-start space-y-8 sm:space-y-0 sm:space-x-12">
+                <!-- Donut -->
+                <div class="donut-container flex-shrink-0">
+                    <svg width="143" height="143">
+                        <circle class="text-gray-100" stroke="currentColor" stroke-width="10" fill="transparent" r="60.5" cx="71.5" cy="71.5" />
+                        <circle id="strategi-risk-ring" class="progress-ring__circle" stroke="var(--dark-blue)" stroke-width="10" stroke-dasharray="380.13" stroke-dashoffset="133.05" fill="transparent" r="60.5" cx="71.5" cy="71.5" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center">
+                        <span id="strategi-stock-pct-main" class="value-large text-[1.375rem]">65%</span>
+                        <span class="label-style !mb-0 text-[10px]">Aksjefond</span>
+                    </div>
+                </div>
+
+                <!-- Liste over allokering -->
+                <div class="flex-grow w-full space-y-6">
+                    <div class="flex justify-between items-end border-b border-gray-100 pb-2">
+                        <span class="body-text font-medium text-lg">Aksjefond</span>
+                        <span id="strategi-stock-pct-row" class="value-large text-2xl">65%</span>
+                    </div>
+                    <div class="flex justify-between items-end border-b border-gray-100 pb-2">
+                        <span class="body-text font-medium text-lg">Rentefond</span>
+                        <span id="strategi-bond-pct-row" class="value-large text-2xl">35%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hendelses-flis -->
+        <section class="tile md:col-span-2">
+            <span class="label-style">Hendelser</span>
+            <div id="strategi-hendelser-list" class="mt-6 space-y-8"></div>
+        </section>
+
+    </main>
+
+<script>
+    (function () {
+        function formatMandat(value) {
+            const n = Number(value) || 0;
+            const mnok = n / 1000000;
+            if (mnok >= 10) return Math.round(mnok) + ' MNOK';
+            return mnok.toFixed(1).replace('.', ',') + ' MNOK';
+        }
+
+        function updateTotaltMandat() {
+            var el = document.getElementById('totalt-mandat-value');
+            if (!el) return;
+            var raw = localStorage.getItem('maalOgBehovSum2026');
+            el.textContent = formatMandat(raw);
+        }
+
+        function resolveTKontoWindow() {
+            try {
+                if (!window.parent) return null;
+
+                // T-konto er normalt lastet i samme parent-vindu (ikke iframe).
+                if (typeof window.parent.TKontoGenerateOutputText === 'function' ||
+                    typeof window.parent.getTKontoStrategiDisplayName === 'function') {
+                    return window.parent;
+                }
+
+                if (!window.parent.document) return null;
+                var frames = window.parent.document.querySelectorAll('iframe');
+                for (var i = 0; i < frames.length; i++) {
+                    var frame = frames[i];
+                    var src = decodeURIComponent(String(frame.getAttribute('src') || '')).toLowerCase();
+                    if (src.indexOf('t-konto index.html') !== -1 || src.indexOf('t-konto') !== -1) {
+                        return frame.contentWindow || null;
+                    }
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        function updateSelskapsnavn() {
+            var heroEl = document.getElementById('strategi-selskapsnavn');
+            var strukturEl = document.getElementById('strategi-struktur-company');
+            var companyBlockEl = document.getElementById('strategi-company-block');
+            if (!heroEl && !strukturEl && !companyBlockEl) return;
+            try {
+                var defaultCompanyName = 'Invest Holding AS';
+                var tkWin = resolveTKontoWindow();
+                var name = defaultCompanyName;
+                var companyName = '';
+                var hasCompany = true;
+
+                // Hvis T-konto ikke er klar enda, behold default firmanavn og vis blokken.
+                if (!tkWin) {
+                    if (heroEl) heroEl.textContent = name;
+                    if (strukturEl) strukturEl.textContent = name;
+                    if (companyBlockEl) companyBlockEl.style.display = '';
+                    return;
+                }
+
+                // 1) Les direkte fra T-konto-output (fanger live navn fra Familieforhold-organisering)
+                if (typeof tkWin.TKontoGenerateOutputText === 'function') {
+                    try {
+                        var out = String(tkWin.TKontoGenerateOutputText() || '');
+                        var mCompany = out.match(/Struktur - Familiediagram selskap:\s*[^\t\r\n]*\t([^\t\r\n]+)/i);
+                        if (mCompany && mCompany[1]) {
+                            companyName = String(mCompany[1]).trim();
+                            if (companyName) {
+                                hasCompany = true;
+                                name = companyName;
+                            }
+                        }
+                        if (!hasCompany) {
+                            var h1Active = /Struktur - Holding AS 1 aktiv:\s*ja/i.test(out);
+                            var mHolding1 = out.match(/Struktur - Holding AS 1 navn:\s*([^\r\n]+)/i);
+                            if (h1Active && mHolding1 && mHolding1[1]) {
+                                companyName = String(mHolding1[1]).trim();
+                                if (companyName) {
+                                    hasCompany = true;
+                                    name = companyName;
+                                }
+                            }
+                        }
+                        if (!hasCompany) {
+                            var h2Active = /Struktur - Holding AS 2 aktiv:\s*ja/i.test(out);
+                            var mHolding2 = out.match(/Struktur - Holding AS 2 navn:\s*([^\r\n]+)/i);
+                            if (h2Active && mHolding2 && mHolding2[1]) {
+                                companyName = String(mHolding2[1]).trim();
+                                if (companyName) {
+                                    hasCompany = true;
+                                    name = companyName;
+                                }
+                            }
+                        }
+                    } catch (e) {}
+                }
+
+                // 2) Fallback til eksisterende hjelpefunksjon i T-konto
+                if (!name && typeof tkWin.getTKontoStrategiDisplayName === 'function') {
+                    name = String(tkWin.getTKontoStrategiDisplayName() || '').trim();
+                }
+
+                if (!name) name = defaultCompanyName;
+                if (heroEl) heroEl.textContent = name;
+                if (strukturEl) strukturEl.textContent = name;
+                if (companyBlockEl) companyBlockEl.style.display = '';
+            } catch (e) {}
+        }
+
+        function updateTidshorisont() {
+            var el = document.getElementById('strategi-tidshorisont-value');
+            var endYearEl = document.getElementById('strategi-end-year');
+            if (!el) return;
+            try {
+                var parentWin = window.parent;
+                var appState = parentWin && parentWin.MaalOgBehovState && parentWin.MaalOgBehovState.appState;
+                if (!appState) return;
+                var investYears = Math.max(0, Number(appState.investmentYears) || 0);
+                var payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
+                var totalYears = investYears + payoutYears;
+                el.textContent = String(totalYears) + ' år';
+                if (endYearEl) {
+                    endYearEl.textContent = String(2026 + totalYears);
+                }
+            } catch (e) {}
+        }
+
+        function updateRisikobudsjett() {
+            var ring = document.getElementById('strategi-risk-ring');
+            var stockMain = document.getElementById('strategi-stock-pct-main');
+            var stockRow = document.getElementById('strategi-stock-pct-row');
+            var bondRow = document.getElementById('strategi-bond-pct-row');
+            if (!ring || !stockMain || !stockRow || !bondRow) return;
+            try {
+                var parentWin = window.parent;
+                var appState = parentWin && parentWin.MaalOgBehovState && parentWin.MaalOgBehovState.appState;
+                if (!appState) return;
+
+                var stockPct = Math.max(0, Math.min(100, Math.round(Number(appState.initialStockAllocation) || 0)));
+                var bondPct = 100 - stockPct;
+
+                stockMain.textContent = String(stockPct) + '%';
+                stockRow.textContent = String(stockPct) + '%';
+                bondRow.textContent = String(bondPct) + '%';
+
+                var circumference = 2 * Math.PI * 60.5; // r=60.5 (10% larger donut)
+                var offset = circumference * (1 - stockPct / 100);
+                ring.setAttribute('stroke-dasharray', String(circumference));
+                ring.setAttribute('stroke-dashoffset', String(offset));
+            } catch (e) {}
+        }
+
+        function formatNokCompact(value) {
+            var n = Number(value) || 0;
+            var abs = Math.abs(n);
+            if (abs >= 1000000) return (n / 1000000).toFixed(1).replace('.', ',') + ' MNOK';
+            return Math.round(n).toLocaleString('nb-NO') + ' NOK';
+        }
+
+        function renderHendelsesItem(item, isLast) {
+            var year = String(item.year || '');
+            var title = String(item.title || 'Hendelse');
+            var description = String(item.description || '');
+            return (
+                '<div class="flex space-x-4">' +
+                    '<div class="flex flex-col items-center">' +
+                        '<div class="w-2.5 h-2.5 rounded-full ' + (isLast ? 'bg-gray-300' : 'bg-blue-900') + ' mt-2"></div>' +
+                        (isLast ? '' : '<div class="w-px h-full bg-gray-200"></div>') +
+                    '</div>' +
+                    '<div>' +
+                        '<span class="label-style !mb-0 text-[10px]">' + year + '</span>' +
+                        '<h4 class="font-bold text-lg">' + title + '</h4>' +
+                        '<p class="body-text text-sm opacity-70">' + description + '</p>' +
+                    '</div>' +
+                '</div>'
+            );
+        }
+
+        function updateHendelser() {
+            var listEl = document.getElementById('strategi-hendelser-list');
+            if (!listEl) return;
+            try {
+                var parentWin = window.parent;
+                var appState = parentWin && parentWin.MaalOgBehovState && parentWin.MaalOgBehovState.appState;
+                if (!appState) return;
+
+                var items = [];
+                var events = Array.isArray(appState.events) ? appState.events : [];
+                for (var i = 0; i < events.length; i++) {
+                    var e = events[i] || {};
+                    var amount = Number(e.belop) || 0;
+                    var hasName = String(e.type || '').trim().length > 0;
+                    if (!hasName && amount === 0) continue;
+
+                    var startAar = Number(e.startAar) || 2026;
+                    var sluttAar = Number(e.sluttAar);
+                    if (!Number.isFinite(sluttAar)) sluttAar = startAar;
+                    var title = hasName ? String(e.type).trim() : 'Hendelse';
+                    var amountText = formatNokCompact(Math.abs(amount));
+                    var directionText = amount >= 0 ? 'Innbetaling' : 'Uttak';
+                    var periodText = (sluttAar > startAar) ? (' per ar (' + startAar + '-' + sluttAar + ')') : (' i ' + startAar);
+                    var description = directionText + ' ' + amountText + periodText + '.';
+
+                    items.push({ year: startAar, title: title, description: description });
+                }
+
+                var investYears = Math.max(0, Number(appState.investmentYears) || 0);
+                var payoutStartYear = 2026 + investYears;
+                var payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
+                var payoutEndYear = payoutYears > 0 ? (payoutStartYear + payoutYears - 1) : payoutStartYear;
+                var payoutPeriodText = payoutYears > 0
+                    ? (' (' + payoutStartYear + '-' + payoutEndYear + ')')
+                    : (' (' + payoutStartYear + ')');
+                var forbruk = Math.max(0, Number(appState.desiredAnnualConsumptionPayout) || 0);
+                var formuesskatt = Math.max(0, Number(appState.desiredAnnualWealthTaxPayout) || 0);
+
+                if (forbruk > 0) {
+                    items.push({
+                        year: payoutStartYear,
+                        title: 'Uttak til forbruk',
+                        description: 'Ønsket årlig uttak til forbruk: ' + formatNokCompact(forbruk) + payoutPeriodText + '.'
+                    });
+                }
+                if (formuesskatt > 0) {
+                    items.push({
+                        year: payoutStartYear,
+                        title: 'Uttak til formuesskatt',
+                        description: 'Ønsket årlig uttak til formuesskatt: ' + formatNokCompact(formuesskatt) + payoutPeriodText + '.'
+                    });
+                }
+
+                items.sort(function (a, b) { return (a.year || 0) - (b.year || 0); });
+
+                if (items.length === 0) {
+                    listEl.innerHTML = '<p class="body-text text-sm opacity-70">Ingen hendelser registrert.</p>';
+                    return;
+                }
+
+                var html = '';
+                for (var j = 0; j < items.length; j++) {
+                    html += renderHendelsesItem(items[j], j === items.length - 1);
+                }
+                listEl.innerHTML = html;
+            } catch (e) {}
+        }
+
+        updateTotaltMandat();
+        updateSelskapsnavn();
+        updateTidshorisont();
+        updateRisikobudsjett();
+        updateHendelser();
+        setInterval(function () {
+            updateTotaltMandat();
+            updateSelskapsnavn();
+            updateTidshorisont();
+            updateRisikobudsjett();
+            updateHendelser();
+        }, 1000);
+    })();
+</script>
+</body>
+</html>

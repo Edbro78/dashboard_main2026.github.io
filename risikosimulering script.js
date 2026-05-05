@@ -6312,14 +6312,126 @@ function getPeriodLabel() {
     return `${startYear} - ${endYear}`;
 }
 
-/** Expose for parent (Mål og behov) Output: startkapital, periode, aksjekapital dagens/ny. */
+function getRisikoSerializableState() {
+    return {
+        startCapital: Number(state.startCapital) || 0,
+        selectedPeriod: String(state.selectedPeriod || 'max'),
+        allocationRebalancing: !!state.allocationRebalancing,
+        selectedDrawdownPortfolio: String(state.selectedDrawdownPortfolio || 'current'),
+        selectedDrawdownView: String(state.selectedDrawdownView || 'percent'),
+        portfolioComparisonChartType: String(state.portfolioComparisonChartType || 'overview'),
+        activeNurseTab: Number(state.activeNurseTab) || 1,
+        selectedAssetClass: state.selectedAssetClass == null ? null : String(state.selectedAssetClass),
+        currentPortfolio: {
+            stocks: Number(state.currentPortfolio.stocks) || 0,
+            riskFree: Number(state.currentPortfolio.riskFree) || 0,
+            highYield: Number(state.currentPortfolio.highYield) || 0,
+            nordicStocks: Number(state.currentPortfolio.nordicStocks) || 0,
+            emergingMarkets: Number(state.currentPortfolio.emergingMarkets) || 0,
+            renterIGPct: Number(state.currentPortfolio.renterIGPct) || 0,
+            renterHYPct: Number(state.currentPortfolio.renterHYPct) || 0
+        },
+        newPortfolio: {
+            stocks: Number(state.newPortfolio.stocks) || 0,
+            riskFree: Number(state.newPortfolio.riskFree) || 0,
+            highYield: Number(state.newPortfolio.highYield) || 0,
+            nordicStocks: Number(state.newPortfolio.nordicStocks) || 0,
+            emergingMarkets: Number(state.newPortfolio.emergingMarkets) || 0,
+            renterIGPct: Number(state.newPortfolio.renterIGPct) || 0,
+            renterHYPct: Number(state.newPortfolio.renterHYPct) || 0
+        }
+    };
+}
+
+function applyRisikoSerializableState(imported) {
+    if (!imported || typeof imported !== 'object') return false;
+
+    const allowedPeriods = new Set(['ytd', '12m', '3y', '5y', '10y', 'max', 'year-by-year']);
+    const allowedDrawdownPortfolio = new Set(['current', 'new']);
+    const allowedDrawdownView = new Set(['percent', 'kr']);
+    const allowedComparisonType = new Set(['overview', 'asset-classes']);
+    const portfolioKeys = ['stocks', 'riskFree', 'highYield', 'nordicStocks', 'emergingMarkets', 'renterIGPct', 'renterHYPct'];
+    const parseNum = (v) => {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const startCapital = parseNum(imported.startCapital);
+    if (startCapital !== null && startCapital > 0) state.startCapital = startCapital;
+
+    if (allowedPeriods.has(String(imported.selectedPeriod || ''))) {
+        state.selectedPeriod = String(imported.selectedPeriod);
+    }
+    if (typeof imported.allocationRebalancing === 'boolean') {
+        state.allocationRebalancing = imported.allocationRebalancing;
+    }
+    if (allowedDrawdownPortfolio.has(String(imported.selectedDrawdownPortfolio || ''))) {
+        state.selectedDrawdownPortfolio = String(imported.selectedDrawdownPortfolio);
+    }
+    if (allowedDrawdownView.has(String(imported.selectedDrawdownView || ''))) {
+        state.selectedDrawdownView = String(imported.selectedDrawdownView);
+    }
+    if (allowedComparisonType.has(String(imported.portfolioComparisonChartType || ''))) {
+        state.portfolioComparisonChartType = String(imported.portfolioComparisonChartType);
+    }
+    const nurseTab = parseNum(imported.activeNurseTab);
+    if (nurseTab !== null && nurseTab >= 1 && nurseTab <= 6) {
+        state.activeNurseTab = Math.round(nurseTab);
+    }
+    if (Object.prototype.hasOwnProperty.call(imported, 'selectedAssetClass')) {
+        state.selectedAssetClass = imported.selectedAssetClass == null ? null : String(imported.selectedAssetClass);
+    }
+
+    if (imported.currentPortfolio && typeof imported.currentPortfolio === 'object') {
+        portfolioKeys.forEach((k) => {
+            const n = parseNum(imported.currentPortfolio[k]);
+            if (n !== null) state.currentPortfolio[k] = n;
+        });
+    }
+    if (imported.newPortfolio && typeof imported.newPortfolio === 'object') {
+        portfolioKeys.forEach((k) => {
+            const n = parseNum(imported.newPortfolio[k]);
+            if (n !== null) state.newPortfolio[k] = n;
+        });
+    }
+
+    // Sync key UI controls to imported state.
+    document.querySelectorAll('.period-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.id === 'year-by-year-btn' ? state.selectedPeriod === 'year-by-year' : btn.dataset.period === state.selectedPeriod);
+    });
+    document.querySelectorAll('.chart-selector-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.chartType === state.portfolioComparisonChartType);
+    });
+    document.querySelectorAll('.portfolio-selector .selector-btn').forEach((btn) => {
+        const matchesPortfolio = btn.dataset.portfolio === state.selectedDrawdownPortfolio;
+        const view = btn.dataset.view || 'percent';
+        const matchesView = view === state.selectedDrawdownView;
+        btn.classList.toggle('active', matchesPortfolio && matchesView);
+    });
+    document.querySelectorAll('.rebalancing-selector .selector-btn').forEach((btn) => {
+        const isMatch = btn.dataset.rebalancing === String(state.allocationRebalancing);
+        if (btn.dataset.rebalancing) btn.classList.toggle('active', isMatch);
+    });
+
+    updateStartCapitalDisplay();
+    updatePeriodDisplay();
+    updateSliderUI('current');
+    updateSliderUI('new');
+    updateCharts();
+    updateTreemapChart('current');
+    updateTreemapChart('new');
+    return true;
+}
+
+/** Expose for parent (Mål og behov) Output: legacy lines + full serializable state. */
 window.RisikoSimuleringGetOutputData = function () {
     const capitalInMNOK = state.startCapital / 1000000;
     return {
         startkapital: capitalInMNOK + ' MNOK',
         periode: getPeriodLabel(),
         aksjekapitalDagens: state.currentPortfolio.highYield,
-        aksjekapitalNy: state.newPortfolio.highYield
+        aksjekapitalNy: state.newPortfolio.highYield,
+        stateJson: JSON.stringify(getRisikoSerializableState())
     };
 };
 
@@ -7475,6 +7587,14 @@ async function init() {
             const lines = text.split('\n').map(function (s) { return s.trim(); });
             let changed = false;
             lines.forEach(function (line) {
+                const mJson = line.match(/^Risikostate\s*\(json\):\s*(.+)$/i);
+                if (mJson && mJson[1]) {
+                    try {
+                        const parsed = JSON.parse(mJson[1]);
+                        if (applyRisikoSerializableState(parsed)) changed = true;
+                    } catch (_) {}
+                    return;
+                }
                 const mStart = line.match(/^Startkapital:\s*(.+)$/i);
                 if (mStart) {
                     const val = parseFloat(String(mStart[1]).replace(/\s*MNOK/i, '').replace(',', '.').trim());

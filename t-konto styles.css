@@ -2379,6 +2379,17 @@ p { /* Avsnitt */
   width: 100%;
   max-width: none;
 }
+.waterfall-canvas > svg {
+  overflow: visible;
+}
+.waterfall-chart-card {
+  overflow: visible;
+  max-width: none;
+}
+.waterfall-chart-card .t-konto-year-strip {
+  margin-bottom: 0;
+  padding: 12px 0 0;
+}
 .waterfall-quick-action {
   position: absolute;
   top: 24px;

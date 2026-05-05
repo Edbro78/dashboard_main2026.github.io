@@ -1751,7 +1751,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Fremtidige verdier, 3 Risikoprofil, 4 Pensjon, 5 Formuesskatt
+    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Fremtidige verdier, 3 Risikoprofil, 4 Strategi, 5 Pensjon, 6 Formuesskatt
     const [activeTab, setActiveTab] = useState(0);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1782,6 +1782,7 @@ function TabContainer() {
         { name: 'Mål og behov', content: <App /> },
         { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={2} /> },
         { name: 'Risikoprofil', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Strategi', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="Strategi%20index.html" title="Strategi" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
@@ -1798,12 +1799,16 @@ function TabContainer() {
             if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
                 const data = win.RisikoSimuleringGetOutputData();
                 const v = (x) => (x === undefined || x === null || (typeof x === 'string' && !String(x).trim())) ? INGEN_DATA : x;
-                risiko = [
+                const lines = [
                     `Startkapital: ${v(data.startkapital)}`,
                     `Periode: ${v(data.periode)}`,
                     `Aksjekapital i dagens portefølje: ${Number(data.aksjekapitalDagens ?? 0)} %`,
                     `Aksjekapital i ny portefølje: ${Number(data.aksjekapitalNy ?? 0)} %`
-                ].join('\n');
+                ];
+                if (data && typeof data.stateJson === 'string' && data.stateJson.trim()) {
+                    lines.push(`Risikostate (json): ${data.stateJson}`);
+                }
+                risiko = lines.join('\n');
             }
         } catch (_) {}
         let pensjonsgapet = INGEN_DATA;
@@ -6388,7 +6393,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
                         <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
-                        <SliderInput id="investmentYears" label="Antall år investeringsperiode" value={state.investmentYears} min={1} max={60} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                        <SliderInput id="investmentYears" label="Tidshorisont" value={state.investmentYears} min={1} max={60} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                         <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                          
                          {/* Ønsket årlig utbetaling */}
