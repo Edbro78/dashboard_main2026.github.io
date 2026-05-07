@@ -2,31 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // --- GLOBAL APP STATE ---
 
-        // Disclaimer modal wiring
-        const disclaimerBtn = document.getElementById('disclaimerBtn');
-        const disclaimerModal = document.getElementById('disclaimerModal');
-        const disclaimerClose = document.getElementById('disclaimerClose');
-        const openDisclaimer = () => {
-            if (!disclaimerModal) return;
-            disclaimerModal.classList.remove('hidden');
-            disclaimerModal.classList.add('flex');
-        };
-        const closeDisclaimer = () => {
-            if (!disclaimerModal) return;
-            disclaimerModal.classList.add('hidden');
-            disclaimerModal.classList.remove('flex');
-        };
-        if (disclaimerBtn) disclaimerBtn.addEventListener('click', openDisclaimer);
-        if (disclaimerClose) disclaimerClose.addEventListener('click', closeDisclaimer);
-        if (disclaimerModal) {
-            disclaimerModal.addEventListener('click', (e) => {
-                const target = e.target;
-                if (target && target.getAttribute('data-close') === 'true') closeDisclaimer();
-            });
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') closeDisclaimer();
-            });
-        }
 
         // Output modal wiring
         const outputBtn = document.getElementById('outputBtn');
@@ -205,14 +180,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     </svg>
                     Kopiert!
                 `;
-                copyButton.classList.remove('bg-blue-600', 'hover:bg-blue-700');
-                copyButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                copyButton.setAttribute('data-copied', 'true');
                 
                 // Reset after 2 seconds
                 setTimeout(() => {
                     copyButton.innerHTML = originalText;
-                    copyButton.classList.remove('bg-green-600', 'hover:bg-green-700');
-                    copyButton.classList.add('bg-blue-600', 'hover:bg-blue-700');
+                    copyButton.removeAttribute('data-copied');
                 }, 2000);
                 
             } catch (err) {
@@ -278,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     const label = document.createElement('label');
                     label.htmlFor = config.id;
-                    label.className = 'text-sm font-medium text-slate-300';
+                    label.className = 'typo-label';
                     label.textContent = config.label;
                     const input = document.createElement('input');
                     input.id = config.id;
@@ -290,7 +263,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         labelWrapper.className = 'flex justify-between items-baseline mb-2';
                         const valueSpan = document.createElement('span');
                         valueSpan.id = `${config.id}-value`;
-                        valueSpan.className = 'text-base font-semibold text-[var(--accent-blue-light)]';
+                        valueSpan.className = 'text-base font-bold text-[var(--accent-blue-light)]';
                         
                         // Add toggle button to the left of label for OTP Saldo field
                         if (config.id === 'currentOTPSaldo') {
@@ -339,7 +312,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const tkontoBtn = document.createElement('button');
                             tkontoBtn.type = 'button';
                             tkontoBtn.id = 'hent-arslonn-fra-tkonto-btn';
-                            tkontoBtn.className = 'hent-fra-tkonto-mini text-xs font-medium py-1 px-2 rounded border border-[var(--border-color)] bg-[var(--bg-white)] text-[var(--text-primary)] hover:border-[var(--primary-btn)] transition-colors';
+                            tkontoBtn.className = 'hent-fra-tkonto-mini py-1 px-2 rounded hover:border-[var(--primary-btn)] transition-colors';
                             tkontoBtn.textContent = 'Hent fra T-konto';
                             leftPart.appendChild(tkontoBtn);
                             labelWrapper.appendChild(leftPart);

@@ -1436,7 +1436,7 @@ function TKontoDashboard() {
 
 // Oppsummeringsrapport: fire containere – Mål og behov, Eiendeler år for år, Finansiering år for år, Kontantstrøm år for år
 // Kontantstrøm år for år hentes alltid fra T-konto (fasit) – identisk med «Årlig kontantstrøm» i T-konto.
-function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 2 }) {
+function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 3 }) {
     const appState = MaalOgBehovState.appState || {};
     const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
@@ -1740,6 +1740,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
                 <div
                     key={index}
                     className={`tab ${activeTab === index ? 'active' : ''}`}
+                    title={tab.name}
                     onClick={() => onTabClick(index)}
                 >
                     <span>{tab.name}</span>
@@ -1751,8 +1752,8 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefølge: 0 T-konto, 1 Mål og behov, 2 Fremtidige verdier, 3 Risikoprofil, 4 Strategi, 5 Pensjon, 6 Formuesskatt
-    const [activeTab, setActiveTab] = useState(0);
+    // Fanerekkefølge: 0 Målsetninger …, 1 T-konto, 2 Mål og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
+    const [activeTab, setActiveTab] = useState(1);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
     const [showInputModal, setShowInputModal] = useState(false);
@@ -1778,9 +1779,10 @@ function TabContainer() {
     }, []);
 
     const tabs = [
+        { name: 'Målsetninger, kunnskap & erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="m%C3%A5lsetninger%20index.html" title="Målsetninger, kunnskap & erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
-        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={2} /> },
+        { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
         { name: 'Risikoprofil', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Strategi', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="Strategi%20index.html" title="Strategi" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
@@ -1829,7 +1831,7 @@ function TabContainer() {
         } catch (_) {}
         // Fremtidige verdier (tidligere «Oppsummeringsrapport»): ingen egen serialisering – fanen bygger på Mål og behov + T-konto
         const fremtidigeVerdier = 'Fanen «Fremtidige verdier» er utledet fra Mål og behov og T-konto. Bruk seksjonene over for å lagre og laste innstillinger.';
-        // Samme rekkefølge som fanene (0–5); eldre lagrede filer med Mål før T-konto parses fortsatt (se handleLoadInput)
+        // Samme rekkefølge som fanene (ekskl. tomme faner uten eksport); eldre lagrede filer med Mål før T-konto parses fortsatt (se handleLoadInput)
         return [
             '--- T-konto ---',
             tkonto,

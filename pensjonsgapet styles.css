@@ -2,7 +2,7 @@
 /* Whitney font family (local only; falls back to Inter/system if unavailable) */
 @font-face {
     font-family: 'Whitney';
-    src: local('Whitney Book'), local('Whitney');
+    src: local('Whitney Book'), local('Whitney-Book'), local('Whitney Light'), local('Whitney');
     font-style: normal;
     font-weight: 400;
     font-display: swap;
@@ -23,7 +23,7 @@
 }
 @font-face {
     font-family: 'Whitney';
-    src: local('Whitney Black'), local('Whitney-Black');
+    src: local('Whitney Black'), local('Whitney-Black'), local('Whitney Black Regular');
     font-style: normal;
     font-weight: 900;
     font-display: swap;
@@ -52,7 +52,7 @@ body {
 /* --- Typography + S&P Wealth Management fargepalett --- */
 :root {
     --heading-scale: 0.42;
-    --label-scale: 0.595;
+    --label-scale: 0.7;
     --sp-background: #F5F3F3;
     --sp-foreground: #333333;
     --sp-dark-blue: #002359;
@@ -76,6 +76,7 @@ body {
 .typo-h4 { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 700; font-size: calc(1rem * var(--heading-scale)); line-height: 1.35; letter-spacing: 0; }
 .typo-label { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; font-size: calc(1rem * var(--label-scale)); }
 .typo-paragraph { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 400; font-size: clamp(0.875rem, 1vw, 1rem); }
+.typo-strong { font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif; font-weight: 700; }
 
 /* --- Dashboard: S&P Wealth Management tema --- */
 #dashboardPage {
@@ -101,6 +102,11 @@ body {
     color: #333333 !important;
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
 }
+/* Tailwind font-semibold = 600; Whitney har ikke 600 — mapp til Bold (700) */
+#dashboardPage .font-semibold {
+    font-weight: 700 !important;
+}
+
 #dashboardPage .input-group [id$="-value"] {
     color: var(--primary-btn) !important;
     font-weight: 700;
@@ -137,7 +143,11 @@ body {
     word-break: break-word;
 }
 #dashboardPage .output-label {
-    font-size: 0.85rem;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: calc(1rem * var(--label-scale));
     color: var(--text-muted);
 }
 
@@ -247,8 +257,7 @@ body {
     background: transparent !important;
 }
 #dashboardPage .summary-panel .output-label {
-    color: rgba(255, 255, 255, 0.85) !important;
-    font-size: 0.85rem !important;
+    color: rgba(255, 255, 255, 0.9) !important;
     margin-top: 0.25rem !important;
 }
 #dashboardPage .combo-output {
@@ -292,18 +301,16 @@ body {
 #dashboardPage #goal-explainer { color: var(--text-muted) !important; }
 
 /* Knapper: S&P Blue primær, Cyan 40 tekst på valgt */
-#dashboardPage #disclaimerBtn {
-    background-color: var(--bg-white) !important;
-    color: #333333 !important;
-    border: 1px solid var(--border-color) !important;
-    box-shadow: var(--panel-shadow);
-}
 /* Liten diskret «Hent fra T-konto» ved Dagens årslønn */
 #dashboardPage .hent-fra-tkonto-mini {
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
+    font-weight: 700 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     background-color: var(--bg-white) !important;
     color: var(--text-muted) !important;
     border: 1px solid var(--border-color) !important;
-    font-size: 0.7rem !important;
+    font-size: 0.65rem !important;
     padding: 0.2rem 0.5rem !important;
     border-radius: 4px !important;
     white-space: nowrap;
@@ -311,10 +318,6 @@ body {
 #dashboardPage .hent-fra-tkonto-mini:hover {
     color: var(--primary-btn) !important;
     border-color: var(--primary-btn) !important;
-}
-#dashboardPage #disclaimerBtn:hover {
-    border-color: var(--primary-btn) !important;
-    transform: translateY(-2px);
 }
 #dashboardPage .text-slate-400,
 #dashboardPage #toggleDetailedViewBtn,
@@ -327,6 +330,10 @@ body {
     background-color: var(--bg-light) !important;
 }
 #dashboardPage .combo-btn {
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     background-color: var(--bg-white) !important;
     color: #333333 !important;
     border: 1px solid var(--border-color) !important;
@@ -470,12 +477,8 @@ input[type="number"] {
     transform: translateY(0);
 }
 
-/* Modal fine-tuning */
-#disclaimerModal p {
-    margin-top: 0;
-    margin-bottom: 0;
-}
 
+/* Modal fine-tuning via #outputModal */
 /* Toggle visibility while preserving layout space */
 .visibility-hidden {
     visibility: hidden !important;
@@ -485,8 +488,9 @@ input[type="number"] {
 
 /* Output Modal Textarea Styling */
 #outputTextArea {
-    font-family: 'Whitney', 'Inter', sans-serif;
-    font-size: 12px;
+    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
+    font-weight: 400;
+    font-size: clamp(0.875rem, 1vw, 1rem);
     line-height: 1.5;
     background-color: #f8fafc;
     border: 2px solid #e2e8f0;
@@ -505,6 +509,7 @@ input[type="number"] {
 /* Copy Button: S&P Blue + Cyan 40 tekst */
 #copyButton {
     font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
+    font-size: clamp(0.625rem, 1.5vw, 0.6875rem);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -519,6 +524,10 @@ input[type="number"] {
 }
 #copyButton:active {
     transform: translateY(0);
+}
+#copyButton[data-copied="true"] {
+    background-color: var(--success-green) !important;
+    color: #ffffff !important;
 }
 
 /* Custom Combo Input: samme som Formuesskatt */
