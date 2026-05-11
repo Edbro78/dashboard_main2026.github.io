@@ -1779,7 +1779,7 @@ function TabContainer() {
     }, []);
 
     const tabs = [
-        { name: 'Målsetninger, kunnskap & erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="m%C3%A5lsetninger%20index.html" title="Målsetninger, kunnskap & erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Målsetninger, kunnskap & erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="malsetninger%20index.html" title="Målsetninger, kunnskap & erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
         { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
