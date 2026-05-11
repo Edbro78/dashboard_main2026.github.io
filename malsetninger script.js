@@ -16,7 +16,7 @@ const {
 } = LucideReact;
 
 const SectionLabel = ({ children, light = false, className = '' }) => (
-  <span className={`block text-[10px] font-medium tracking-[0.1em] uppercase mb-3 ${light ? 'text-[oklch(0.85_0.08_235.3)]' : 'text-[oklch(0.29_0.12_274.6)]'} ${className}`}>
+  <span className={`block text-[11px] font-medium tracking-[0.1em] uppercase mb-3 ${light ? 'text-[oklch(0.85_0.08_235.3)]' : 'text-[oklch(0.29_0.12_274.6)]'} ${className}`}>
     {children}
   </span>
 );
@@ -30,8 +30,8 @@ const Card = ({ children, className = '' }) => (
 const LevelIndicator = ({ label, value, onChange }) => (
   <div className="flex flex-col space-y-[0.41826375rem]">
     <div className="flex justify-between items-center">
-      <span className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-70">{label}</span>
-      <span className="text-[10px] font-medium text-[oklch(0.29_0.12_274.6)] uppercase tracking-[0.1em]">Nivå {value} / 5</span>
+      <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">{label}</span>
+      <span className="text-[11px] font-medium text-[oklch(0.29_0.12_274.6)] uppercase tracking-[0.1em]">Nivå {value} / 5</span>
     </div>
     <div className="flex gap-1.5">
       {[1, 2, 3, 4, 5].map((level) => (
@@ -73,11 +73,11 @@ const ExperienceRow = ({ title, data, updateFn }) => (
 
     <div className="grid grid-cols-1 md:grid-cols-3 gap-[0.8365275rem]">
       <div className="space-y-[0.2788425rem]">
-        <label className="text-[10px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
+        <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <Layers size={10} /> Transaksjonstype
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[11px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
           value={data.type}
           onChange={(e) => updateFn('type', e.target.value)}
         >
@@ -89,11 +89,11 @@ const ExperienceRow = ({ title, data, updateFn }) => (
       </div>
 
       <div className="space-y-[0.2788425rem]">
-        <label className="text-[10px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
+        <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <Activity size={10} /> Volum & Frekvens
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[11px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
           value={data.volume}
           onChange={(e) => updateFn('volume', e.target.value)}
         >
@@ -103,11 +103,11 @@ const ExperienceRow = ({ title, data, updateFn }) => (
         </select>
       </div>
       <div className="space-y-[0.2788425rem]">
-        <label className="text-[10px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
+        <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <History size={10} /> Tidsperiode
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[11px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
           value={data.period}
           onChange={(e) => updateFn('period', e.target.value)}
         >
@@ -232,11 +232,11 @@ function App() {
                   <div className="transition-transform group-hover:scale-110">
                     {goal.icon}
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-center leading-tight">
+                  <span className="text-[11px] font-bold uppercase tracking-[0.1em] text-center leading-tight">
                     {goal.title}
                   </span>
                   {importance > 0 && (
-                    <span className="text-[10px] font-bold uppercase tracking-[0.1em] opacity-60">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em] opacity-60">
                       {importance === 1 ? 'Litt viktig' : importance === 2 ? 'Middels viktig' : 'Veldig viktig'}
                     </span>
                   )}
@@ -264,7 +264,7 @@ function App() {
               </div>
               <div className="space-y-[1.3942125rem]">
                 <div className="space-y-[0.41826375rem]">
-                  <span className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-70">Type Produkter (Trykk for kunnskapsnivå)</span>
+                  <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">Type Produkter (Trykk for kunnskapsnivå)</span>
                   <div className="grid grid-cols-3 gap-[0.34425rem]">
                     {['aksjer', 'renter', 'alternativt'].map((prod) => {
                       const level = knowledge.produkter[prod];
@@ -279,7 +279,7 @@ function App() {
                           key={prod}
                           type="button"
                           onClick={() => cycleProductKnowledge(prod)}
-                          className={`py-[0.557685rem] px-[0.34425rem] text-[10px] font-bold uppercase tracking-[0.1em] border transition-all duration-300 ${tierStyle}`}
+                          className={`py-[0.557685rem] px-[0.34425rem] text-[11px] font-bold uppercase tracking-[0.1em] border transition-all duration-300 ${tierStyle}`}
                         >
                           {prod === 'alternativt' ? 'Alternative' : prod}
                         </button>
@@ -317,7 +317,7 @@ function App() {
                       educationLevel === edu.id ? 'bg-[oklch(0.24_0.08_273.1)] border-[oklch(0.24_0.08_273.1)] text-white' : 'bg-white border-[#CECCCC] text-[oklch(0.27_0.00_0.0)]'
                     }`}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-[0.1em]">{edu.label}</span>
+                    <span className="text-[11px] font-bold uppercase tracking-[0.1em]">{edu.label}</span>
                     {educationLevel === edu.id && <CheckCircle2 size={14} className="text-[oklch(0.85_0.08_235.3)]" />}
                   </button>
                 ))}
@@ -326,13 +326,13 @@ function App() {
           </div>
         </div>
         <div className="bg-[oklch(0.24_0.08_273.1)] text-white shadow-2xl relative overflow-hidden">
-          <div className="py-[1.0661625rem] md:py-[1.493025rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[1.3122rem]">
+          <div className="py-[0.69950921625rem] md:py-[0.9795737025rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[0.86093442rem]">
 
-            <div className="lg:col-span-4 flex flex-col gap-[0.75rem] lg:self-start">
+            <div className="lg:col-span-4 flex flex-col gap-[0.492075rem] lg:self-start">
               <SectionLabel light className="!mb-0 leading-tight">Målsetninger</SectionLabel>
-              <div className="flex flex-col gap-[0.32805rem]">
+              <div className="flex flex-col gap-[0.215233605rem]">
                 {totals.sortedGoals.map((goal, i) => (
-                  <div key={i} className={`px-4 py-[0.492075rem] border flex items-baseline justify-between gap-3 transition-all ${
+                  <div key={i} className={`px-4 py-[0.3228504075rem] border flex items-baseline justify-between gap-3 transition-all ${
                     goal.importance === 3 ? 'bg-white/15 border-white/20' :
                       goal.importance === 2 ? 'bg-white/10 border-white/10' :
                         'bg-white/5 border-white/5 opacity-70'
@@ -345,48 +345,48 @@ function App() {
                             'bg-white/30'
                       }`}
                       />
-                      <span className="text-[10px] font-bold uppercase tracking-[0.1em] leading-none">
+                      <span className="text-[11px] font-bold uppercase tracking-[0.1em] leading-none">
                         {goal.title}
                       </span>
                     </div>
-                    <span className="text-[8px] font-medium opacity-40 uppercase tracking-[0.1em] leading-none shrink-0">
+                    <span className="text-[8.8px] font-medium opacity-40 uppercase tracking-[0.1em] leading-none shrink-0">
                       {goal.importance === 3 ? 'Høy' : goal.importance === 2 ? 'Mid' : 'Lav'}
                     </span>
                   </div>
                 ))}
-                {totals.sortedGoals.length === 0 && <span className="text-[10px] font-normal opacity-30 italic">Ingen mål valgt</span>}
+                {totals.sortedGoals.length === 0 && <span className="text-[11px] font-normal opacity-30 italic">Ingen mål valgt</span>}
               </div>
             </div>
-            <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x border-white/5 py-[1.0661625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.75rem] justify-start lg:self-start">
+            <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x border-white/5 py-[0.69950921625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.492075rem] justify-start lg:self-start">
               <div className="grid grid-cols-2 gap-x-[1.9683rem]">
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Erfaring</SectionLabel>
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Kunnskap</SectionLabel>
               </div>
-              <div className="grid grid-cols-2 gap-x-[1.9683rem] gap-y-[0.2rem]">
-                <div className="min-h-[1.562738rem] flex items-end">
+              <div className="grid grid-cols-2 gap-x-[1.9683rem] gap-y-[0.13122rem]">
+                <div className="min-h-[1.0253124018rem] flex items-end">
                   <div className="flex items-baseline gap-1">
                     <span className="text-[1.476225rem] leading-none font-black text-white">{totals.expScore}</span>
-                    <span className="text-[10px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
+                    <span className="text-[11px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
                   </div>
                 </div>
-                <div className="min-h-[1.562738rem] flex items-end">
+                <div className="min-h-[1.0253124018rem] flex items-end">
                   <div className="flex items-baseline gap-1">
                     <span className="text-[1.476225rem] leading-none font-black text-white">{totals.knwScore}</span>
-                    <span className="text-[10px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
+                    <span className="text-[11px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
                   </div>
                 </div>
-                <p className="text-[10px] font-normal opacity-40 uppercase leading-snug m-0 tracking-[0.05em]">
+                <p className="text-[11px] font-normal opacity-40 uppercase leading-snug m-0 tracking-[0.05em]">
                   Vektet analyse av transaksjonstyper, volum og historikk
                 </p>
-                <p className="text-[10px] font-normal opacity-40 uppercase leading-snug m-0 tracking-[0.05em]">
+                <p className="text-[11px] font-normal opacity-40 uppercase leading-snug m-0 tracking-[0.05em]">
                   Faglig forståelse av instrumenters art, teknikk og risiko
                 </p>
               </div>
             </div>
-            <div className="lg:col-span-3 flex flex-col justify-start items-center text-center bg-white/5 px-[1.3122rem] pb-[1.3122rem] pt-0 border border-white/5 lg:self-start w-full">
+            <div className="lg:col-span-3 flex flex-col justify-start items-center text-center bg-white/5 px-[1.3122rem] pb-[0.86093442rem] pt-0 border border-white/5 lg:self-start w-full">
               <SectionLabel light className="!mb-0 leading-tight w-full">Samlet Score</SectionLabel>
-              <div className="relative inline-flex items-center justify-center mt-[0.75rem]">
-                <svg className="w-[6.82344rem] h-[6.82344rem] transform -rotate-90" viewBox="0 0 128 128" aria-hidden="true">
+              <div className="relative inline-flex items-center justify-center mt-[0.492075rem]">
+                <svg className="w-[4.476858984rem] h-[4.476858984rem] transform -rotate-90" viewBox="0 0 128 128" aria-hidden="true">
                   <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
                   <circle
                     cx="64"
@@ -402,9 +402,9 @@ function App() {
                 </svg>
                 <span className="absolute text-[1.59924375rem] font-black text-white">{totals.total}</span>
               </div>
-              <div className="mt-[0.98415rem] flex items-center gap-2 opacity-30">
+              <div className="mt-[0.645700815rem] flex items-center gap-2 opacity-30">
                 <ClipboardCheck size={12} />
-                <span className="text-[8px] font-medium uppercase tracking-[0.1em]">Objektiv Profilering</span>
+                <span className="text-[8.8px] font-medium uppercase tracking-[0.1em]">Objektiv Profilering</span>
               </div>
             </div>
           </div>
