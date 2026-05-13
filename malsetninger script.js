@@ -31,7 +31,7 @@ const LevelIndicator = ({ label, value, onChange }) => (
   <div className="flex flex-col space-y-[0.41826375rem]">
     <div className="flex justify-between items-center">
       <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">{label}</span>
-      <span className="text-[11px] font-medium text-[oklch(0.29_0.12_274.6)] uppercase tracking-[0.1em]">Nivå {value} / 5</span>
+      <span className="text-[11px] font-medium text-[oklch(0.29_0.12_274.6)] uppercase tracking-[0.1em]">{`Nivå ${value} / 5`}</span>
     </div>
     <div className="flex gap-1.5">
       {[1, 2, 3, 4, 5].map((level) => (
@@ -97,8 +97,8 @@ const ExperienceRow = ({ title, data, updateFn }) => (
           value={data.volume}
           onChange={(e) => updateFn('volume', e.target.value)}
         >
-          <option value="lav">Lav (Få årlige)</option>
-          <option value="middels">Middels (Månedlig)</option>
+          <option value="lav">{'Lav (Få årlige)'}</option>
+          <option value="middels">{'Middels (Månedlig)'}</option>
           <option value="hoy">Høy (Ukentlig+)</option>
         </select>
       </div>
@@ -111,9 +111,9 @@ const ExperienceRow = ({ title, data, updateFn }) => (
           value={data.period}
           onChange={(e) => updateFn('period', e.target.value)}
         >
-          <option value="kort">Under 1 år</option>
-          <option value="middels">1 - 5 år</option>
-          <option value="lang">Over 5 år</option>
+          <option value="kort">{'Under 1 år'}</option>
+          <option value="middels">{'1 - 5 år'}</option>
+          <option value="lang">{'Over 5 år'}</option>
         </select>
       </div>
     </div>
@@ -211,7 +211,7 @@ function App() {
 
         <Card className="!px-[1.25479125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
           <h3 className="text-lg font-bold tracking-tight text-[oklch(0.24_0.08_273.1)] mb-[0.376437375rem]">
-            Målsetninger
+            {'Målsetninger'}
           </h3>
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-[0.5019165rem] mt-[0.75287475rem]">
             {goalOptions.map((goal) => {
@@ -264,7 +264,7 @@ function App() {
               </div>
               <div className="space-y-[1.3942125rem]">
                 <div className="space-y-[0.41826375rem]">
-                  <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">Type Produkter (Trykk for kunnskapsnivå)</span>
+                  <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">{'Type Produkter (Trykk for kunnskapsnivå)'}</span>
                   <div className="grid grid-cols-3 gap-[0.34425rem]">
                     {['aksjer', 'renter', 'alternativt'].map((prod) => {
                       const level = knowledge.produkter[prod];
@@ -288,7 +288,7 @@ function App() {
                   </div>
                 </div>
                 <LevelIndicator
-                  label="Risiko-forståelse (Lav til Høy)"
+                  label={'Risiko-forståelse (Lav til Høy)'}
                   value={knowledge.risiko}
                   onChange={(v) => setKnowledge({ ...knowledge, risiko: v })}
                 />
@@ -329,7 +329,7 @@ function App() {
           <div className="py-[0.69950921625rem] md:py-[0.9795737025rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[0.86093442rem]">
 
             <div className="lg:col-span-4 flex flex-col gap-[0.492075rem] lg:self-start">
-              <SectionLabel light className="!mb-0 leading-tight">Målsetninger</SectionLabel>
+              <SectionLabel light className="!mb-0 leading-tight">{'Målsetninger'}</SectionLabel>
               <div className="flex flex-col gap-[0.215233605rem]">
                 {totals.sortedGoals.map((goal, i) => (
                   <div key={i} className={`px-4 py-[0.3228504075rem] border flex items-baseline justify-between gap-3 transition-all ${
@@ -354,7 +354,7 @@ function App() {
                     </span>
                   </div>
                 ))}
-                {totals.sortedGoals.length === 0 && <span className="text-[11px] font-normal opacity-30 italic">Ingen mål valgt</span>}
+                {totals.sortedGoals.length === 0 && <span className="text-[11px] font-normal opacity-30 italic">{'Ingen mål valgt'}</span>}
               </div>
             </div>
             <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x border-white/5 py-[0.69950921625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.492075rem] justify-start lg:self-start">
@@ -379,7 +379,7 @@ function App() {
                   Vektet analyse av transaksjonstyper, volum og historikk
                 </p>
                 <p className="text-[11px] font-normal opacity-40 uppercase leading-snug m-0 tracking-[0.05em]">
-                  Faglig forståelse av instrumenters art, teknikk og risiko
+                  {'Faglig forståelse av instrumenters art, teknikk og risiko'}
                 </p>
               </div>
             </div>

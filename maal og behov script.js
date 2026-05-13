@@ -1752,7 +1752,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefølge: 0 Målsetninger …, 1 T-konto, 2 Mål og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
+    // Fanerekkefolge: 0 malsetninger iframe (malsetninger index.html), 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
     const [activeTab, setActiveTab] = useState(1);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1779,7 +1779,7 @@ function TabContainer() {
     }, []);
 
     const tabs = [
-        { name: 'Målsetninger, kunnskap & erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="malsetninger%20index.html" title="Målsetninger, kunnskap & erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Målsetninger, kunnskap og erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="malsetninger%20index.html" title="Målsetninger, kunnskap og erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
         { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },

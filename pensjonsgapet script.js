@@ -224,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 { id: 'currentOTPSaldo', label: 'OTP Saldo i dag', type: 'range', min: 0, max: 10000000, step: 10000, value: 500000, unit: 'kr' },
                 { id: 'otpRate', label: 'OTP-sats', type: 'range', min: 2, max: 8, step: 0.1, value: 5, unit: '%' },
                 { id: 'currentIPSBalance', label: 'IPS Saldo i dag', type: 'range', min: 0, max: 1000000, step: 10000, value: 0, unit: 'kr' },
-                { id: 'ipsAnnualSaving', label: 'Årlig sparing IPS', type: 'range', min: 0, max: 40000, step: 1000, value: 0, unit: 'kr' },
+                { id: 'ipsAnnualSaving', label: 'Årlig sparing IPS', type: 'range', min: 0, max: 25000, step: 1000, value: 0, unit: 'kr' },
                 { id: 'annualFripoliserPayout', label: 'Årlig utbetaling fra Fripoliser', type: 'range', min: 0, max: 500000, step: 5000, value: 0, unit: 'kr' },
                 { id: 'expectedReturn', label: 'Aksjeandel', type: 'range', min: 3, max: 10, step: 0.1, value: 7, unit: '%' },
                 { id: 'payoutYears', label: 'Utbetalingsperiode OTP', type: 'range', min: 10, max: 20, step: 1, value: 15, unit: 'år' },
