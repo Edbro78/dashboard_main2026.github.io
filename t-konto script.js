@@ -1,4 +1,5 @@
-﻿// Global app state
+﻿(function () {
+// Global app state
 let __nextId = 1;
 function genId() { return __nextId++; }
 
@@ -285,6 +286,37 @@ function initTKontoDashboard() {
     AppState.lastActiveSection = "T-Konto";
   }
 
+  const stepperList = document.getElementById("stepper-list");
+  const steps = [
+    { key: "Forside" },
+    { key: "Struktur" },
+    { key: "Eiendeler" },
+    { key: "Gjeld" },
+    { key: "Inntekter" },
+    { key: "Kontantstrøm" },
+    { key: "T-Konto" },
+    { key: "Risikoevne" }
+  ];
+  function renderStepper(currentKey) {
+    if (!stepperList) return;
+    stepperList.innerHTML = "";
+    stepperList.style.setProperty("--step-count", String(steps.length));
+    steps.forEach((s, idx) => {
+      const li = document.createElement("li");
+      li.className = "step";
+      const dot = document.createElement("span");
+      dot.className = "step-dot";
+      const label = document.createElement("span");
+      label.className = "step-label";
+      label.textContent = s.key;
+      li.appendChild(dot); li.appendChild(label);
+      const currentIndex = steps.findIndex(x => x.key === currentKey);
+      if (idx <= currentIndex) li.classList.add("is-reached");
+      if (idx === currentIndex) li.classList.add("is-current");
+      stepperList.appendChild(li);
+    });
+  }
+
   // Check if this is a re-initialization by checking if nav items already have click handlers
   // We'll use a data attribute to track this
   const isReinit = navItems[0] && navItems[0].hasAttribute('data-tkonto-initialized');
@@ -367,7 +399,6 @@ function initTKontoDashboard() {
   // Last skattesatser ved oppstart
   loadTaxRates();
   const sectionTitle = document.getElementById("sectionTitle");
-  const stepperList = document.getElementById("stepper-list");
   // Output UI
   initOutputUI();
   // Input UI
@@ -411,38 +442,6 @@ function initTKontoDashboard() {
       if (section !== "T-Konto") {
         updateTopSummaries();
       }
-    });
-  }
-
-  // Bygg stepper
-  const steps = [
-    { key: "Forside" },
-    { key: "Struktur" },
-    { key: "Eiendeler" },
-    { key: "Gjeld" },
-    { key: "Inntekter" },
-    { key: "Kontantstrøm" },
-    { key: "T-Konto" },
-    { key: "Risikoevne" }
-  ];
-  function renderStepper(currentKey) {
-    if (!stepperList) return;
-    stepperList.innerHTML = "";
-    // Sett dynamisk kolonneantall
-    stepperList.style.setProperty("--step-count", String(steps.length));
-    steps.forEach((s, idx) => {
-      const li = document.createElement("li");
-      li.className = "step";
-      const dot = document.createElement("span");
-      dot.className = "step-dot";
-      const label = document.createElement("span");
-      label.className = "step-label";
-      label.textContent = s.key;
-      li.appendChild(dot); li.appendChild(label);
-      const currentIndex = steps.findIndex(x => x.key === currentKey);
-      if (idx <= currentIndex) li.classList.add("is-reached");
-      if (idx === currentIndex) li.classList.add("is-current");
-      stepperList.appendChild(li);
     });
   }
 
@@ -11030,4 +11029,6 @@ function parsePercent(str) {
   
   return 0;
 }
+
+})();
 

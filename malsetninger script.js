@@ -1,4 +1,4 @@
-const { useState, useMemo } = React;
+const { useState, useMemo, useEffect, useRef } = React;
 const {
   TrendingUp,
   ShieldCheck,
@@ -142,7 +142,7 @@ function App() {
     { id: 'bevare_formuen', title: 'Bevare formuen', icon: <Anchor size={11} /> },
     { id: 'pensjon', title: 'Pensjon', icon: <Landmark size={11} /> },
     { id: 'hjelpe_barn', title: 'Hjelpe barn', icon: <Heart size={11} /> },
-    { id: 'generesjonsskifte', title: 'Generesjonsskifte', icon: <Users size={11} /> },
+    { id: 'generesjonsskifte', title: 'Generasjonsskifte', icon: <Users size={11} /> },
     { id: 'okonomisk_trygghet', title: 'Økonomisk trygghet', icon: <ShieldCheck size={11} /> },
     { id: 'formuesvekst', title: 'Formuesvekst', icon: <TrendingUp size={11} /> },
     { id: 'fremtidige_investeringer', title: 'Fremtidige investeringer', icon: <Briefcase size={11} /> },
@@ -203,6 +203,136 @@ function App() {
       sortedGoals,
     };
   }, [experience, knowledge, educationLevel, selectedGoals, goalOptions]);
+
+  const totalsRef = useRef(null);
+  totalsRef.current = totals;
+
+  useEffect(() => {
+    window.MalsetningerGetExportText = () => {
+      const payload = {
+        selectedGoals,
+        educationLevel,
+        experience,
+        knowledge,
+      };
+      const t = totalsRef.current;
+      const goalLine = t && t.sortedGoals && t.sortedGoals.length
+        ? `  Valgte mål: ${t.sortedGoals.map((g) => `${g.title}:${g.importance}`).join('; ')}`
+        : '  Valgte mål: (ingen)';
+      return [
+        `Malsetninger state (json): ${JSON.stringify(payload)}`,
+        '',
+        'Utdata (visning):',
+        `  Erfaring score (snitt): ${t ? t.expScore : ''}`,
+        `  Kunnskap score (snitt): ${t ? t.knwScore : ''}`,
+        `  Samlet score: ${t ? t.total : ''}`,
+        goalLine,
+      ].join('\n');
+    };
+    return () => {
+      if (window.MalsetningerGetExportText) delete window.MalsetningerGetExportText;
+    };
+  }, [selectedGoals, educationLevel, experience, knowledge]);
+
+  useEffect(() => {
+    window.MalsetningerGetSelectedGoalsForDashboard = () => {
+      const t = totalsRef.current;
+      if (!t || !Array.isArray(t.sortedGoals)) return [];
+      return t.sortedGoals
+        .filter((g) => g && g.importance > 0 && g.title)
+        .map((g) => ({
+          id: g.id,
+          title: g.title,
+          importance: g.importance,
+          importanceLabel:
+            g.importance === 1 ? 'Litt viktig' : g.importance === 2 ? 'Middels viktig' : 'Veldig viktig',
+        }));
+    };
+    return () => {
+      if (window.MalsetningerGetSelectedGoalsForDashboard) {
+        delete window.MalsetningerGetSelectedGoalsForDashboard;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      if (
+        window.parent &&
+        window.parent !== window &&
+        typeof window.parent.MaalOgBehovOnMalsetningerGoalsChanged === 'function'
+      ) {
+        window.parent.MaalOgBehovOnMalsetningerGoalsChanged();
+      }
+    } catch (_) {}
+  }, [selectedGoals]);
+
+  useEffect(() => {
+    window.MalsetningerApplyExportText = (sectionBody) => {
+      const text = String(sectionBody || '').trim();
+      if (!text) return false;
+      const lines = text.split('\n').map((l) => l.trimEnd());
+      const jsonLine = lines.find((l) => l.startsWith('Malsetninger state (json):'));
+      if (!jsonLine) return false;
+      const jsonPart = jsonLine.slice('Malsetninger state (json):'.length).trim();
+      let data;
+      try {
+        data = JSON.parse(jsonPart);
+      } catch {
+        return false;
+      }
+      if (!data || typeof data !== 'object') return false;
+      try {
+        if (data.selectedGoals && typeof data.selectedGoals === 'object') {
+          const sg = {};
+          Object.keys(data.selectedGoals).forEach((k) => {
+            const v = Number(data.selectedGoals[k]);
+            if (v >= 1 && v <= 3) sg[k] = v;
+          });
+          setSelectedGoals(sg);
+        }
+        if (['ingen', 'relevant', 'hoyere'].includes(data.educationLevel)) {
+          setEducationLevel(data.educationLevel);
+        }
+        const mergeCat = (src, fallback) => {
+          if (!src || typeof src !== 'object') return fallback;
+          const type = ['enkel', 'fond', 'derivater', 'kompleks'].includes(src.type) ? src.type : fallback.type;
+          const volume = ['lav', 'middels', 'hoy'].includes(src.volume) ? src.volume : fallback.volume;
+          const period = ['kort', 'middels', 'lang'].includes(src.period) ? src.period : fallback.period;
+          return { type, volume, period };
+        };
+        if (data.experience && typeof data.experience === 'object') {
+          setExperience((prev) => ({
+            aksjer: mergeCat(data.experience.aksjer, prev.aksjer),
+            renter: mergeCat(data.experience.renter, prev.renter),
+            alternativt: mergeCat(data.experience.alternativt, prev.alternativt),
+          }));
+        }
+        if (data.knowledge && typeof data.knowledge === 'object') {
+          const produkter = data.knowledge.produkter || {};
+          const clampLvl = (x, fb) => {
+            const n = Number(x);
+            return Number.isFinite(n) ? Math.max(0, Math.min(3, Math.round(n))) : fb;
+          };
+          setKnowledge((prev) => ({
+            produkter: {
+              aksjer: clampLvl(produkter.aksjer, prev.produkter.aksjer),
+              renter: clampLvl(produkter.renter, prev.produkter.renter),
+              alternativt: clampLvl(produkter.alternativt, prev.produkter.alternativt),
+            },
+            risiko: Math.max(1, Math.min(5, Number(data.knowledge.risiko) || prev.risiko)),
+            egenskaper: Math.max(1, Math.min(5, Number(data.knowledge.egenskaper) || prev.egenskaper)),
+          }));
+        }
+        return true;
+      } catch {
+        return false;
+      }
+    };
+    return () => {
+      if (window.MalsetningerApplyExportText) delete window.MalsetningerApplyExportText;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-[oklch(0.92_0.05_234.1)] font-sans text-[oklch(0.27_0.00_0.0)]">

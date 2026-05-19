@@ -12,6 +12,22 @@
         --thumb-color: #99D9F2;     /* Sliders og interaksjoner */
         /* Samme farge som fanetekst (Risikosimulering m.fl.) og panel-tittel «Mål og behov» */
         --tab-and-title-color: #4a5568;
+        /*
+         * Strategi index.html: body p-8 / md:p-16 – samme horisontale marg som <main>-rutenettet.
+         */
+        --strategi-body-padding-x: 2rem;
+        /* Strategi index.html body --bg-color (grå bak flisene) */
+        --strategi-page-bg: oklch(0.96 0.00 0.0);
+        /* Strategi index.html --tile-cyan-20 (.tile-cyan, bl.a. Tidshorisont) */
+        --strategi-tile-cyan-20: oklch(0.92 0.03 210);
+        /* Strategi .tile – innrykk slik at målkort linjer med Mandat-tekst */
+        --strategi-tile-padding-x: 2rem;
+    }
+
+    @media (min-width: 768px) {
+        :root {
+            --strategi-body-padding-x: 4rem;
+        }
     }
 
     /* Typography: Whitney setup according to spec */
@@ -517,6 +533,153 @@
         box-shadow:
             0 2px 8px -2px rgba(0, 0, 0, 0.08),
             0 4px 16px -4px rgba(0, 45, 114, 0.18);
+    }
+
+    /* Strategi-fanen: målkort i samme bredde som hero + høyrekolonne, skygge som .tile */
+    .strategi-malsetninger-strip-outer {
+        flex-shrink: 0;
+        box-sizing: border-box;
+        padding: 0.65rem var(--strategi-body-padding-x) 0.68rem;
+        background: var(--strategi-page-bg);
+    }
+
+    .strategi-malsetninger-strip-card {
+        box-sizing: border-box;
+        width: 100%;
+        border-radius: 4px;
+        /* Strategi index.html .tile */
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+        background: var(--strategi-tile-cyan-20);
+        padding: 0.55rem var(--strategi-tile-padding-x) 0.65rem;
+    }
+
+    .strategi-malsetninger-strip__inner {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: stretch;
+        gap: 0.5rem;
+        justify-content: center;
+        max-width: 100%;
+    }
+
+    .strategi-malsetninger-strip__label {
+        display: block;
+        width: 100%;
+        text-align: center;
+        /* Strategi index.html .label-style (samme som «TIDSHORISONT») – Inter lastes via strategi-inter.css */
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+        font-weight: 500;
+        font-size: 0.75rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: oklch(0.32 0.00 0.0);
+        opacity: 0.7;
+        margin: 0 0 0.5rem;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .strategi-malsetninger-strip__empty {
+        font-family: 'Whitney', sans-serif;
+        font-size: 0.8125rem;
+        color: var(--sp-foreground);
+        opacity: 0.45;
+        font-style: italic;
+        padding: 0.35rem 0;
+        text-align: center;
+        width: 100%;
+    }
+
+    .strategi-goal-chip {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 0.28rem;
+        min-width: 6.325rem;
+        max-width: 8.25rem;
+        padding: 0.42rem 0.45rem 0.48rem;
+        border: 1px solid transparent;
+        border-radius: 6px;
+        box-shadow:
+            0 2px 8px rgba(0, 35, 89, 0.08),
+            0 1px 2px rgba(0, 0, 0, 0.04);
+        animation: strategi-goal-chip-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .strategi-goal-chip:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 8px 28px -6px rgba(0, 35, 89, 0.22),
+            0 2px 6px rgba(0, 0, 0, 0.06);
+    }
+
+    @keyframes strategi-goal-chip-in {
+        from {
+            opacity: 0;
+            transform: translateY(10px) scale(0.96);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .strategi-goal-chip--i1 {
+        background: oklch(0.85 0.08 235.3);
+        color: oklch(0.24 0.08 273.1);
+        border-color: oklch(0.85 0.08 235.3);
+    }
+
+    .strategi-goal-chip--i2 {
+        background: oklch(0.29 0.12 274.6);
+        color: #fff;
+        border-color: oklch(0.29 0.12 274.6);
+    }
+
+    .strategi-goal-chip--i3 {
+        background: oklch(0.24 0.08 273.1);
+        color: #fff;
+        border-color: oklch(0.24 0.08 273.1);
+        box-shadow:
+            0 4px 16px -2px rgba(0, 35, 89, 0.35),
+            0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .strategi-goal-chip__icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0.92;
+    }
+
+    .strategi-goal-chip--i1 .strategi-goal-chip__sub {
+        opacity: 0.58;
+    }
+
+    .strategi-goal-chip--i2 .strategi-goal-chip__sub,
+    .strategi-goal-chip--i3 .strategi-goal-chip__sub {
+        opacity: 0.72;
+    }
+
+    .strategi-goal-chip__title {
+        font-family: 'Whitney', sans-serif;
+        font-weight: 700;
+        font-size: 10px;
+        line-height: 1.15;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .strategi-goal-chip__sub {
+        font-family: 'Whitney', sans-serif;
+        font-weight: 700;
+        font-size: 9px;
+        line-height: 1.1;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
     }
 
     .tab-content {

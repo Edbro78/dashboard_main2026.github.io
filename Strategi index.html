@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strategisk Dashboard - Kapitalforvaltning</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <script src="Alle JS filer/tailwind.browser.js"></script>
+    <link rel="stylesheet" href="Alle JS filer/strategi-inter.css">
     <style>
         :root {
             /* OKLCH Color Definitions */
@@ -71,9 +69,29 @@
             background: var(--tile-cyan-20);
         }
 
+        /* Risikobudsjett + Hendelser: ~10 % lavere samlet høyde */
+        .tile.tile--compact-risiko-hendelse {
+            padding: 1.8rem 2rem;
+        }
+
+        .tile.tile--compact-risiko-hendelse > .label-style {
+            margin-bottom: 0.45rem;
+        }
+
+        .tile.tile--compact-risiko-hendelse .donut-container {
+            width: 128.7px;
+            height: 128.7px;
+        }
+
+        .tile.tile--compact-risiko-hendelse .donut-container svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
         .hero-tile {
             background: linear-gradient(rgba(0, 35, 89, 0.7), rgba(0, 35, 89, 0.85)),
-                        url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&q=80&w=2000');
+                        url('Alle JS filer/strategi-hero-bg.jpg');
             background-size: cover;
             background-position: center;
             color: white;
@@ -149,7 +167,7 @@
         }
     </style>
 </head>
-<body class="min-h-screen p-8 md:p-16">
+<body class="min-h-screen px-8 pt-[1.6rem] pb-8 md:px-16 md:pt-[3.2rem] md:pb-16">
 
     <!-- Dashboard Grid -->
     <main class="grid grid-cols-1 md:grid-cols-4 gap-6 auto-rows-min">
@@ -197,12 +215,12 @@
         </section>
 
         <!-- Risikobudsjett-flis (Endret fra Fondseksponering) -->
-        <section class="tile md:col-span-2">
+        <section class="tile tile--compact-risiko-hendelse md:col-span-2">
             <span class="label-style">Risikobudsjett</span>
-            <div class="mt-6 flex flex-col sm:flex-row items-center sm:items-start space-y-8 sm:space-y-0 sm:space-x-12">
+            <div class="mt-[1.35rem] flex flex-col sm:flex-row items-center sm:items-start space-y-[1.8rem] sm:space-y-0 sm:space-x-[2.7rem]">
                 <!-- Donut -->
                 <div class="donut-container flex-shrink-0">
-                    <svg width="143" height="143">
+                    <svg viewBox="0 0 143 143" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                         <circle class="text-gray-100" stroke="currentColor" stroke-width="10" fill="transparent" r="60.5" cx="71.5" cy="71.5" />
                         <circle id="strategi-risk-ring" class="progress-ring__circle" stroke="var(--dark-blue)" stroke-width="10" stroke-dasharray="380.13" stroke-dashoffset="133.05" fill="transparent" r="60.5" cx="71.5" cy="71.5" />
                     </svg>
@@ -213,12 +231,12 @@
                 </div>
 
                 <!-- Liste over allokering -->
-                <div class="flex-grow w-full space-y-6">
-                    <div class="flex justify-between items-end border-b border-gray-100 pb-2">
+                <div class="flex-grow w-full space-y-[1.35rem]">
+                    <div class="flex justify-between items-end border-b border-gray-100 pb-[0.45rem]">
                         <span class="body-text font-medium text-lg">Aksjefond</span>
                         <span id="strategi-stock-pct-row" class="value-large text-2xl">65%</span>
                     </div>
-                    <div class="flex justify-between items-end border-b border-gray-100 pb-2">
+                    <div class="flex justify-between items-end border-b border-gray-100 pb-[0.45rem]">
                         <span class="body-text font-medium text-lg">Rentefond</span>
                         <span id="strategi-bond-pct-row" class="value-large text-2xl">35%</span>
                     </div>
@@ -227,9 +245,9 @@
         </section>
 
         <!-- Hendelses-flis -->
-        <section class="tile md:col-span-2">
+        <section class="tile tile--compact-risiko-hendelse md:col-span-2">
             <span class="label-style">Hendelser</span>
-            <div id="strategi-hendelser-list" class="mt-6 space-y-8"></div>
+            <div id="strategi-hendelser-list" class="mt-[1.35rem] space-y-[1.8rem]"></div>
         </section>
 
     </main>

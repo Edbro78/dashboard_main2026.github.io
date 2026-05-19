@@ -384,11 +384,12 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         deferredEventTax = 0;
         deferredBondTax = 0;
 
-        // Tilgjengelig skattefri kvote ved uttak = innskutt kapital etter forrige årets utbetaling (vist tall for forrige år)
+        // Tilgjengelig skattefri kvote ved uttak = inngående innskutt kapital × (1 + skjermingsrente).
+        // Samme «IB + skjerming» som brukes i årsavslutning av innskutt kapital (prev × (1+skjerming) − uttak).
         const prevYearInvestedCapital = taxFreeCapitalRemaining;
-        let availableForWithdrawal = taxFreeCapitalRemaining;
+        let availableForWithdrawal = taxFreeCapitalRemaining * (1 + shieldingRate);
 
-        // 2. Skjermingsrente legges til ETTER å ha trukket fra uttak (se slutten av år)
+        // 2. (Skjerming inngår nå i availableForWithdrawal over; årsslutt bruker fortsatt prev × (1+skjerming) − uttak.)
 
         // 3. Handle inflows (savings and positive events)
         const isInvestmentYear = i < state.investmentYears;
@@ -536,18 +537,33 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         }
 
         // 5. Betal utsatt skatt fra forrige år ETTER avkastning er beregnet
-        // Skattebetalingen er et uttak som selv er skattepliktig (kaskade)
+        // Skattebetalingen er et uttak som selv er skattepliktig (kaskade mot utsett kø påfølgende år —
+        // i siste simuleringsår / ekstra visningsår finnes ikke neste kolonne — kaskaden betales kontant samme år).
+        /** Aksjekaskade tatt kontant ved siste år (graf/sum — ikke ny utsatt kø). */
+        let aksjeSkatteKaskadeKontantSisteÅr = 0;
+
         if (taxesEnabled) {
             if (!taxesPaidOutsidePortfolioThisYear) {
-                currentPortfolioValue -= (eventTaxToPayThisYear + bondTaxToPayThisYear);
-                // Kaskade: skatt på pengene som tas ut til å betale skatt
-                deferredEventTax += eventTaxToPayThisYear * taxRate;
+                currentPortfolioValue -= eventTaxToPayThisYear + bondTaxToPayThisYear;
+
+                const eventCascade = eventTaxToPayThisYear * taxRate;
+
+                if (isExtraDisplayYear && eventTaxToPayThisYear > 0) {
+                    aksjeSkatteKaskadeKontantSisteÅr = eventCascade;
+                    currentPortfolioValue -= eventCascade;
+                } else {
+                    deferredEventTax += eventCascade;
+                }
+
                 deferredBondTax += realizeDeferredBondReturn(bondTaxToPayThisYear) * bondTaxRate;
             }
         }
 
-        // Uttak som reduserer innskutt kapital = Hendelser + Netto utbetaling + Skatt på hendelser
+        // Uttak som reduserer innskutt kapital = (fullt årlig nettouttak) + hendelser + målsøk-tømming + skatt på hendelser.
+        // Note: Portefølje/skatteflyt bruker fortsatt fromTaxFree mot skattefri kvote; innskutt-kapital-kontoen følger
+        // regnestykket IB × (1+skjerming) − (forbruk + formuesskatt) slik det gjøres i Excel.
         let uttakFromNetto = 0;
+        let investedCapitalAnnualNetUttak = 0; // Ønsket netto uttak (samme som desiredNet i utbetalingsår)
         let uttakFromHendelser = 0;
         let uttakFromGoalSeekFinalDrain = 0;
         const uttakFromSkattHendelser = taxesEnabled ? eventTaxToPayThisYear : 0;
@@ -561,6 +577,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         const totalDesiredPayout = state.desiredAnnualConsumptionPayout + state.desiredAnnualWealthTaxPayout;
             if (isOrdinaryPayoutYear && totalDesiredPayout > 0) {
             let desiredNet = totalDesiredPayout;
+            investedCapitalAnnualNetUttak = desiredNet;
             const stockShare = (annualStockPercentage / 100);
             const bondShare = 1 - stockShare;
             
@@ -725,8 +742,8 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         }
 
         // Innskutt kapital: (forrige år × (1 + skjermingsrente) - uttak) + innskudd
-        // Uttak = Hendelser + Netto utbetaling + Skatt på hendelser
-        const totalUttak = uttakFromNetto + uttakFromHendelser + uttakFromGoalSeekFinalDrain + uttakFromSkattHendelser;
+        // Uttak (netto årlig) = fullt ønsket forbruk + formuesskatt-uttak, ikke kun skattefri andel (fromTaxFree).
+        const totalUttak = investedCapitalAnnualNetUttak + uttakFromHendelser + uttakFromGoalSeekFinalDrain + uttakFromSkattHendelser;
         taxFreeCapitalRemaining = Math.max(0, (prevYearInvestedCapital * (1 + shieldingRate)) - totalUttak);
         if (state.investorType === 'Privat') {
             taxFreeCapitalRemaining += savingsPart + addToInvestedFromEvents * portfolio1StockPctForCap;
@@ -767,7 +784,13 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         data.event_total.push(Math.round(netEventAmountForChart));
         data.eventNegativeOutflow.push(Math.round(negativeEventBelopSum));
         data.nettoUtbetaling.push(Math.round(-annualNetWithdrawalAmountForChart));
-        data.skatt2.push(Math.round(-(taxesEnabled ? eventTaxToPayThisYear : 0))); // Only event tax paid THIS year
+        {
+            let skattPaidEventForChart = taxesEnabled ? eventTaxToPayThisYear : 0;
+            if (taxesEnabled) {
+                skattPaidEventForChart += aksjeSkatteKaskadeKontantSisteÅr;
+            }
+            data.skatt2.push(Math.round(-skattPaidEventForChart));
+        }
         const bondTaxPaidThisYear = taxesEnabled ? (bondTaxToPayThisYear + annualBondTaxAmount + realizedBondTaxThisYear) : 0; // Løpende skatt på årets renter + realisert renteavkastning
         data.renteskatt.push(Math.round(-bondTaxPaidThisYear));
         data.annualStockPercentages.push(Math.round(annualStockPercentage));
@@ -1732,6 +1755,129 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     );
 }
 
+/** Ikoner som speiler Lucide-målkortene i malsetninger (viewBox 24×24). */
+function MalsetningerGoalIconSvg({ goalId }) {
+    const p = {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 24 24',
+        fill: 'none',
+        stroke: 'currentColor',
+        strokeWidth: 2,
+        strokeLinecap: 'round',
+        strokeLinejoin: 'round',
+        'aria-hidden': true,
+    };
+    switch (goalId) {
+        case 'bevare_formuen':
+            return (
+                <svg {...p}>
+                    <circle cx="12" cy="5" r="3" />
+                    <line x1="12" y1="22" x2="12" y2="8" />
+                    <path d="M5 12H2a10 10 0 0 0 20 0h-3" />
+                </svg>
+            );
+        case 'pensjon':
+            return (
+                <svg {...p}>
+                    <line x1="3" y1="22" x2="21" y2="22" />
+                    <line x1="6" y1="18" x2="6" y2="11" />
+                    <line x1="10" y1="18" x2="10" y2="11" />
+                    <line x1="14" y1="18" x2="14" y2="11" />
+                    <line x1="18" y1="18" x2="18" y2="11" />
+                    <polygon points="12 2 20 7 4 7" />
+                </svg>
+            );
+        case 'hjelpe_barn':
+            return (
+                <svg {...p}>
+                    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                </svg>
+            );
+        case 'generesjonsskifte':
+            return (
+                <svg {...p}>
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+            );
+        case 'okonomisk_trygghet':
+            return (
+                <svg {...p}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                    <path d="m9 12 2 2 4-4" />
+                </svg>
+            );
+        case 'formuesvekst':
+            return (
+                <svg {...p}>
+                    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                    <polyline points="16 7 22 7 22 13" />
+                </svg>
+            );
+        case 'fremtidige_investeringer':
+            return (
+                <svg {...p}>
+                    <rect width="20" height="14" x="2" y="7" rx="2" ry="2" />
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                </svg>
+            );
+        case 'annet':
+            return (
+                <svg {...p}>
+                    <circle cx="12" cy="12" r="1" />
+                    <circle cx="19" cy="12" r="1" />
+                    <circle cx="5" cy="12" r="1" />
+                </svg>
+            );
+        default:
+            return (
+                <svg {...p}>
+                    <circle cx="12" cy="12" r="10" />
+                </svg>
+            );
+    }
+}
+
+function StrategiGoalChip({ goal, index }) {
+    const imp = Math.min(3, Math.max(1, Number(goal.importance) || 1));
+    const delayMs = Math.min((index || 0) * 48, 320);
+    return (
+        <div
+            className={`strategi-goal-chip strategi-goal-chip--i${imp}`}
+            role="status"
+            style={{ animationDelay: `${delayMs}ms` }}
+        >
+            <span className="strategi-goal-chip__icon">
+                <MalsetningerGoalIconSvg goalId={goal.id} />
+            </span>
+            <span className="strategi-goal-chip__title">{goal.title}</span>
+            <span className="strategi-goal-chip__sub">{goal.importanceLabel}</span>
+        </div>
+    );
+}
+
+function StrategiMalsetningerStrip({ goals }) {
+    return (
+        <div className="strategi-malsetninger-strip-outer">
+            <div className="strategi-malsetninger-strip-card">
+                <div className="strategi-malsetninger-strip__label">Målsetninger</div>
+                <div className="strategi-malsetninger-strip__inner">
+                    {goals.length === 0 ? (
+                        <p className="strategi-malsetninger-strip__empty">
+                            Ingen mål er markert ennå. Åpne fanen «Målsetninger, kunnskap og erfaring» og trykk på målkortene du vil prioritere – de vises her automatisk.
+                        </p>
+                    ) : (
+                        goals.map((g, i) => <StrategiGoalChip key={g.id} goal={g} index={i} />)
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // TabBar component for browser-like tabs
 function TabBar({ tabs, activeTab, onTabClick }) {
     return (
@@ -1753,6 +1899,7 @@ function TabBar({ tabs, activeTab, onTabClick }) {
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
     // Fanerekkefolge: 0 malsetninger iframe (malsetninger index.html), 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
+    const STRATEGI_TAB_INDEX = 5;
     const [activeTab, setActiveTab] = useState(1);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -1760,9 +1907,13 @@ function TabContainer() {
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const malsetningerIframeRef = React.useRef(null);
+    /** Når bruker limer Input før Målsetninger-iframe har mountet API-et, lagres payload her og brukes ved onLoad / retry. */
+    const pendingMalsetningerPayloadRef = React.useRef(null);
     const risikoIframeRef = React.useRef(null);
     const pensjonsgapetIframeRef = React.useRef(null);
     const formuesskattIframeRef = React.useRef(null);
+    const [strategiMalsetningerGoals, setStrategiMalsetningerGoals] = useState([]);
 
     useEffect(() => {
         const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -1778,19 +1929,134 @@ function TabContainer() {
         }
     }, []);
 
+    const tryApplyPendingMalsetninger = React.useCallback(() => {
+        const p = pendingMalsetningerPayloadRef.current;
+        if (!p || !String(p).trim()) {
+            pendingMalsetningerPayloadRef.current = null;
+            return 'empty';
+        }
+        const win = malsetningerIframeRef.current && malsetningerIframeRef.current.contentWindow;
+        if (!win || typeof win.MalsetningerApplyExportText !== 'function') {
+            return 'retry';
+        }
+        try {
+            const ok = win.MalsetningerApplyExportText(p);
+            pendingMalsetningerPayloadRef.current = null;
+            return ok ? 'ok' : 'bad';
+        } catch (_) {
+            pendingMalsetningerPayloadRef.current = null;
+            return 'bad';
+        }
+    }, []);
+
+    const schedulePendingMalsetningerFlush = React.useCallback(() => {
+        let attempts = 0;
+        const maxAttempts = 50;
+        const delayMs = 80;
+        const tick = () => {
+            const r = tryApplyPendingMalsetninger();
+            if (r !== 'retry' || attempts >= maxAttempts) return;
+            attempts += 1;
+            window.setTimeout(tick, delayMs);
+        };
+        tick();
+    }, [tryApplyPendingMalsetninger]);
+
+    const refreshStrategiGoalsFromMalsetninger = useCallback(() => {
+        try {
+            const win = malsetningerIframeRef.current && malsetningerIframeRef.current.contentWindow;
+            if (!win || typeof win.MalsetningerGetSelectedGoalsForDashboard !== 'function') {
+                setStrategiMalsetningerGoals([]);
+                return;
+            }
+            const raw = win.MalsetningerGetSelectedGoalsForDashboard();
+            setStrategiMalsetningerGoals(Array.isArray(raw) ? raw : []);
+        } catch (_) {
+            setStrategiMalsetningerGoals([]);
+        }
+    }, []);
+
+    const onMalsetningerIframeLoad = useCallback(() => {
+        schedulePendingMalsetningerFlush();
+        refreshStrategiGoalsFromMalsetninger();
+    }, [schedulePendingMalsetningerFlush, refreshStrategiGoalsFromMalsetninger]);
+
+    useEffect(() => {
+        window.MaalOgBehovOnMalsetningerGoalsChanged = refreshStrategiGoalsFromMalsetninger;
+        return () => {
+            if (window.MaalOgBehovOnMalsetningerGoalsChanged === refreshStrategiGoalsFromMalsetninger) {
+                delete window.MaalOgBehovOnMalsetningerGoalsChanged;
+            }
+        };
+    }, [refreshStrategiGoalsFromMalsetninger]);
+
+    useEffect(() => {
+        if (activeTab === STRATEGI_TAB_INDEX) {
+            refreshStrategiGoalsFromMalsetninger();
+        }
+    }, [activeTab, refreshStrategiGoalsFromMalsetninger]);
+
     const tabs = [
-        { name: 'Målsetninger, kunnskap og erfaring', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="malsetninger%20index.html" title="Målsetninger, kunnskap og erfaring" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        {
+            name: 'Målsetninger, kunnskap og erfaring',
+            content: (
+                <div style={{ width: '100%', height: '100%', minHeight: 0 }}>
+                    <iframe
+                        ref={malsetningerIframeRef}
+                        onLoad={onMalsetningerIframeLoad}
+                        src="malsetninger%20index.html"
+                        title="Målsetninger, kunnskap og erfaring"
+                        style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                    />
+                </div>
+            ),
+        },
         { name: 'T-konto', content: <TKontoDashboard /> },
         { name: 'Mål og behov', content: <App /> },
         { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
         { name: 'Risikoprofil', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Strategi', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe src="Strategi%20index.html" title="Strategi" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        {
+            name: 'Strategi',
+            content: (
+                <div
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        minHeight: 0,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        background: 'var(--strategi-page-bg)',
+                    }}
+                >
+                    <StrategiMalsetningerStrip goals={strategiMalsetningerGoals} />
+                    <iframe
+                        src="Strategi%20index.html"
+                        title="Strategi"
+                        style={{
+                            flex: 1,
+                            minHeight: 0,
+                            width: '100%',
+                            border: 'none',
+                            display: 'block',
+                        }}
+                    />
+                </div>
+            ),
+        },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
 
     const INGEN_DATA = 'ingen data';
     const buildCombinedOutput = React.useCallback(() => {
+        let malsetninger = INGEN_DATA;
+        try {
+            const win = malsetningerIframeRef.current && malsetningerIframeRef.current.contentWindow;
+            if (win && typeof win.MalsetningerGetExportText === 'function') {
+                const txt = win.MalsetningerGetExportText();
+                malsetninger = (txt && String(txt).trim()) ? txt : INGEN_DATA;
+            }
+        } catch (_) {}
         const maalRaw = (MaalOgBehovState.getOutputText && MaalOgBehovState.getOutputText()) || '';
         const tkontoRaw = (typeof window.TKontoGenerateOutputText === 'function' && window.TKontoGenerateOutputText()) || '';
         const maal = (maalRaw && String(maalRaw).trim()) ? maalRaw : INGEN_DATA;
@@ -1831,8 +2097,10 @@ function TabContainer() {
         } catch (_) {}
         // Fremtidige verdier (tidligere «Oppsummeringsrapport»): ingen egen serialisering – fanen bygger på Mål og behov + T-konto
         const fremtidigeVerdier = 'Fanen «Fremtidige verdier» er utledet fra Mål og behov og T-konto. Bruk seksjonene over for å lagre og laste innstillinger.';
-        // Samme rekkefølge som fanene (ekskl. tomme faner uten eksport); eldre lagrede filer med Mål før T-konto parses fortsatt (se handleLoadInput)
         return [
+            '--- Malsetninger ---',
+            malsetninger,
+            '',
             '--- T-konto ---',
             tkonto,
             '',
@@ -1892,30 +2160,38 @@ function TabContainer() {
             return;
         }
         const full = inputText.trim();
-        const sections = { maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', fremtidigeVerdier: '' };
-        // Neste seksjon kan komme i vilkårlig rekkefølge (ny eksport = T-konto først; gamle filer kan ha Mål først)
-        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*(?:Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*(?:T-konto|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const sections = { malsetninger: '', maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', fremtidigeVerdier: '' };
+        // Neste seksjon kan komme i vilkårlig rekkefølge (ny eksport = Malsetninger først deretter T-konto …; gamle filer uten Malsetninger parses fortsatt)
+        const reMalsetninger = /---\s*Malsetninger\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
+        const m0 = full.match(reMalsetninger);
         const m1 = full.match(reMaal);
         const m2 = full.match(reTkonto);
         const m3 = full.match(reRisiko);
         const m4 = full.match(rePensjonsgapet);
         const m5 = full.match(reFormuesskatt);
         const m6 = full.match(reFremtidigeVerdier);
+        if (m0) sections.malsetninger = m0[1].trim();
         if (m1) sections.maal = m1[1].trim();
         if (m2) sections.tkonto = m2[1].trim();
         if (m3) sections.risiko = m3[1].trim();
         if (m4) sections.pensjonsgapet = m4[1].trim();
         if (m5) sections.formuesskatt = m5[1].trim();
         if (m6) sections.fremtidigeVerdier = m6[1].trim();
-        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.fremtidigeVerdier) {
+        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.fremtidigeVerdier && !sections.malsetninger) {
             sections.maal = full;
         }
         try {
+            if (sections.malsetninger) {
+                pendingMalsetningerPayloadRef.current = sections.malsetninger;
+                const mr = tryApplyPendingMalsetninger();
+                if (mr === 'retry') schedulePendingMalsetningerFlush();
+            }
             if (sections.maal && MaalOgBehovState.applyInputText) MaalOgBehovState.applyInputText(sections.maal);
             if (sections.tkonto && typeof window.TKontoParseInputText === 'function') {
                 const ok = window.TKontoParseInputText(sections.tkonto);
@@ -1942,7 +2218,7 @@ function TabContainer() {
             alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
             console.error(e);
         }
-    }, [inputText]);
+    }, [inputText, tryApplyPendingMalsetninger, schedulePendingMalsetningerFlush]);
 
     React.useEffect(() => {
         if (!showOutputModal) return;
@@ -2013,7 +2289,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto. T-konto gjeld per post: beløp, lånetype (Annuitetslån, Serielån, avdragsfrihetsvarianter, Ballonglån 3/5/10 år), startår (2026–2035), lånetid og rente – se nummerert liste i T-konto-Output.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- Malsetninger ---, --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer uten Malsetninger-seksjon eller med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Malsetninger inkluderer JSON-state for målvalg, erfaring (dropdowns), kunnskap og utdanning. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto. T-konto gjeld per post: beløp, lånetype (Annuitetslån, Serielån, avdragsfrihetsvarianter, Ballonglån 3/5/10 år), startår (2026–2035), lånetid og rente – se nummerert liste i T-konto-Output.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
@@ -2029,7 +2305,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: T-konto (struktur, eiendeler, gjeld med lånetype inkl. ballonglån, startår, lånetid og rente, inntekter, forventninger, ev. kontantstrøm-justering), Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
+                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: Malsetninger (JSON-state + visningstall), T-konto (struktur, eiendeler, gjeld med lånetype inkl. ballonglån, startår, lånetid og rente, inntekter, forventninger, ev. kontantstrøm-justering), Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
