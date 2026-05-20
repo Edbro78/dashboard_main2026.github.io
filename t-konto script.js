@@ -1,7 +1,27 @@
 ﻿(function () {
+// Sikrar éin global AppState: elles lastar React både TKontoDashboard og App inn same skript,
+// og IIFE køyrer to gonger — då peikar Output (window.TKontoGenerateOutputText) på «nytt» tomt state
+// medan slideren framleis oppdaterer det første.
+if (typeof window !== "undefined" && window.__TKONTO_BUNDLE_LOADED__) {
+  return;
+}
+if (typeof window !== "undefined") {
+  window.__TKONTO_BUNDLE_LOADED__ = true;
+}
 // Global app state
 let __nextId = 1;
 function genId() { return __nextId++; }
+
+function syncGenIdFromImportedState() {
+  let max = 0;
+  const consider = (x) => {
+    if (x && typeof x.id === "number" && x.id > max) max = x.id;
+  };
+  (AppState.assets || []).forEach(consider);
+  (AppState.debts || []).forEach(consider);
+  (AppState.incomes || []).forEach(consider);
+  if (max > 0) __nextId = max + 1;
+}
 
 /** Standardraden som henter verdier fra Mål og behov; skal gjenkjennes uavhengig av visningsnavn (farge #002359, ikke slettes). */
 function isMaalOgBehovPortfolioAsset(a) {
@@ -267,6 +287,31 @@ function updateAutoTax() {
         costAmount.textContent = formatNOK(calculatedCosts);
       }
     }
+  }
+}
+
+/**
+ * Aktiv T-konto-nav-seksjon (data-section).
+ * Ikke bruk textContent på knappen – den inneheld SVG/label og kan ikkje samanliknast med "Inntekter" osv.
+ */
+function getActiveTkontoSectionKey() {
+  const root = document.getElementById("tkonto-dashboard-root");
+  const nav = root
+    ? root.querySelector(".nav-item.is-active")
+    : document.querySelector(".nav-item.is-active");
+  if (!nav) return "";
+  const key = nav.getAttribute("data-section");
+  return key != null && String(key).trim() !== "" ? String(key).trim() : "";
+}
+
+/** Etter import som byter ut AppState-arrays, må lister teiknast på nytt så sliderar peikar på riktige objekt. */
+function refreshTkontoUiAfterStateImport() {
+  try {
+    if (typeof window.TKontoRefreshAfterInputLoad === "function") {
+      window.TKontoRefreshAfterInputLoad();
+    }
+  } catch (e) {
+    console.warn("refreshTkontoUiAfterStateImport", e);
   }
 }
 
@@ -876,6 +921,36 @@ window.getTKontoDagensÅrslønn = function () {
     return item && item.amount != null ? Number(item.amount) : 0;
   } catch (e) {
     return 0;
+  }
+};
+
+/**
+ * Setter LØNNSINNTEKT-beløp (NOK) fra Pensjon-import / felles Input.
+ * Brukes når «Dagens årslønn» i pensjonsfanen skal stemme med T-konto-raden.
+ */
+window.TKontoSetLonnsinntektAmount = function (amountNok) {
+  try {
+    var amt = Number(amountNok);
+    if (!isFinite(amt) || amt < 0) return false;
+    var incomes = AppState.incomes || [];
+    function isLonn(item) {
+      var n = String(item.name || "").trim().replace(/\s/g, "");
+      if (!n) return false;
+      var u = n.toUpperCase();
+      return u === "LØNNSINNTEKT" || u === "LONNSINNTEKT" || /^L[OØÖ]NNSINNTEKT$/i.test(n);
+    }
+    var item = incomes.find(isLonn);
+    if (!item) return false;
+    item.amount = Math.round(amt);
+    if (typeof updateAutoTax === "function") updateAutoTax();
+    try {
+      if (typeof window.dispatchEvent === "function") {
+        window.dispatchEvent(new CustomEvent("tkonto-data-changed"));
+      }
+    } catch (e) {}
+    return true;
+  } catch (e) {
+    return false;
   }
 };
 
@@ -8049,6 +8124,22 @@ function incomeSliderUseFineStep(itemName, nameInputValue) {
   return false;
 }
 
+/**
+ * Skriv beløp til riktig rad i AppState.incomes ut frå visningsnamn.
+ * Trengst når glidefeltet er bunde til eit gammalt item-objekt etter JSON-import (ny array i AppState).
+ */
+function syncIncomeRowAmountToAppState(item, nameInputEl, amountVal) {
+  const v = Number(amountVal);
+  const labelKey = normalizeIncomeNameKey(
+    (item && item.name) || (nameInputEl && nameInputEl.value) || ""
+  );
+  const live = (AppState.incomes || []).find(
+    (x) => normalizeIncomeNameKey(x && x.name) === labelKey
+  );
+  if (live) live.amount = v;
+  if (item) item.amount = v;
+}
+
 function createItemRow(collectionName, item) {
   const row = document.createElement("div");
   row.className = "asset-row";
@@ -8351,8 +8442,8 @@ function createItemRow(collectionName, item) {
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
           // Hold AppState synkronisert når verdi må clamps til max.
-          item.amount = Number(range.max);
-          if (amount) amount.textContent = formatNOK(item.amount);
+          syncIncomeRowAmountToAppState(item, name, Number(range.max));
+          if (amount) amount.textContent = formatNOK(Number(range.max));
         }
       } else if (collectionName === "assets") {
         const label = String(item.name || name.value || "").toUpperCase();
@@ -8393,7 +8484,11 @@ function createItemRow(collectionName, item) {
 
     range.addEventListener("input", () => {
       const v = Number(range.value);
-      item.amount = v;
+      if (collectionName === "incomes") {
+        syncIncomeRowAmountToAppState(item, name, v);
+      } else {
+        item.amount = v;
+      }
       amount.textContent = formatNOK(v);
       if (collectionName === "incomes" && (item.name === "Inntektsskatt" || item.name === "Utbytteskatt" || item.name === "Formuesskatt" || item.name === "ÅRLIGE KOSTNADER") && item._autoTaxEnabled) {
         item._autoTaxEnabled = false;
@@ -8402,7 +8497,7 @@ function createItemRow(collectionName, item) {
       }
       if (collectionName === "incomes" && item.name === "Formuesskatt") {
         // Eksporter manuell justering til Mål og behov (tallet helt til høyre)
-        setFormuesskattForMaalOgBehov(item.amount);
+        setFormuesskattForMaalOgBehov(v);
       }
       if (collectionName === "incomes" && (item.name === "LØNNSINNTEKT" || item.name === "PENSJONSINNTEKT" || item.name === "UTBYTTER")) updateAutoTax();
       if (collectionName === "assets") updateAutoTax();
@@ -10009,27 +10104,24 @@ function initOutputUI() {
   });
 }
 
+/** Nummererte feltlinjer (lesbar eksport). Import: parseInputText leser linjer; «T-konto state (json):» støttes fortsatt i gamle eksporter. */
 function generateOutputText() {
   const INGEN_DATA = "ingen data";
   const orIngenData = (v) => (v === undefined || v === null || (typeof v === "string" && !String(v).trim())) ? INGEN_DATA : v;
-  // Formatering
   const formatValue = (v) => {
     const value = Number(v) || 0;
     if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(2).replace('.', ',')} MNOK`;
+      return `${(value / 1000000).toFixed(2).replace(".", ",")} MNOK`;
     }
     return new Intl.NumberFormat("nb-NO", { style: "currency", currency: "NOK", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
   };
-  const formatPercent = (v) => `${Number(v).toFixed(2).replace('.', ',')} %`;
-  
+  const formatPercent = (v) => `${Number(v).toFixed(2).replace(".", ",")} %`;
+
   const lines = [];
   let counter = 1;
-  
-  // Struktur (Structure) - alle bokser med navn
+
   if (AppState.structure) {
     const structure = AppState.structure;
-    
-    // Inkluder alle Privat-bokser med navnene deres
     const privatArray = Array.isArray(structure.privat) ? structure.privat : (structure.privat ? [structure.privat] : []);
     privatArray.forEach((privat, index) => {
       if (privat) {
@@ -10042,8 +10134,7 @@ function generateOutputText() {
         counter++;
       }
     });
-    
-    // Inkluder alle Holdingselskaper med aktiv status og navn
+
     if (structure.holding1) {
       lines.push(`${counter}: Struktur - Holding AS 1 aktiv: ${structure.holding1.active ? "ja" : "nei"}`);
       counter++;
@@ -10054,13 +10145,13 @@ function generateOutputText() {
         ? structure.holding1.ownershipPct
         : distributeOwnershipForPrivatArray(privatArray);
       privatArray.forEach((privat, index) => {
-        const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
+        const lbl = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
         const pct = Number(holding1Ownership[index]) || 0;
-        lines.push(`${counter}: Struktur - Holding AS 1 eierskap ${label}: ${formatPercent(pct)}`);
+        lines.push(`${counter}: Struktur - Holding AS 1 eierskap ${lbl}: ${formatPercent(pct)}`);
         counter++;
       });
     }
-    
+
     if (structure.holding2) {
       lines.push(`${counter}: Struktur - Holding AS 2 aktiv: ${structure.holding2.active ? "ja" : "nei"}`);
       counter++;
@@ -10071,14 +10162,13 @@ function generateOutputText() {
         ? structure.holding2.ownershipPct
         : distributeOwnershipForPrivatArray(privatArray);
       privatArray.forEach((privat, index) => {
-        const label = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
+        const lbl = index === 0 ? "Privat" : `Privat ${getRomanNumeral(index + 1)}`;
         const pct = Number(holding2Ownership[index]) || 0;
-        lines.push(`${counter}: Struktur - Holding AS 2 eierskap ${label}: ${formatPercent(pct)}`);
+        lines.push(`${counter}: Struktur - Holding AS 2 eierskap ${lbl}: ${formatPercent(pct)}`);
         counter++;
       });
     }
 
-    // Hele familie-/selskapstreet fra «Familieforhold – organisering» (iframe), for Output/Input
     const fd = AppState.strukturDashboardFamilyData;
     if (
       fd &&
@@ -10094,21 +10184,17 @@ function generateOutputText() {
       }
     }
   }
-  
-  // Eiendeler (Assets) - inkluder alle eiendeler uavhengig av navn eller type
+
   const allAssets = AppState.assets || [];
   allAssets.forEach((asset) => {
-    // Inkluder alle eiendeler - ingen filtrering basert på navn eller type
     if (asset && asset.name !== undefined) {
       const assetName = orIngenData(asset.name) || "Eiendel";
       lines.push(`${counter}: ${assetName}: ${formatValue(asset.amount || 0)}`);
       counter++;
-      // Lagre assetType hvis den er satt (for å bevare type når navn endres)
       if (asset.assetType) {
         lines.push(`${counter}: ${assetName} - AssetType: ${orIngenData(asset.assetType)}`);
         counter++;
       }
-      // Lagre entity-tilordning (privat, holding1, holding2)
       if (asset.entity) {
         lines.push(`${counter}: ${assetName} - Entity: ${orIngenData(asset.entity)}`);
         counter++;
@@ -10119,18 +10205,14 @@ function generateOutputText() {
       }
     }
   });
-  
-  // Gjeld (Debts) - navn og beløp
+
   (AppState.debts || []).forEach((debt) => {
     const debtName = orIngenData(debt.name) || "Gjeld";
     lines.push(`${counter}: ${debtName}: ${formatValue(debt.amount)}`);
     counter++;
-    
-    // Lånetype (select)
     const debtParams = debt.debtParams || AppState.debtParams;
     lines.push(`${counter}: ${debtName} - Lånetype: ${orIngenData(debtParams.type) || "Annuitetslån"}`);
     counter++;
-
     let exportStartY = debtParams.startYear;
     if (exportStartY == null || exportStartY === "" || !Number.isFinite(Number(exportStartY))) {
       exportStartY = 2026;
@@ -10139,25 +10221,19 @@ function generateOutputText() {
     }
     lines.push(`${counter}: ${debtName} - Startår: ${exportStartY}`);
     counter++;
-
-    // Lånetid (år) - slider
     lines.push(`${counter}: ${debtName} - Lånetid: ${debtParams.years || 25} år`);
     counter++;
-    
-    // Rentekostnader (%) - slider
     const rate = (debtParams.rate || 0) * 100;
     lines.push(`${counter}: ${debtName} - Rentekostnader: ${formatPercent(rate)}`);
     counter++;
   });
-  
-  // Inntekter (Incomes)
+
   (AppState.incomes || []).forEach((income) => {
     const incomeName = orIngenData(income.name) || "Inntekt";
     lines.push(`${counter}: ${incomeName}: ${formatValue(income.amount)}`);
     counter++;
   });
-  
-  // Forventet avkastning (Expectations) - slider
+
   const exp = AppState.expectations || {};
   const expLabels = {
     likvider: "BANKINNSKUDD",
@@ -10173,14 +10249,14 @@ function generateOutputText() {
       counter++;
     }
   });
-  
-  // Kontantstrøm routing - custom slider (hvis aktiv)
+
   const routing = AppState.cashflowRouting || {};
   if (routing.mode === "custom" && routing.customAmount !== undefined) {
     lines.push(`${counter}: Kontantstrøm - Tilpasset beløp: ${formatValue(routing.customAmount)}`);
     counter++;
   }
-  
+
+  /** Kun nummererte feltlinjer. */
   return lines.join("\n");
 }
 
@@ -10229,9 +10305,8 @@ function initInputUI() {
       if (parseInputText(txt)) {
         // Oppdater visningen - re-render alle moduler som kan være påvirket
         const moduleRoot = document.getElementById("module-root");
-        const currentNav = document.querySelector(".nav-item.is-active");
-        if (moduleRoot && currentNav) {
-          const section = currentNav.getAttribute("data-section") || currentNav.textContent || "";
+        const section = getActiveTkontoSectionKey();
+        if (moduleRoot && section) {
           if (section === "Forside") renderForsideModule(moduleRoot);
           else if (section === "Struktur") renderStrukturModule(moduleRoot);
           else if (section === "Eiendeler") renderAssetsModule(moduleRoot);
@@ -10277,7 +10352,7 @@ function initInputUI() {
   });
 }
 
-/** Tab-separerte felt i Output/Input (unngår rot i én lang JSON-linje). */
+/** Tab-separerte felt i familiediagram-eksport. */
 function escapeFamiliediagramCell(v) {
   return String(v ?? "")
     .replace(/\t/g, " ")
@@ -10438,9 +10513,76 @@ function normalizeDebtLanetypeFromInput(raw) {
   return hit || t;
 }
 
+/** Første komplette JSON-objekt etter markør (balanserte { }; strengar og escapes). */
+function extractJsonObjectAfterMarker(text, marker) {
+  const raw = String(text || "");
+  const idx = raw.indexOf(marker);
+  if (idx < 0) return null;
+  const braceStart = raw.indexOf("{", idx + marker.length);
+  if (braceStart < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let esc = false;
+  for (let i = braceStart; i < raw.length; i++) {
+    const c = raw[i];
+    if (inString) {
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === "\\") {
+        esc = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === "{") depth++;
+    else if (c === "}") {
+      depth--;
+      if (depth === 0) return raw.slice(braceStart, i + 1);
+    }
+  }
+  return null;
+}
+
 function parseInputText(text) {
   if (!text || !text.trim()) return false;
-  
+
+  const TK_JSON = "T-konto state (json):";
+  const rawFull = String(text)
+    .replace(/^\uFEFF/, "")
+    .replace(/\u2028/g, "\n")
+    .replace(/\u2029/g, "\n");
+  const tj = rawFull.indexOf(TK_JSON);
+  if (tj >= 0) {
+    const jsonStr = extractJsonObjectAfterMarker(rawFull, TK_JSON);
+    if (jsonStr) {
+    try {
+      const data = JSON.parse(jsonStr);
+      if (data && typeof data === "object") {
+        Object.keys(data).forEach((k) => {
+          AppState[k] = data[k];
+        });
+        syncGenIdFromImportedState();
+        try {
+          if (typeof window.dispatchEvent === "function") {
+            window.dispatchEvent(new CustomEvent("tkonto-data-changed"));
+          }
+        } catch (e) {}
+        refreshTkontoUiAfterStateImport();
+        return true;
+      }
+    } catch (e) {
+      console.warn("T-konto state (json) parse:", e);
+    }
+    }
+  }
+
   const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
   
   // Parse hver linje
@@ -10459,12 +10601,34 @@ function parseInputText(text) {
   const fdChildrenIn = [];
   const fdCompaniesIn = [];
 
-  for (const line of lines) {
-    // Format: "1: BANK: 2 MNOK" eller "1: BANK: 2 000 000 kr"
-    const match = line.match(/^\d+:\s*(.+?):\s*(.+)$/);
+  /** Tabeller i familiediagram: tab kan bli til mellomrom frå utklippstavle. */
+  function splitFamiliediagramCols(valueStr, minCols) {
+    const raw = String(valueStr || "").replace(/\u00a0/g, " ").replace(/\u202f/g, " ");
+    let cols = raw.split("\t").map((c) => c.trim());
+    if (cols.length >= minCols) return cols;
+    cols = raw.split(/\s{2,}/).map((c) => c.trim()).filter((c) => c.length > 0);
+    if (cols.length >= minCols) return cols;
+    if (raw.includes("|")) {
+      cols = raw.split("|").map((c) => c.trim()).filter((c) => c.length > 0);
+      if (cols.length >= minCols) return cols;
+    }
+    return raw.split("\t").map((c) => c.trim());
+  }
+
+  // Output-rekkefølge: eiendeler → gjeld → inntekter. Uten dette blir inntekter utan gjeld tolka som eiendeler.
+  let parseSection = "assets";
+  let anyParsedNumberedLine = false;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
+    // Siste kolon skil fritekst-/feltnamn (kan innehalde :) frå verdi – same som Output-format
+    const match = line.match(/^\d+:\s*(.+)\s*:\s*(.+)$/);
     if (!match) continue;
+    anyParsedNumberedLine = true;
     
-    const [, name, valueStr] = match;
+    const [, nameRaw, valueRaw] = match;
+    const name = String(nameRaw || "").trim();
+    const valueStr = String(valueRaw || "").trim();
 
     if (name === "Struktur - Familiediagram (base64)") {
       try {
@@ -10489,7 +10653,7 @@ function parseInputText(text) {
       continue;
     }
     if (name === "Struktur - Familiediagram partner") {
-      const cols = String(valueStr).split("\t");
+      const cols = splitFamiliediagramCols(valueStr, 5);
       if (cols.length >= 5) {
         fdPartnersIn.push({
           id: cols[0].trim(),
@@ -10502,7 +10666,7 @@ function parseInputText(text) {
       continue;
     }
     if (name === "Struktur - Familiediagram barn") {
-      const cols = String(valueStr).split("\t");
+      const cols = splitFamiliediagramCols(valueStr, 6);
       if (cols.length >= 6) {
         const parentIds = String(cols[5] || "")
           .split(",")
@@ -10520,7 +10684,7 @@ function parseInputText(text) {
       continue;
     }
     if (name === "Struktur - Familiediagram selskap") {
-      const cols = String(valueStr).split("\t");
+      const cols = splitFamiliediagramCols(valueStr, 6);
       if (cols.length >= 6) {
         fdCompaniesIn.push({
           id: cols[0].trim(),
@@ -10537,27 +10701,35 @@ function parseInputText(text) {
       // Gjeld med navn og beløp (før låneparametere)
       if (!name.includes(" - ") && !name.includes("Forventet avkastning") && name !== "Kontantstrøm - Tilpasset beløp") {
         const upperName = name.toUpperCase();
-        // Sjekk om det er en gjeld (kommer før inntekter i listen)
-        // Vi må sjekke om neste linje er en lånetype for å vite om det er gjeld
-        const lineIndex = lines.indexOf(line);
-        const nextLine = lines[lineIndex + 1];
-        if (nextLine && nextLine.includes(" - Lånetype")) {
-          const value = parseValue(valueStr);
-          const debtName = name;
-          debtMap.set(debtName, {
-            name: debtName,
+        const nextRaw = lines[lineIndex + 1] || "";
+        const nextNorm = String(nextRaw).replace(/\u00a0/g, " ").replace(/\u202f/g, " ");
+        const lanetypeM = nextNorm.match(/^\d+\s*:\s*(.+?)\s*-\s*Lånetype\s*:\s*(.+)$/i);
+        const isDebtAmountLine = !!(lanetypeM && lanetypeM[1].trim() === name);
+        const value = parseValue(valueStr);
+
+        if (isDebtAmountLine) {
+          parseSection = "debts";
+          debtMap.set(name, {
+            name: name,
             amount: value,
             debtParams: { type: "Annuitetslån", years: 25, rate: 0.04 }
           });
-        } else if (/L[ØO]NN|PENSJON|UTBYT|SKATTEFRIE\s*INNTEKTER|UTBETALINGER?\s*FRA\s*M[ÅA]L\s*OG\s*BEHOV|SKATT|KOSTNAD/i.test(upperName)) {
-          // Inntekt - sjekk først for å unngå feilklassifisering
-          const value = parseValue(valueStr);
+        } else if (parseSection === "debts") {
+          parseSection = "incomes";
+          incomes.push({ name: name, amount: value });
+        } else if (parseSection === "incomes") {
           incomes.push({ name: name, amount: value });
         } else {
-          // Alle andre linjer som ikke er gjeld eller inntekt er eiendeler
-          // Dette sikrer at alle eiendeler med egendefinerte navn også blir gjenkjent
-          const value = parseValue(valueStr);
-          assets.push({ name: name, amount: value });
+          const incomeHint =
+            /L[ØO]NN|PENSJON|UTBYT|UTBYTT|SKATTEFRIE\s*INNTEKTER|UTBETALINGER?\s*FRA\s*M[ÅA]L\s*OG\s*BEHOV|INNTEKTSSKATT|UTBYTTESKATT|FORMUESSKATT|ÅRLIGE\s*KOSTNADER|ANNEN\s+INNTEKT|HONORAR|PROVISJON|LEIE|KONSULENT|DRIFT|DIVIDENDE|INNTEKT|SKATT|KOSTNAD/i.test(
+              upperName
+            );
+          if (incomeHint) {
+            parseSection = "incomes";
+            incomes.push({ name: name, amount: value });
+          } else {
+            assets.push({ name: name, amount: value });
+          }
         }
       }
     
@@ -10922,12 +11094,17 @@ function parseInputText(text) {
     });
   }
 
+  if (!anyParsedNumberedLine) {
+    return false;
+  }
+
   // Signaliser at T-konto-data er oppdatert (Oppsummeringsrapport leser kontantstrøm herfra)
   try {
     if (typeof window.dispatchEvent === "function") {
       window.dispatchEvent(new CustomEvent("tkonto-data-changed"));
     }
   } catch (e) {}
+  refreshTkontoUiAfterStateImport();
   return true;
 }
 
@@ -10936,9 +11113,8 @@ window.TKontoParseInputText = parseInputText;
 // Kalles etter Input lastes inn fra felles Input-modal (TabContainer) – oppdaterer T-konto UI
 window.TKontoRefreshAfterInputLoad = function () {
   const moduleRoot = document.getElementById("module-root");
-  const currentNav = document.querySelector(".nav-item.is-active");
-  if (moduleRoot && currentNav) {
-    const section = currentNav.getAttribute("data-section") || currentNav.textContent || "";
+  const section = getActiveTkontoSectionKey();
+  if (moduleRoot && section) {
     if (section === "Forside" && typeof renderForsideModule === "function") renderForsideModule(moduleRoot);
     else if (section === "Struktur" && typeof renderStrukturModule === "function") renderStrukturModule(moduleRoot);
     else if (section === "Eiendeler" && typeof renderAssetsModule === "function") renderAssetsModule(moduleRoot);

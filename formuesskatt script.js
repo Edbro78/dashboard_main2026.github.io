@@ -1,5 +1,30 @@
 document.addEventListener('DOMContentLoaded', function() {
     
+    function extractJsonObjectAfterMarker(text, marker) {
+        const raw = String(text || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+        const idx = raw.indexOf(marker);
+        if (idx < 0) return null;
+        const braceStart = raw.indexOf('{', idx + marker.length);
+        if (braceStart < 0) return null;
+        let depth = 0, inString = false, esc = false;
+        for (let i = braceStart; i < raw.length; i++) {
+            const c = raw[i];
+            if (inString) {
+                if (esc) { esc = false; continue; }
+                if (c === '\\') { esc = true; continue; }
+                if (c === '"') inString = false;
+                continue;
+            }
+            if (c === '"') { inString = true; continue; }
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) return raw.slice(braceStart, i + 1);
+            }
+        }
+        return null;
+    }
+
     const sharedData = {
         taxAsPercentageOfGross: 0,
         inflationRate: 3.0,
@@ -463,29 +488,91 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.FormuesskattGetOutputText = function() {
-        const INGEN_DATA = 'ingen data';
-        const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA : v;
-        const lines = [];
-        const personCount = WealthTaxApp.state && WealthTaxApp.state.personCount ? WealthTaxApp.state.personCount : 1;
-        lines.push(`Antall personer: ${orIngenData(personCount) || 1}`);
-        const values = WealthTaxApp.getValues ? WealthTaxApp.getValues() : { assets: {}, privateDebt: 0, inflationRate: 3 };
-        const privGjeld = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(values.privateDebt || 0) : (values.privateDebt ?? INGEN_DATA);
-        lines.push(`Privat gjeld (NOK): ${orIngenData(privGjeld) || '0'}`);
-        (WealthTaxApp.assetsConfig || []).forEach(asset => {
-            const val = (values.assets && values.assets[asset.id]) ?? asset.value ?? 0;
-            const label = orIngenData(asset.label) || 'Eiendel';
-            const formatted = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(val) : val;
-            lines.push(`${label}: ${orIngenData(formatted) ?? formatted}`);
-        });
-        lines.push(`Forventet inflasjon (%): ${orIngenData((values.inflationRate ?? 3).toString()) || '3'}`);
-        const totalEl = document.getElementById('total-wealth-tax');
-        const totalVal = totalEl ? totalEl.textContent : INGEN_DATA;
-        lines.push(`Total Formuesskatt: ${orIngenData(totalVal) || '0 kr'}`);
-        return lines.join('\n');
+        try {
+            const INGEN_DATA = 'ingen data';
+            const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA : v;
+            const values = WealthTaxApp.getValues && typeof WealthTaxApp.getValues === 'function'
+                ? WealthTaxApp.getValues()
+                : { assets: {}, privateDebt: 0, inflationRate: 3 };
+            const out = [];
+            let num = 1;
+            const push = (label, val) => {
+                out.push(`${num} : ${label} : ${val}`);
+                num += 1;
+            };
+            const personCount = WealthTaxApp.state && WealthTaxApp.state.personCount ? WealthTaxApp.state.personCount : 1;
+            push('Antall personer', String(orIngenData(personCount) || 1));
+            const privGjeld = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(values.privateDebt || 0) : (values.privateDebt ?? '0');
+            push('Privat gjeld (NOK)', String(orIngenData(privGjeld) || '0'));
+            (WealthTaxApp.assetsConfig || []).forEach(asset => {
+                const val = (values.assets && values.assets[asset.id]) ?? asset.value ?? 0;
+                const label = orIngenData(asset.label) || 'Eiendel';
+                const formatted = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(val) : val;
+                push(label, String(orIngenData(formatted) ?? formatted));
+            });
+            push('Forventet inflasjon (%)', String(orIngenData((values.inflationRate ?? 3).toString()) || '3'));
+            const totalEl = document.getElementById('total-wealth-tax');
+            const totalVal = totalEl ? totalEl.textContent : INGEN_DATA;
+            push('Total Formuesskatt', String(orIngenData(totalVal) || '0 kr'));
+            return out.join('\n');
+        } catch (e) {
+            return '1 : Merknad : Formuesskatt – kunne ikke generere eksport';
+        }
     };
     
     window.FormuesskattApplyInputText = function(text) {
         if (!text || !text.trim()) return;
+        const FJ = 'Formuesskatt state (json):';
+        const raw = String(text).replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+        const idx = raw.indexOf(FJ);
+        if (idx >= 0) {
+            let js = extractJsonObjectAfterMarker(raw, FJ);
+            if (!js) {
+                js = raw.slice(idx + FJ.length).trim();
+                const nl = js.indexOf('\n');
+                if (nl >= 0) js = js.slice(0, nl).trim();
+            }
+            try {
+                const snap = JSON.parse(js);
+                if (snap && snap.v === 1 && snap.values && typeof snap.values === 'object') {
+                    const vals = snap.values;
+                    if (vals.assets && typeof vals.assets === 'object') {
+                        Object.keys(vals.assets).forEach((assetId) => {
+                            const slider = document.getElementById(assetId);
+                            if (slider) {
+                                slider.value = String(vals.assets[assetId]);
+                                const span = document.getElementById(assetId + '-value');
+                                if (span && WealthTaxApp.formatCurrency) span.textContent = WealthTaxApp.formatCurrency(parseFloat(slider.value) || 0);
+                                slider.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        });
+                    }
+                    if (vals.privateDebt != null) {
+                        const el = document.getElementById('private-debt');
+                        if (el) {
+                            el.value = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(parseFloat(String(vals.privateDebt).replace(/\s/g, '').replace(',', '.')) || 0) : String(vals.privateDebt);
+                            WealthTaxApp.formatAndRecalculate && WealthTaxApp.formatAndRecalculate(el);
+                        }
+                    }
+                    if (vals.inflationRate != null) {
+                        const el = document.getElementById('inflation-rate');
+                        if (el) {
+                            el.value = String(vals.inflationRate).replace(',', '.');
+                            WealthTaxApp.formatAndRecalculate && WealthTaxApp.formatAndRecalculate(el);
+                        }
+                    }
+                    if (snap.state && typeof snap.state === 'object') {
+                        Object.assign(WealthTaxApp.state, snap.state);
+                        if (snap.state.personCount === 1 || snap.state.personCount === 2) {
+                            const btn = document.querySelector(`#person-count .person-btn[data-value="${snap.state.personCount}"]`);
+                            if (btn) btn.click();
+                        }
+                    }
+                    WealthTaxApp.calculateAll && WealthTaxApp.calculateAll();
+                    return;
+                }
+            } catch (e) { console.warn('Formuesskatt state (json):', e); }
+        }
         const parseNum = (s) => {
             const v = String(s).replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
             return parseFloat(v) || 0;
@@ -496,10 +583,17 @@ document.addEventListener('DOMContentLoaded', function() {
         labelToAssetId['Driftsmidler'] = 'operating-assets';
         const lines = text.split('\n').map(l => l.trim()).filter(l => l);
         lines.forEach(line => {
-            const colonIdx = line.indexOf(':');
-            if (colonIdx < 0) return;
-            const label = line.substring(0, colonIdx).trim();
-            const valueStr = line.substring(colonIdx + 1).trim();
+            let label, valueStr;
+            const triple = line.match(/^(\d+)\s*:\s*(.+?)\s*:\s*(.+)$/);
+            if (triple) {
+                label = triple[2].trim();
+                valueStr = triple[3].trim();
+            } else {
+                const colonIdx = line.indexOf(':');
+                if (colonIdx < 0) return;
+                label = line.substring(0, colonIdx).trim();
+                valueStr = line.substring(colonIdx + 1).trim();
+            }
             if (label === 'Antall personer') {
                 const n = parseInt(valueStr, 10);
                 if (n === 1 || n === 2) {

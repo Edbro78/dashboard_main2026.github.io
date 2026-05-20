@@ -6343,6 +6343,256 @@ function getRisikoSerializableState() {
     };
 }
 
+/** Lesbar eksport utan JSON-blokk (Input/import parses som linjer). */
+function buildRisikoExportText() {
+    const s = getRisikoSerializableState();
+    const cp = s.currentPortfolio;
+    const np = s.newPortfolio;
+    const mnok = (Number(state.startCapital) || 0) / 1e6;
+    return [
+        `1 : Startkapital : ${mnok} MNOK`,
+        `2 : Periode : ${getPeriodLabel()}`,
+        `3 : Aksjekapital i dagens portefølje : ${cp.highYield} %`,
+        `4 : Aksjekapital i ny portefølje : ${np.highYield} %`,
+        `5 : Periodevalg : ${s.selectedPeriod}`,
+        `6 : Omfordeling : ${s.allocationRebalancing ? 'Ja' : 'Nei'}`,
+        `7 : Drawdown portefølje : ${s.selectedDrawdownPortfolio}`,
+        `8 : Drawdown visning : ${s.selectedDrawdownView}`,
+        `9 : Porteføljegraf : ${s.portfolioComparisonChartType}`,
+        `10 : Aktiv fane : ${s.activeNurseTab}`,
+        `11 : Dagens - aksjer % : ${cp.stocks}`,
+        `12 : Dagens - risikofri % : ${cp.riskFree}`,
+        `13 : Dagens - high yield % : ${cp.highYield}`,
+        `14 : Dagens - nordiske aksjer % : ${cp.nordicStocks}`,
+        `15 : Dagens - emerging markets % : ${cp.emergingMarkets}`,
+        `16 : Dagens - renter IG % : ${cp.renterIGPct}`,
+        `17 : Dagens - renter HY % : ${cp.renterHYPct}`,
+        `18 : Ny - aksjer % : ${np.stocks}`,
+        `19 : Ny - risikofri % : ${np.riskFree}`,
+        `20 : Ny - high yield % : ${np.highYield}`,
+        `21 : Ny - nordiske aksjer % : ${np.nordicStocks}`,
+        `22 : Ny - emerging markets % : ${np.emergingMarkets}`,
+        `23 : Ny - renter IG % : ${np.renterIGPct}`,
+        `24 : Ny - renter HY % : ${np.renterHYPct}`
+    ].join('\n');
+}
+
+window.RisikoSimuleringGetExportText = buildRisikoExportText;
+
+/**
+ * Bygger delvis state fra nummererte felt (gamle 1–4 + nye 5–24).
+ * Enkle «Aksjekapital … %»-linjer brukes bare om det ikk finst detaljerte Dagens-/Ny-linjer.
+ * @returns {object|null}
+ */
+function parseRisikoExportPlainLines(fullText) {
+    const raw = String(fullText || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u2028/g, '\n')
+        .replace(/\u2029/g, '\n');
+    const lines = raw.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+    const pNum = function (s) {
+        const n = parseFloat(String(s).replace(/\s/g, '').replace(/\u202F/g, '').replace(',', '.'));
+        return Number.isFinite(n) ? n : null;
+    };
+    const out = {};
+    const cur = {};
+    const neu = {};
+    let hasAny = false;
+    let hasDetailedCurrent = false;
+    let hasDetailedNew = false;
+    let pendingSimpleCurrent = null;
+    let pendingSimpleNew = null;
+    let m;
+    let i;
+    for (i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (/^risikostate\s*\(json\):/i.test(line)) continue;
+
+        m = line.match(/^(?:\d+\s*:\s*)?Startkapital\s*:\s*(.+)$/i);
+        if (m) {
+            const val = parseFloat(String(m[1]).replace(/\s*MNOK/i, '').replace(',', '.').trim());
+            if (!isNaN(val) && val > 0) {
+                out.startCapital = val * 1000000;
+                hasAny = true;
+            }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Periodevalg\s*:\s*(\S+)/i);
+        if (m) {
+            out.selectedPeriod = m[1].trim();
+            hasAny = true;
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Omfordeling\s*:\s*(.+)$/i);
+        if (m) {
+            out.allocationRebalancing = /^ja$/i.test(String(m[1]).trim());
+            hasAny = true;
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Drawdown\s+portef[oø]lje\s*:\s*(\S+)/i);
+        if (m) {
+            out.selectedDrawdownPortfolio = String(m[1]).trim();
+            hasAny = true;
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Drawdown\s+visning\s*:\s*(\S+)/i);
+        if (m) {
+            out.selectedDrawdownView = String(m[1]).trim();
+            hasAny = true;
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Portef[oø]ljegraf\s*:\s*(.+)$/i);
+        if (m) {
+            out.portfolioComparisonChartType = String(m[1]).trim();
+            hasAny = true;
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Aktiv\s+fane\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const tab = pNum(m[1]);
+            if (tab !== null) {
+                out.activeNurseTab = Math.round(tab);
+                hasAny = true;
+            }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*aksjer\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.stocks = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*risikofri\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.riskFree = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*high\s+yield\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.highYield = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*nordiske\s+aksjer\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.nordicStocks = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*emerging\s+markets\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.emergingMarkets = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*renter\s+IG\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.renterIGPct = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Dagens\s*-\s*renter\s+HY\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { cur.renterHYPct = n; hasDetailedCurrent = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*aksjer\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.stocks = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*risikofri\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.riskFree = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*high\s+yield\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.highYield = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*nordiske\s+aksjer\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.nordicStocks = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*emerging\s+markets\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.emergingMarkets = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*renter\s+IG\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.renterIGPct = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Ny\s*-\s*renter\s+HY\s*%?\s*:\s*([\d,.-]+)/i);
+        if (m) {
+            const n = pNum(m[1]);
+            if (n !== null) { neu.renterHYPct = n; hasDetailedNew = true; hasAny = true; }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Aksjekapital i dagens portefølje\s*:\s*([\d,.-]+)\s*%?$/i);
+        if (m) {
+            const val = pNum(m[1]);
+            if (val !== null && val >= 0 && val <= 100) {
+                pendingSimpleCurrent = val;
+                hasAny = true;
+            }
+            continue;
+        }
+        m = line.match(/^(?:\d+\s*:\s*)?Aksjekapital i ny portefølje\s*:\s*([\d,.-]+)\s*%?$/i);
+        if (m) {
+            const val = pNum(m[1]);
+            if (val !== null && val >= 0 && val <= 100) {
+                pendingSimpleNew = val;
+                hasAny = true;
+            }
+            continue;
+        }
+    }
+
+    if (!hasDetailedCurrent && pendingSimpleCurrent !== null) {
+        const val = pendingSimpleCurrent;
+        out.currentPortfolio = {
+            stocks: 0,
+            nordicStocks: 0,
+            emergingMarkets: 0,
+            highYield: val,
+            riskFree: 100 - val,
+            renterIGPct: Math.round((100 - val) * 7) / 10,
+            renterHYPct: Math.round((100 - val) * 3) / 10
+        };
+    } else if (hasDetailedCurrent && Object.keys(cur).length > 0) {
+        out.currentPortfolio = cur;
+    }
+
+    if (!hasDetailedNew && pendingSimpleNew !== null) {
+        const val = pendingSimpleNew;
+        out.newPortfolio = {
+            stocks: 0,
+            nordicStocks: 0,
+            emergingMarkets: 0,
+            highYield: val,
+            riskFree: 100 - val,
+            renterIGPct: Math.round((100 - val) * 7) / 10,
+            renterHYPct: Math.round((100 - val) * 3) / 10
+        };
+    } else if (hasDetailedNew && Object.keys(neu).length > 0) {
+        out.newPortfolio = neu;
+    }
+
+    return hasAny ? out : null;
+}
+
 function applyRisikoSerializableState(imported) {
     if (!imported || typeof imported !== 'object') return false;
 
@@ -6423,15 +6673,16 @@ function applyRisikoSerializableState(imported) {
     return true;
 }
 
-/** Expose for parent (Mål og behov) Output: legacy lines + full serializable state. */
+/** Eksportdata utan JSON (bruk RisikoSimuleringGetExportText for tekst). */
 window.RisikoSimuleringGetOutputData = function () {
     const capitalInMNOK = state.startCapital / 1000000;
+    const s = getRisikoSerializableState();
     return {
         startkapital: capitalInMNOK + ' MNOK',
         periode: getPeriodLabel(),
-        aksjekapitalDagens: state.currentPortfolio.highYield,
-        aksjekapitalNy: state.newPortfolio.highYield,
-        stateJson: JSON.stringify(getRisikoSerializableState())
+        aksjekapitalDagens: s.currentPortfolio.highYield,
+        aksjekapitalNy: s.newPortfolio.highYield,
+        exportText: buildRisikoExportText()
     };
 };
 
@@ -7580,59 +7831,47 @@ async function init() {
         });
     }
 
+    /** JSON etter «Risikostate (json):» (case-insensitive), med balanserte klammeparentesar. */
+    function extractJsonObjectAfterRiskMarker(fullText) {
+        const raw = String(fullText || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+        const m = /risikostate\s*\(json\):/i.exec(raw);
+        if (!m) return null;
+        const braceStart = raw.indexOf('{', m.index + m[0].length);
+        if (braceStart < 0) return null;
+        let depth = 0, inString = false, esc = false;
+        for (let i = braceStart; i < raw.length; i++) {
+            const c = raw[i];
+            if (inString) {
+                if (esc) { esc = false; continue; }
+                if (c === '\\') { esc = true; continue; }
+                if (c === '"') inString = false;
+                continue;
+            }
+            if (c === '"') { inString = true; continue; }
+            if (c === '{') depth++;
+            else if (c === '}') {
+                depth--;
+                if (depth === 0) return raw.slice(braceStart, i + 1);
+            }
+        }
+        return null;
+    }
+
     // Input fra Mål og behov (Output som ble limt inn og Last inn): oppdater state fra Risikosimulering-seksjonen
     window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'LOAD_INPUT' && typeof event.data.payload === 'string') {
-            const text = event.data.payload.trim();
-            const lines = text.split('\n').map(function (s) { return s.trim(); });
-            let changed = false;
-            lines.forEach(function (line) {
-                const mJson = line.match(/^Risikostate\s*\(json\):\s*(.+)$/i);
-                if (mJson && mJson[1]) {
-                    try {
-                        const parsed = JSON.parse(mJson[1]);
-                        if (applyRisikoSerializableState(parsed)) changed = true;
-                    } catch (_) {}
-                    return;
-                }
-                const mStart = line.match(/^Startkapital:\s*(.+)$/i);
-                if (mStart) {
-                    const val = parseFloat(String(mStart[1]).replace(/\s*MNOK/i, '').replace(',', '.').trim());
-                    if (!isNaN(val) && val > 0) {
-                        state.startCapital = val * 1000000;
-                        changed = true;
-                    }
-                }
-                const mDagens = line.match(/^Aksjekapital i dagens portefølje:\s*([\d,.-]+)\s*%?$/i);
-                if (mDagens) {
-                    const val = parseFloat(String(mDagens[1]).replace(',', '.'));
-                    if (!isNaN(val) && val >= 0 && val <= 100) {
-                        state.currentPortfolio.highYield = val;
-                        state.currentPortfolio.riskFree = 100 - val;
-                        state.currentPortfolio.renterIGPct = Math.round(state.currentPortfolio.riskFree * 7) / 10;
-                        state.currentPortfolio.renterHYPct = Math.round(state.currentPortfolio.riskFree * 3) / 10;
-                        changed = true;
-                    }
-                }
-                const mNy = line.match(/^Aksjekapital i ny portefølje:\s*([\d,.-]+)\s*%?$/i);
-                if (mNy) {
-                    const val = parseFloat(String(mNy[1]).replace(',', '.'));
-                    if (!isNaN(val) && val >= 0 && val <= 100) {
-                        state.newPortfolio.highYield = val;
-                        state.newPortfolio.riskFree = 100 - val;
-                        state.newPortfolio.renterIGPct = Math.round(state.newPortfolio.riskFree * 7) / 10;
-                        state.newPortfolio.renterHYPct = Math.round(state.newPortfolio.riskFree * 3) / 10;
-                        changed = true;
-                    }
-                }
-            });
-            if (changed) {
-                updateStartCapitalDisplay();
-                updateSliderUI('current');
-                updateSliderUI('new');
-                updateCharts();
-                updateTreemapChart('current');
-                updateTreemapChart('new');
+            const text = event.data.payload.replace(/^\uFEFF/, '').trim();
+            let jsonApplied = false;
+            const jsonStrRobust = extractJsonObjectAfterRiskMarker(text);
+            if (jsonStrRobust) {
+                try {
+                    applyRisikoSerializableState(JSON.parse(jsonStrRobust));
+                    jsonApplied = true;
+                } catch (_) {}
+            }
+            if (!jsonApplied) {
+                const plain = parseRisikoExportPlainLines(text);
+                if (plain) applyRisikoSerializableState(plain);
             }
         }
     });

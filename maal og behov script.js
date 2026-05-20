@@ -1,5 +1,5 @@
 // Remove all imports and use global variables
-const { useState, useMemo, useCallback, useEffect } = React;
+const { useState, useMemo, useCallback, useEffect, useLayoutEffect } = React;
 const { createRoot } = ReactDOM;
 
 // Chart.js is already loaded globally
@@ -267,7 +267,10 @@ const MaalOgBehovState = {
     savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
     advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
     waterfallMode: false,
-    henteAltFraPensionActive: false
+    henteAltFraPensionActive: false,
+    spToolButtonMarked: false,
+    utbToolButtonMarked: false,
+    portToolButtonMarked: false
 };
 if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState; }
 
@@ -1235,7 +1238,7 @@ function TKontoDashboard() {
     }, []);
 
     return (
-        <div ref={containerRef} style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
+        <div ref={containerRef} id="tkonto-dashboard-root" style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
             <div className="app" style={{ height: '100%', minHeight: '100%' }}>
                 <aside className="sidebar" aria-label="Hovednavigasjon">
                     <div className="brand">
@@ -1501,6 +1504,10 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     useEffect(() => {
         if (tkontoLoaded || typeof window === 'undefined') return;
         if (window.getTKontoAssetSegments) {
+            setTkontoLoaded(true);
+            return;
+        }
+        if (document.querySelector('script[src*="t-konto"]')) {
             setTkontoLoaded(true);
             return;
         }
@@ -1896,6 +1903,113 @@ function TabBar({ tabs, activeTab, onTabClick }) {
     );
 }
 
+/**
+ * Trekker ut første komplette JSON-objekt etter markør (balanserte { }; strengar og \" escapes).
+ * Brukes når JSON ikkje ligg på éi linje, eller når «første linje»-klipping ville ha ødelagt parse.
+ */
+function extractJsonObjectAfterMarker(text, marker) {
+    const raw = String(text || '');
+    const idx = raw.indexOf(marker);
+    if (idx < 0) return null;
+    const braceStart = raw.indexOf('{', idx + marker.length);
+    if (braceStart < 0) return null;
+    let depth = 0;
+    let inString = false;
+    let esc = false;
+    for (let i = braceStart; i < raw.length; i++) {
+        const c = raw[i];
+        if (inString) {
+            if (esc) {
+                esc = false;
+                continue;
+            }
+            if (c === '\\') {
+                esc = true;
+                continue;
+            }
+            if (c === '"') inString = false;
+            continue;
+        }
+        if (c === '"') {
+            inString = true;
+            continue;
+        }
+        if (c === '{') depth++;
+        else if (c === '}') {
+            depth--;
+            if (depth === 0) return raw.slice(braceStart, i + 1);
+        }
+    }
+    return null;
+}
+
+/**
+ * Deler felles Output inn i seksjoner. Linjebasert parsing (kun linjer som heile er `--- Tittel ---`)
+ * slik at innhold i T-konto, Malsetninger JSON osv. ikkje tilfeldig avkortar regex (lookahead).
+ */
+function splitStrategiExportIntoSections(fullRaw) {
+    const text = String(fullRaw || '')
+        .replace(/^\uFEFF/, '')
+        .replace(/\u2028/g, '\n')
+        .replace(/\u2029/g, '\n')
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n');
+    const lines = text.split('\n');
+    const buckets = {
+        malsetninger: [],
+        maal: [],
+        tkonto: [],
+        risiko: [],
+        pensjonsgapet: [],
+        formuesskatt: [],
+        fremtidigeVerdier: []
+    };
+    const resolveSectionKey = (innerRaw) => {
+        const inner = String(innerRaw || '').replace(/[\u00a0\u202f]/g, ' ').trim();
+        const n = inner.replace(/[\u2013\u2014\u2212]/g, '-').trim();
+        const lower = n.toLowerCase();
+        if (lower === 'malsetninger') return 'malsetninger';
+        if (lower === 't-konto') return 'tkonto';
+        if (lower === 'mål og behov' || lower === 'maal og behov') return 'maal';
+        if (lower === 'risikosimulering') return 'risiko';
+        if (lower === 'pensjonsgapet' || lower === 'pensjon') return 'pensjonsgapet';
+        if (lower === 'formuesskatt') return 'formuesskatt';
+        if (lower === 'fremtidige verdier' || lower === 'gradvis implementering' || lower === 'oppsummeringsrapport') {
+            return 'fremtidigeVerdier';
+        }
+        return null;
+    };
+    let current = null;
+    let sawDelimiter = false;
+    for (let i = 0; i < lines.length; i++) {
+        const rawLine = lines[i];
+        const trimmed = rawLine.trim();
+        const dashNorm = trimmed.replace(/[\u2013\u2014\u2212]/g, '-');
+        // Støtt både «--- Tittel ---» og typografiske enkle strekar etter normalisering: «- Tittel -»
+        let m = dashNorm.match(/^-{3,}\s*(.+?)\s*-{3,}$/);
+        if (!m) m = dashNorm.match(/^-+\s*(.+?)\s*-+$/);
+        if (m) {
+            const key = resolveSectionKey(m[1]);
+            if (key) {
+                current = key;
+                sawDelimiter = true;
+                continue;
+            }
+        }
+        if (current) buckets[current].push(rawLine);
+    }
+    return {
+        malsetninger: buckets.malsetninger.join('\n').trim(),
+        maal: buckets.maal.join('\n').trim(),
+        tkonto: buckets.tkonto.join('\n').trim(),
+        risiko: buckets.risiko.join('\n').trim(),
+        pensjonsgapet: buckets.pensjonsgapet.join('\n').trim(),
+        formuesskatt: buckets.formuesskatt.join('\n').trim(),
+        fremtidigeVerdier: buckets.fremtidigeVerdier.join('\n').trim(),
+        hadDelimiter: sawDelimiter
+    };
+}
+
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
     // Fanerekkefolge: 0 malsetninger iframe (malsetninger index.html), 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
@@ -2064,19 +2178,14 @@ function TabContainer() {
         let risiko = INGEN_DATA;
         try {
             const win = risikoIframeRef.current && risikoIframeRef.current.contentWindow;
-            if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
+            if (win && typeof win.RisikoSimuleringGetExportText === 'function') {
+                const t = win.RisikoSimuleringGetExportText();
+                risiko = (t && String(t).trim()) ? t.trim() : INGEN_DATA;
+            } else if (win && typeof win.RisikoSimuleringGetOutputData === 'function') {
                 const data = win.RisikoSimuleringGetOutputData();
-                const v = (x) => (x === undefined || x === null || (typeof x === 'string' && !String(x).trim())) ? INGEN_DATA : x;
-                const lines = [
-                    `Startkapital: ${v(data.startkapital)}`,
-                    `Periode: ${v(data.periode)}`,
-                    `Aksjekapital i dagens portefølje: ${Number(data.aksjekapitalDagens ?? 0)} %`,
-                    `Aksjekapital i ny portefølje: ${Number(data.aksjekapitalNy ?? 0)} %`
-                ];
-                if (data && typeof data.stateJson === 'string' && data.stateJson.trim()) {
-                    lines.push(`Risikostate (json): ${data.stateJson}`);
+                if (data && typeof data.exportText === 'string' && data.exportText.trim()) {
+                    risiko = data.exportText.trim();
                 }
-                risiko = lines.join('\n');
             }
         } catch (_) {}
         let pensjonsgapet = INGEN_DATA;
@@ -2095,8 +2204,7 @@ function TabContainer() {
                 formuesskatt = (txt && String(txt).trim()) ? txt : INGEN_DATA;
             }
         } catch (_) {}
-        // Fremtidige verdier (tidligere «Oppsummeringsrapport»): ingen egen serialisering – fanen bygger på Mål og behov + T-konto
-        const fremtidigeVerdier = 'Fanen «Fremtidige verdier» er utledet fra Mål og behov og T-konto. Bruk seksjonene over for å lagre og laste innstillinger.';
+        const fremtidigeVerdier = '1 : Merknad : Utledet fra Mål og behov + T-konto (ingen egen lagring i denne fanen).';
         return [
             '--- Malsetninger ---',
             malsetninger,
@@ -2159,65 +2267,143 @@ function TabContainer() {
             alert('Vennligst lim inn informasjon fra Output.');
             return;
         }
-        const full = inputText.trim();
-        const sections = { malsetninger: '', maal: '', tkonto: '', risiko: '', pensjonsgapet: '', formuesskatt: '', fremtidigeVerdier: '' };
-        // Neste seksjon kan komme i vilkårlig rekkefølge (ny eksport = Malsetninger først deretter T-konto …; gamle filer uten Malsetninger parses fortsatt)
-        const reMalsetninger = /---\s*Malsetninger\s*---([\s\S]*?)(?=---\s*(?:T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reTkonto = /---\s*T-konto\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reMaal = /---\s*Mål og behov\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reRisiko = /---\s*Risikosimulering\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Pensjon|Pensjonsgapet|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const rePensjonsgapet = /---\s*(?:Pensjonsgapet|Pensjon)\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Formuesskatt|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reFormuesskatt = /---\s*Formuesskatt\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const reFremtidigeVerdier = /---\s*(?:Fremtidige verdier|Gradvis implementering|Oppsummeringsrapport)\s*---([\s\S]*?)(?=---\s*(?:Malsetninger|T-konto|Mål og behov|Risikosimulering|Pensjon|Pensjonsgapet|Formuesskatt|Gradvis implementering|Oppsummeringsrapport)\s*---|$)/i;
-        const m0 = full.match(reMalsetninger);
-        const m1 = full.match(reMaal);
-        const m2 = full.match(reTkonto);
-        const m3 = full.match(reRisiko);
-        const m4 = full.match(rePensjonsgapet);
-        const m5 = full.match(reFormuesskatt);
-        const m6 = full.match(reFremtidigeVerdier);
-        if (m0) sections.malsetninger = m0[1].trim();
-        if (m1) sections.maal = m1[1].trim();
-        if (m2) sections.tkonto = m2[1].trim();
-        if (m3) sections.risiko = m3[1].trim();
-        if (m4) sections.pensjonsgapet = m4[1].trim();
-        if (m5) sections.formuesskatt = m5[1].trim();
-        if (m6) sections.fremtidigeVerdier = m6[1].trim();
-        if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.fremtidigeVerdier && !sections.malsetninger) {
+        const full = String(inputText.trim())
+            .replace(/^\uFEFF/, '')
+            .replace(/\u2028/g, '\n')
+            .replace(/\u2029/g, '\n')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n');
+        const split = splitStrategiExportIntoSections(full);
+        const sections = {
+            malsetninger: split.malsetninger,
+            maal: split.maal,
+            tkonto: split.tkonto,
+            risiko: split.risiko,
+            pensjonsgapet: split.pensjonsgapet,
+            formuesskatt: split.formuesskatt,
+            fremtidigeVerdier: split.fremtidigeVerdier
+        };
+        if (!split.hadDelimiter) {
+            sections.maal = full;
+        } else if (!sections.maal && !sections.tkonto && !sections.risiko && !sections.pensjonsgapet && !sections.formuesskatt && !sections.fremtidigeVerdier && !sections.malsetninger) {
             sections.maal = full;
         }
-        try {
-            if (sections.malsetninger) {
-                pendingMalsetningerPayloadRef.current = sections.malsetninger;
-                const mr = tryApplyPendingMalsetninger();
-                if (mr === 'retry') schedulePendingMalsetningerFlush();
+        const warnings = [];
+        const waitForTkontoParse = () => new Promise((resolve) => {
+            const text = sections.tkonto;
+            if (!text) {
+                resolve();
+                return;
             }
-            if (sections.maal && MaalOgBehovState.applyInputText) MaalOgBehovState.applyInputText(sections.maal);
-            if (sections.tkonto && typeof window.TKontoParseInputText === 'function') {
-                const ok = window.TKontoParseInputText(sections.tkonto);
-                if (ok && typeof window.TKontoRefreshAfterInputLoad === 'function') window.TKontoRefreshAfterInputLoad();
+            let attempts = 0;
+            const maxAttempts = 50;
+            const tick = () => {
+                if (typeof window.TKontoParseInputText === 'function') {
+                    try {
+                        const ok = window.TKontoParseInputText(text);
+                        if (!ok) warnings.push('T-konto: ingen gyldige nummererte feltlinjer — kopier på nytt fra Output (eldre lim kan inneholde «T-konto state (json):»).');
+                        if (ok && typeof window.TKontoRefreshAfterInputLoad === 'function') {
+                            try { window.TKontoRefreshAfterInputLoad(); } catch (e2) { console.warn('TKontoRefreshAfterInputLoad', e2); }
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        warnings.push('T-konto: feil ved import – ' + (e && e.message ? e.message : String(e)));
+                    }
+                    resolve();
+                    return;
+                }
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    warnings.push('T-konto: skript ikke ferdig lastet. Åpne T-konto-fanen, vent ett sekund, og trykk «Last inn» igjen.');
+                    resolve();
+                    return;
+                }
+                setTimeout(tick, 60);
+            };
+            tick();
+        });
+
+        const waitForPensjonApply = () => new Promise((resolve) => {
+            const text = sections.pensjonsgapet;
+            if (!text || !String(text).trim()) {
+                resolve();
+                return;
             }
-            if (sections.risiko && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
-                try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+            let attempts = 0;
+            const maxAttempts = 50;
+            const tick = () => {
+                const win = pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow;
+                if (win && typeof win.PensjonsgapetApplyInputText === 'function') {
+                    try {
+                        win.PensjonsgapetApplyInputText(text);
+                    } catch (e) {
+                        console.error(e);
+                        warnings.push('Pensjon: feil ved import – ' + (e && e.message ? e.message : String(e)));
+                    }
+                    resolve();
+                    return;
+                }
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    warnings.push('Pensjon: skript ikke ferdig lastet. Åpne Pensjon-fanen, vent litt, og trykk «Last inn» igjen.');
+                    resolve();
+                    return;
+                }
+                setTimeout(tick, 60);
+            };
+            tick();
+        });
+
+        (async () => {
+            try {
+                if (sections.malsetninger) {
+                    pendingMalsetningerPayloadRef.current = sections.malsetninger;
+                    const mr = tryApplyPendingMalsetninger();
+                    if (mr === 'retry') schedulePendingMalsetningerFlush();
+                    if (mr === 'bad') {
+                        warnings.push('Målsetninger: innlimingen ble ikke gjenkjent (sjekk nummererte linjer eller eldre «Malsetninger state (json):»).');
+                    }
+                }
+                if (sections.maal) {
+                    if (typeof MaalOgBehovState.applyInputText !== 'function') {
+                        warnings.push('Mål og behov: intern import er ikke klar – oppdater siden og prøv igjen.');
+                    } else {
+                        const maalOk = MaalOgBehovState.applyInputText(sections.maal);
+                        if (!maalOk) {
+                            warnings.push('Mål og behov: ingen felt ble oppdatert (ugyldig format eller tom seksjon — forvent linjer 1–37 eller eldre «Maal og behov state (json):»).');
+                        }
+                    }
+                }
+                await waitForTkontoParse();
+                if (sections.malsetninger && pendingMalsetningerPayloadRef.current) {
+                    const mr2 = tryApplyPendingMalsetninger();
+                    if (mr2 === 'retry') {
+                        warnings.push('Målsetninger: fanen svarer ikke ennå – vent litt, åpne Målsetninger-fanen og prøv «Last inn» igjen.');
+                    }
+                    if (mr2 === 'bad') {
+                        warnings.push('Målsetninger: innlimingen ble ikke gjenkjent (sjekk nummererte linjer eller eldre «Malsetninger state (json):»).');
+                    }
+                }
+                if (sections.risiko && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
+                    try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+                }
+                await waitForPensjonApply();
+                if (sections.formuesskatt && formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow) {
+                    try {
+                        const win = formuesskattIframeRef.current.contentWindow;
+                        if (typeof win.FormuesskattApplyInputText === 'function') win.FormuesskattApplyInputText(sections.formuesskatt);
+                    } catch (_) {}
+                }
+                if (warnings.length) {
+                    alert(warnings.join('\n'));
+                }
+                setShowInputModal(false);
+                setInputText('');
+            } catch (e) {
+                alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
+                console.error(e);
             }
-            if (sections.pensjonsgapet && pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow) {
-                try {
-                    const win = pensjonsgapetIframeRef.current.contentWindow;
-                    if (typeof win.PensjonsgapetApplyInputText === 'function') win.PensjonsgapetApplyInputText(sections.pensjonsgapet);
-                } catch (_) {}
-            }
-            if (sections.formuesskatt && formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow) {
-                try {
-                    const win = formuesskattIframeRef.current.contentWindow;
-                    if (typeof win.FormuesskattApplyInputText === 'function') win.FormuesskattApplyInputText(sections.formuesskatt);
-                } catch (_) {}
-            }
-            setShowInputModal(false);
-            setInputText('');
-        } catch (e) {
-            alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
-            console.error(e);
-        }
+        })();
     }, [inputText, tryApplyPendingMalsetninger, schedulePendingMalsetningerFlush]);
 
     React.useEffect(() => {
@@ -2289,12 +2475,12 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowInputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Input – gjelder alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Lim inn tekst kopiert fra Output-knappen. Seksjonstitler (anbefalt rekkefølge, samme som faner): --- Malsetninger ---, --- T-konto ---, --- Mål og behov ---, --- Fremtidige verdier ---, --- Risikosimulering --- (data fra fanen Risikoprofil), --- Pensjon ---, --- Formuesskatt ---. Eldre filer uten Malsetninger-seksjon eller med --- Oppsummeringsrapport --- eller annen seksjonsrekkefølge støttes fortsatt. Malsetninger inkluderer JSON-state for målvalg, erfaring (dropdowns), kunnskap og utdanning. Mål og behov inkluderer blant annet linje 5 «Bankinnskudd/Likviditetsfond» (slider i forutsetninger). Fanen Fremtidige verdier har ingen egen innlasting – den følger Mål og behov og T-konto. T-konto gjeld per post: beløp, lånetype (Annuitetslån, Serielån, avdragsfrihetsvarianter, Ballonglån 3/5/10 år), startår (2026–2035), lånetid og rente – se nummerert liste i T-konto-Output.</p>
+                        <p className="text-sm text-[#666] mb-2">Lim inn tekst fra Output. Seksjoner skilles med <code className="text-xs bg-slate-100 px-1 rounded">--- Malsetninger ---</code> osv. T-konto består av nummererte linjer (<code className="text-xs bg-slate-100 px-1 rounded">1: Feltnavn: verdi</code>). Gamle eksporter kan også inneholde <code className="text-xs bg-slate-100 px-1 rounded">T-konto state (json):</code> — den lastes fortsatt inn om den finnes.</p>
                         <textarea
                             value={inputText}
                             onChange={e => setInputText(e.target.value)}
                             placeholder="Lim inn output-teksten her..."
-                            className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent"
+                            className="output-textarea w-full min-h-[22rem] h-96 max-h-[70vh] bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent"
                         />
                         <button type="button" onClick={handleLoadInput} className="w-full mt-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">Last inn</button>
                     </div>
@@ -2305,7 +2491,7 @@ function TabContainer() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
                         <button type="button" aria-label="Lukk" onClick={() => setShowOutputModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
                         <h3 className="typo-h3 text-[#4A6D8C] mb-4">Output – alle faner</h3>
-                        <p className="text-sm text-[#666] mb-2">Samlet eksport i samme rekkefølge som fanene: Malsetninger (JSON-state + visningstall), T-konto (struktur, eiendeler, gjeld med lånetype inkl. ballonglån, startår, lånetid og rente, inntekter, forventninger, ev. kontantstrøm-justering), Mål og behov (alle tallfelt inkl. bankinnskudd/likviditetsfond som linje 5), Fremtidige verdier (informativ tekst), Risikoprofil, Pensjon, Formuesskatt. Kopier og lim inn i Input for å gjenopprette data der det støttes.</p>
+                        <p className="text-sm text-[#666] mb-2">Nummererte feltlinjer per fane. Tom linje mellom seksjoner. Gamle eksporter med <code className="text-xs bg-slate-100 px-1 rounded">Maal og behov state (json):</code> / <code className="text-xs bg-slate-100 px-1 rounded">state (json)</code> for enkelte faner lastes fortsatt inn. Kopier og bruk «Input» for å laste inn.</p>
                         <div className="relative">
                             <textarea readOnly value={outputText} className="output-textarea w-full h-64 bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre-wrap break-words focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-24" />
                             <button type="button" onClick={handleCopyOutput} className={`copy-btn absolute bottom-3 right-3 inline-flex gap-2 px-3 py-1.5 text-xs font-medium rounded-full border shadow-sm ${copied ? 'bg-green-600 hover:bg-green-700 text-white border-green-500/80' : 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500/80'}`}>
@@ -2366,7 +2552,8 @@ function App() {
 
     // Last t-konto-script tidlig slik at getTKontoDagensÅrslønn m.m. finnes for Pensjonsgapet/Formuesskatt
     useEffect(() => {
-        if (typeof window.getTKontoDagensÅrslønn === 'function' && document.querySelector('script[src*="t-konto script"]')) return;
+        if (document.querySelector('script[src*="t-konto"]')) return;
+        if (typeof window.getTKontoDagensÅrslønn === 'function') return;
         const script = document.createElement('script');
         script.src = 't-konto script.js';
         script.async = true;
@@ -2494,6 +2681,18 @@ function App() {
     useEffect(() => {
         MaalOgBehovState.henteAltFraPensionActive = henteAltFraPensionActive;
     }, [henteAltFraPensionActive]);
+
+    useEffect(() => {
+        MaalOgBehovState.spToolButtonMarked = spToolButtonMarked;
+    }, [spToolButtonMarked]);
+
+    useEffect(() => {
+        MaalOgBehovState.utbToolButtonMarked = utbToolButtonMarked;
+    }, [utbToolButtonMarked]);
+
+    useEffect(() => {
+        MaalOgBehovState.portToolButtonMarked = portToolButtonMarked;
+    }, [portToolButtonMarked]);
 
     // Beregn vektet aksjeandel ved start basert på tre porteføljer
     const computeInitialStockPct = useCallback((s) => {
@@ -3727,51 +3926,30 @@ function App() {
     }, [prognosis]);
 
 // --- Output generation & clipboard helpers --- //
-const INGEN_DATA_OUTPUT = 'ingen data';
 const generateOutputText = useCallback(() => {
 const lines = [];
-// Helper: felt uten data gir standardverdien "ingen data"
+const INGEN_DATA_OUTPUT = 'ingen data';
 const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA_OUTPUT : v;
-// Helper function to format currency without "kr" prefix
 const formatCurrencyValue = (value) => formatNumberRaw(value ?? 0);
 
-// 1. Portefølje I
 lines.push(`1 Portefølje I : ${formatCurrencyValue(state.initialPortfolioSize)}`);
-// 2. Aksjeandel Portefølje I
 lines.push(`2 Aksjeandel Portefølje I : ${formatNumberRaw(state.row1StockAllocation)}`);
-// 3. Portefølje II
 lines.push(`3 Portefølje II : ${formatCurrencyValue(state.pensionPortfolioSize)}`);
-// 4. Aksjeandel Portefølje II
 lines.push(`4 Aksjeandel Portefølje II : ${formatNumberRaw(state.row2StockAllocation)}`);
-// 5. Bankinnskudd/Likviditetsfond
 lines.push(`5 Bankinnskudd/Likviditetsfond : ${formatCurrencyValue(state.additionalPensionAmount)}`);
-// 6. Årlig sparing
 lines.push(`6 Årlig sparing : ${formatCurrencyValue(state.annualSavings)}`);
-// 7. Innskutt kapital
 lines.push(`7 Innskutt kapital : ${formatCurrencyValue(state.investedCapital)}`);
-// 8. Antall år investeringsperiode
 lines.push(`8 Antall år investeringsperiode : ${formatNumberRaw(state.investmentYears)}`);
-// 9. Antall år med utbetaling
 lines.push(`9 Antall år med utbetaling : ${formatNumberRaw(state.payoutYears)}`);
-// 10. Ønsket årlig uttak til Forbruk
 lines.push(`10 Ønsket årlig uttak til Forbruk : ${formatCurrencyValue(state.desiredAnnualConsumptionPayout)}`);
-// 11. Ønsket årlig uttak til Formuesskatt
 lines.push(`11 Ønsket årlig uttak til Formuesskatt : ${formatCurrencyValue(state.desiredAnnualWealthTaxPayout)}`);
-// 12. Forventet avkastning aksjeportefølje
 lines.push(`12 Forventet avkastning aksjeportefølje : ${state.stockReturnRate.toFixed(1)}`);
-// 13. Forventet avkastning renteportefølje
 lines.push(`13 Forventet avkastning renteportefølje : ${state.bondReturnRate.toFixed(1)}`);
-// 14. Forventet KPI
 lines.push(`14 Forventet KPI : ${state.kpiRate.toFixed(1)}`);
-// 15. Rådgivningshonorar
 lines.push(`15 Rådgivningshonorar : ${state.advisoryFeeRate.toFixed(2)}`);
-// 16. Skjermingsrente
 lines.push(`16 Skjermingsrente : ${state.shieldingRate.toFixed(2)}`);
-// 17. Utbytteskatt
 lines.push(`17 Utbytteskatt : ${state.manualStockTaxRate.toFixed(2)}`);
-// 18. Kapitalskatt
 lines.push(`18 Kapitalskatt : ${state.manualBondTaxRate.toFixed(2)}`);
-// 19. Hendelse 1
 if (state.events && state.events.length > 0 && state.events[0]) {
     const e1 = state.events[0];
     lines.push(`19 Hendelse 1 beløp : ${formatCurrencyValue(e1.belop || 0)}`);
@@ -3786,7 +3964,6 @@ if (state.events && state.events.length > 0 && state.events[0]) {
     lines.push(`19c Hendelse 1 påvirker innskutt kapital : Ja`);
     lines.push(`19d Hendelse 1 type : Hendelse`);
 }
-// 20. Hendelse 2
 if (state.events && state.events.length > 1 && state.events[1]) {
     const e2 = state.events[1];
     lines.push(`20 Hendelse 2 beløp : ${formatCurrencyValue(e2.belop || 0)}`);
@@ -3801,7 +3978,6 @@ if (state.events && state.events.length > 1 && state.events[1]) {
     lines.push(`20c Hendelse 2 påvirker innskutt kapital : Ja`);
     lines.push(`20d Hendelse 2 type : Hendelse`);
 }
-// 21. Hendelse 3
 if (state.events && state.events.length > 2 && state.events[2]) {
     const e3 = state.events[2];
     lines.push(`21 Hendelse 3 beløp : ${formatCurrencyValue(e3.belop || 0)}`);
@@ -3816,7 +3992,6 @@ if (state.events && state.events.length > 2 && state.events[2]) {
     lines.push(`21c Hendelse 3 påvirker innskutt kapital : Ja`);
     lines.push(`21d Hendelse 3 type : Hendelse`);
 }
-// 22. Hendelse 4
 if (state.events && state.events.length > 3 && state.events[3]) {
     const e4 = state.events[3];
     lines.push(`22 Hendelse 4 beløp : ${formatCurrencyValue(e4.belop || 0)}`);
@@ -3831,7 +4006,6 @@ if (state.events && state.events.length > 3 && state.events[3]) {
     lines.push(`22c Hendelse 4 påvirker innskutt kapital : Ja`);
     lines.push(`22d Hendelse 4 type : Hendelse`);
 }
-// 23. Hendelse 5
 if (state.events && state.events.length > 4 && state.events[4]) {
     const e5 = state.events[4];
     lines.push(`23 Hendelse 5 beløp : ${formatCurrencyValue(e5.belop || 0)}`);
@@ -3846,19 +4020,21 @@ if (state.events && state.events.length > 4 && state.events[4]) {
     lines.push(`23c Hendelse 5 påvirker innskutt kapital : Ja`);
     lines.push(`23d Hendelse 5 type : Hendelse`);
 }
-// 24. Målsøk utbetaling resultat
 lines.push(`24 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSeekPayoutResult || 0)}`);
-// 25. Målsøk Portefølje I resultat
 lines.push(`25 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
-// 26. Investortype
 lines.push(`26 Investortype : ${orIngenData(state.investorType)}`);
-// 27. utsatt skatt på renter
 lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
-// 28. Skatteberegning
 lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
-// 29. Overskrift
 lines.push(`29 Overskrift : ${panelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
-
+// Ekstra felt som tidligere lå bare i JSON-snapshot (ingen lang JSON-linje i Output).
+lines.push(`30 Aksjeandel likviditetsfond/rad 3 : ${formatNumberRaw(state.row3StockAllocation)}`);
+lines.push(`31 Standardavvik aksjer : ${state.stockStdDev.toFixed(1)}`);
+lines.push(`32 Standardavvik renter : ${state.bondStdDev.toFixed(1)}`);
+lines.push(`33 Ønsket årlig uttak etter skatt : ${formatCurrencyValue(state.desiredAnnualPayoutAfterTax)}`);
+lines.push(`34 Skattesats hoved (%) : ${state.taxRate.toFixed(2)}`);
+lines.push(`35 Forventet rente bankinnskudd (%) : ${state.bankDepositRate.toFixed(1)}`);
+lines.push(`36 Formuesskatt fra T-konto : ${state.wealthTaxFromTKonto ? 'Ja' : 'Nei'}`);
+lines.push(`37 Målsøk utbetaling tøm siste år : ${state.goalSeekPayoutDrainFinalYear ? 'Ja' : 'Nei'}`);
 return lines.join('\n');
 }, [state, prognosis, panelTitle]);
 
@@ -3910,18 +4086,35 @@ setShowInputModal(true);
 }, []);
 
 const parseInputText = useCallback((text) => {
-const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-const updates = {};
+const MB_JSON = 'Maal og behov state (json):';
+const raw = String(text || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+const ji = raw.indexOf(MB_JSON);
+if (ji >= 0) {
+const jsonStr = extractJsonObjectAfterMarker(raw, MB_JSON);
+if (jsonStr) {
+try {
+const snap = JSON.parse(jsonStr);
+if (snap && snap.state && typeof snap.state === 'object') {
+const updates = { ...snap.state, __fromFullJson: true };
+if (snap.panelTitle != null && String(snap.panelTitle).trim() !== '') updates._panelTitle = String(snap.panelTitle).trim();
+if (snap.ui && typeof snap.ui === 'object') updates.__maalUi = snap.ui;
+if (updates.events) {
+delete updates._eventParseTs;
+updates.events = updates.events.filter((e) =>
+e && e.id && (e.belop !== 0 || e.startAar !== START_YEAR || e.sluttAar !== START_YEAR || (e.type && e.type !== 'Hendelse'))
+);
+}
+return updates;
+}
+} catch (err) { console.warn('Maal og behov state (json) parse:', err); }
+}
+}
 
-lines.forEach(line => {
-// Parse format: "number Label : value" or "numbera Label : value" etc.
-const match = line.match(/^(\d+)([a-z]?)\s+(.+?)\s*:\s*(.+)$/);
-if (match) {
-const num = parseInt(match[1], 10);
-const suffix = match[2] || '';
-const label = match[3].trim();
-const value = match[4].trim();
-            
+const lines = text.split('\n').map((line) =>
+line.trim().replace(/\u00a0/g, ' ').replace(/\u202f/g, ' ')).filter((line) => line.length > 0);
+const updates = {};
+const LABEL_VALUE_SEP = ' : ';
+
 // Helper to parse number (mellomrom, komma, "kr", minus – robust for eksport/import)
 const parseNumber = (str) => {
 const s = String(str).replace(/\s/g, '').replace(/\u202F/g, '').replace(',', '.')
@@ -3932,6 +4125,20 @@ return parseFloat(cleaned) || 0;
 
 // Helper to parse boolean from "Ja"/"Nei"
 const parseBoolean = (str) => str.toLowerCase() === 'ja' || str.toLowerCase() === 'på';
+
+lines.forEach((line) => {
+// Parse format: "num[Suffix] Label : value" — første forekomst av " : " skil label frå verdi (verdi kan innehalde kolon)
+const head = line.match(/^(\d+)([a-z]?)\s+(.*)$/);
+if (!head) return;
+const num = parseInt(head[1], 10);
+const suffix = head[2] || '';
+const bodyRaw = head[3];
+const bodyNorm = bodyRaw.replace(/\u00a0/g, ' ').replace(/\u202f/g, ' ');
+const sepPos = bodyNorm.indexOf(LABEL_VALUE_SEP);
+if (sepPos === -1) return;
+const label = bodyNorm.slice(0, sepPos).trim();
+const value = bodyNorm.slice(sepPos + LABEL_VALUE_SEP.length).trim();
+if (label.length === 0) return;
 
 switch(num) {
 case 1: // Portefølje I
@@ -4055,8 +4262,32 @@ break;
 case 29: // Overskrift
 updates._panelTitle = value || MAAL_PANEL_TITLE_DEFAULT;
 break;
+case 30: // Aksjeandel likviditetsfond / rad 3
+updates.row3StockAllocation = parseNumber(value);
+break;
+case 31: // Standardavvik aksjer
+updates.stockStdDev = parseNumber(value);
+break;
+case 32: // Standardavvik renter
+updates.bondStdDev = parseNumber(value);
+break;
+case 33: // Ønsket årlig uttak etter skatt
+updates.desiredAnnualPayoutAfterTax = parseNumber(value);
+break;
+case 34: // Skattesats hoved (tabell/beregning)
+updates.taxRate = parseNumber(value);
+break;
+case 35: // Forventet avkastning bankinnskudd
+updates.bankDepositRate = parseNumber(value);
+break;
+case 36: // Formuesskatt fra T-konto
+updates.wealthTaxFromTKonto = parseBoolean(value);
+break;
+case 37: // Målsøk utbetaling tøm siste år
+updates.goalSeekPayoutDrainFinalYear = parseBoolean(value);
+break;
 }
-}
+
 });
 
 // Remove empty/placeholder events and clean up temporary parse properties
@@ -4070,6 +4301,38 @@ updates.events = updates.events.filter(e =>
 return updates;
 }, [state.events]);
 
+const applyMaalUiSnapshot = useCallback((ui) => {
+if (!ui || typeof ui !== 'object') return;
+const b = (x) => x === true || x === 'true' || x === 1;
+if (ui.showDistributionGraphic !== undefined) setShowDistributionGraphic(b(ui.showDistributionGraphic));
+if (ui.showStockPortionGraphic !== undefined) setShowStockPortionGraphic(b(ui.showStockPortionGraphic));
+if (ui.showInvestedCapitalGraphic !== undefined) setShowInvestedCapitalGraphic(b(ui.showInvestedCapitalGraphic));
+if (ui.showGoalSeek !== undefined) setShowGoalSeek(b(ui.showGoalSeek));
+if (ui.showAssumptionsGraphic !== undefined) setShowAssumptionsGraphic(b(ui.showAssumptionsGraphic));
+if (ui.showSimulation !== undefined) setShowSimulation(b(ui.showSimulation));
+if (ui.showAccumulatedReturn !== undefined) setShowAccumulatedReturn(b(ui.showAccumulatedReturn));
+if (ui.showMonteCarlo !== undefined) setShowMonteCarlo(b(ui.showMonteCarlo));
+if (ui.monteCarloKey !== undefined) setMonteCarloKey(Number(ui.monteCarloKey) || 0);
+if (ui.showMonteCarloPortfolio !== undefined) setShowMonteCarloPortfolio(b(ui.showMonteCarloPortfolio));
+if (ui.monteCarloPortfolioKey !== undefined) setMonteCarloPortfolioKey(Number(ui.monteCarloPortfolioKey) || 0);
+if (ui.showMonteCarloStockAllocation !== undefined) setShowMonteCarloStockAllocation(b(ui.showMonteCarloStockAllocation));
+if (ui.monteCarloStockAllocationKey !== undefined) setMonteCarloStockAllocationKey(Number(ui.monteCarloStockAllocationKey) || 0);
+if (ui.simButtonActive !== undefined) setSimButtonActive(b(ui.simButtonActive));
+if (ui.simulationKey !== undefined) setSimulationKey(Number(ui.simulationKey) || 0);
+if (ui.savedSimulatedReturns && typeof ui.savedSimulatedReturns === 'object') {
+setSavedSimulatedReturns({
+stockReturns: Array.isArray(ui.savedSimulatedReturns.stockReturns) ? ui.savedSimulatedReturns.stockReturns : [],
+bondReturns: Array.isArray(ui.savedSimulatedReturns.bondReturns) ? ui.savedSimulatedReturns.bondReturns : []
+});
+}
+if (ui.waterfallMode !== undefined) setWaterfallMode(b(ui.waterfallMode));
+if (ui.henteAltFraPensionActive !== undefined) setHenteAltFraPensionActive(b(ui.henteAltFraPensionActive));
+if (ui.spToolButtonMarked !== undefined) setSpToolButtonMarked(b(ui.spToolButtonMarked));
+if (ui.utbToolButtonMarked !== undefined) setUtbToolButtonMarked(b(ui.utbToolButtonMarked));
+if (ui.portToolButtonMarked !== undefined) setPortToolButtonMarked(b(ui.portToolButtonMarked));
+if (ui.advisoryInputValue != null && ui.advisoryInputValue !== undefined) setAdvisoryInputValue(String(ui.advisoryInputValue));
+}, []);
+
 const handleLoadInput = useCallback(() => {
 if (!inputText.trim()) {
 alert('Vennligst lim inn informasjon fra output.');
@@ -4078,43 +4341,69 @@ return;
 
 try {
 const updates = parseInputText(inputText);
+const fromJson = updates.__fromFullJson;
+delete updates.__fromFullJson;
+const uiSnap = updates.__maalUi;
+delete updates.__maalUi;
 if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
-setState(prevState => {
-const newState = { ...prevState, ...updates };
-if (updates.advisoryFeeRate !== undefined) {
-setAdvisoryInputValue(newState.advisoryFeeRate.toFixed(2).replace('.', ','));
-}
-return newState;
+if (fromJson) {
+setState({ ...INITIAL_APP_STATE, ...updates });
+} else {
+setState((prevState) => {
+const merged = { ...prevState, ...updates };
+merged.initialStockAllocation = computeInitialStockPct(merged);
+return merged;
 });
+}
+if (updates.advisoryFeeRate !== undefined) {
+setAdvisoryInputValue(Number(updates.advisoryFeeRate).toFixed(2).replace('.', ','));
+}
+applyMaalUiSnapshot(uiSnap);
 setShowInputModal(false);
 setInputText('');
 } catch (error) {
 alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
 console.error('Parse error:', error);
 }
-}, [inputText, parseInputText]);
+}, [inputText, parseInputText, applyMaalUiSnapshot, computeInitialStockPct]);
 
-// Registrer for felles Input/Output på tvers av alle faner (TabContainer kaller disse)
-useEffect(() => {
+// Registrer for felles Input/Output på tvers av alle faner (TabContainer kaller disse).
+// useLayoutEffect: sikrar at applyInputText finst før brukar kan trykkje «Last inn» etter første teikning.
+useLayoutEffect(() => {
     MaalOgBehovState.getOutputText = () => generateOutputText();
     MaalOgBehovState.applyInputText = (text) => {
         try {
             const updates = parseInputText(text);
             if (Object.keys(updates).length === 0) return false;
+            const fromJson = updates.__fromFullJson;
+            delete updates.__fromFullJson;
+            const uiSnap = updates.__maalUi;
+            delete updates.__maalUi;
             if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
-            setState(prev => {
-                const newState = { ...prev, ...updates };
-                if (updates.advisoryFeeRate !== undefined) setAdvisoryInputValue(newState.advisoryFeeRate.toFixed(2).replace('.', ','));
-                return newState;
-            });
+            if (fromJson) {
+                setState({ ...INITIAL_APP_STATE, ...updates });
+            } else {
+                setState((prev) => {
+                    const merged = { ...prev, ...updates };
+                    merged.initialStockAllocation = computeInitialStockPct(merged);
+                    return merged;
+                });
+            }
+            if (updates.advisoryFeeRate !== undefined) {
+                setAdvisoryInputValue(Number(updates.advisoryFeeRate).toFixed(2).replace('.', ','));
+            }
+            applyMaalUiSnapshot(uiSnap);
             return true;
-        } catch (e) { return false; }
+        } catch (e) {
+            console.error('MaalOgBehovState.applyInputText:', e);
+            return false;
+        }
     };
     return () => {
         delete MaalOgBehovState.getOutputText;
         delete MaalOgBehovState.applyInputText;
     };
-}, [generateOutputText, parseInputText]);
+}, [generateOutputText, parseInputText, applyMaalUiSnapshot, computeInitialStockPct]);
 
 useEffect(() => {
 if (!showOutputModal) return;

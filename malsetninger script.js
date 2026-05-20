@@ -15,6 +15,197 @@ const {
   MoreHorizontal,
 } = LucideReact;
 
+/** Første komplette JSON-objekt etter markør (balanserte { }; strengar og escapes). */
+function extractJsonObjectAfterMarker(text, marker) {
+  const raw = String(text || '').replace(/^\uFEFF/, '');
+  const idx = raw.indexOf(marker);
+  if (idx < 0) return null;
+  const braceStart = raw.indexOf('{', idx + marker.length);
+  if (braceStart < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let esc = false;
+  for (let i = braceStart; i < raw.length; i++) {
+    const c = raw[i];
+    if (inString) {
+      if (esc) {
+        esc = false;
+        continue;
+      }
+      if (c === '\\') {
+        esc = true;
+        continue;
+      }
+      if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') {
+      inString = true;
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}') {
+      depth--;
+      if (depth === 0) return raw.slice(braceStart, i + 1);
+    }
+  }
+  return null;
+}
+
+/** Matcher eksport-rekkefølge for «Mål {tittel}»-linjer (same som goalOptions i App). */
+const MALSETNINGER_MAAL_TITLE_TO_ID = {
+  'Bevare formuen': 'bevare_formuen',
+  Pensjon: 'pensjon',
+  'Hjelpe barn': 'hjelpe_barn',
+  Generasjonsskifte: 'generesjonsskifte',
+  'Økonomisk trygghet': 'okonomisk_trygghet',
+  Formuesvekst: 'formuesvekst',
+  'Fremtidige investeringer': 'fremtidige_investeringer',
+  Annet: 'annet',
+};
+
+/**
+ * Leser nummererte linjer frå Output (utan JSON).
+ * @returns {object|null} same struktur som JSON-payload, eller null
+ */
+function parseMalsetningerExportLines(raw) {
+  const text = String(raw || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/\u2028/g, '\n')
+    .replace(/\u2029/g, '\n');
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
+  const touched = {
+    edu: false,
+    exp: false,
+    knwProd: false,
+    knwRisiko: false,
+    knwEgen: false,
+    goals: false,
+  };
+  const out = {
+    selectedGoals: {},
+    educationLevel: 'relevant',
+    experience: {
+      aksjer: { type: 'enkel', volume: 'lav', period: 'kort' },
+      renter: { type: 'enkel', volume: 'lav', period: 'kort' },
+      alternativt: { type: 'enkel', volume: 'lav', period: 'kort' },
+    },
+    knowledge: {
+      produkter: {},
+      risiko: 2,
+      egenskaper: 2,
+    },
+  };
+  const mergeCat = (cat, field, value) => {
+    const c = out.experience[cat];
+    if (!c) return;
+    if (field === 'type' && ['enkel', 'fond', 'derivater', 'kompleks'].includes(value)) {
+      c.type = value;
+      touched.exp = true;
+    } else if (field === 'volume' && ['lav', 'middels', 'hoy'].includes(value)) {
+      c.volume = value;
+      touched.exp = true;
+    } else if (field === 'period' && ['kort', 'middels', 'lang'].includes(value)) {
+      c.period = value;
+      touched.exp = true;
+    }
+  };
+  let hasAny = false;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (/^malsetninger\s+state\s*\(json\):/i.test(line)) break;
+    const m = line.match(/^(\d+)\s*:\s*(.+?)\s*:\s*(.+)$/);
+    if (!m) continue;
+    const label = m[2].trim();
+    const valRaw = m[3].trim();
+    if (label === 'Utdanning') {
+      if (['ingen', 'relevant', 'hoyere'].includes(valRaw)) {
+        out.educationLevel = valRaw;
+        touched.edu = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    const erf = label.match(/^Erfaring\s+(aksjer|renter|alternativt)\s*[–-]\s*(type|volum|horisont)$/i);
+    if (erf) {
+      const cat = erf[1].toLowerCase();
+      const limb = erf[2].toLowerCase();
+      const field = limb === 'horisont' ? 'period' : limb;
+      mergeCat(cat, field, valRaw);
+      if (touched.exp) hasAny = true;
+      continue;
+    }
+    if (label === 'Kunnskap produkt aksjer') {
+      const n = Number(valRaw);
+      if (Number.isFinite(n)) {
+        out.knowledge.produkter.aksjer = Math.max(0, Math.min(3, Math.round(n)));
+        touched.knwProd = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    if (label === 'Kunnskap produkt renter') {
+      const n = Number(valRaw);
+      if (Number.isFinite(n)) {
+        out.knowledge.produkter.renter = Math.max(0, Math.min(3, Math.round(n)));
+        touched.knwProd = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    if (label === 'Kunnskap produkt alternativt') {
+      const n = Number(valRaw);
+      if (Number.isFinite(n)) {
+        out.knowledge.produkter.alternativt = Math.max(0, Math.min(3, Math.round(n)));
+        touched.knwProd = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    if (label === 'Kunnskap risiko') {
+      const n = Number(valRaw);
+      if (Number.isFinite(n)) {
+        out.knowledge.risiko = Math.max(1, Math.min(5, Math.round(n)));
+        touched.knwRisiko = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    if (label === 'Kunnskap egenskaper') {
+      const n = Number(valRaw);
+      if (Number.isFinite(n)) {
+        out.knowledge.egenskaper = Math.max(1, Math.min(5, Math.round(n)));
+        touched.knwEgen = true;
+        hasAny = true;
+      }
+      continue;
+    }
+    if (/^score\s+/i.test(label)) continue;
+    if (label.startsWith('Mål ')) {
+      const title = label.slice(4).trim();
+      const gid = MALSETNINGER_MAAL_TITLE_TO_ID[title];
+      if (gid) {
+        touched.goals = true;
+        hasAny = true;
+        const imp = parseInt(valRaw, 10);
+        if (imp >= 1 && imp <= 3) out.selectedGoals[gid] = imp;
+      }
+    }
+  }
+  if (!hasAny) return null;
+  const data = {};
+  if (touched.edu) data.educationLevel = out.educationLevel;
+  if (touched.exp) data.experience = out.experience;
+  if (touched.knwProd || touched.knwRisiko || touched.knwEgen) {
+    data.knowledge = {};
+    if (touched.knwProd) data.knowledge.produkter = { ...out.knowledge.produkter };
+    if (touched.knwRisiko) data.knowledge.risiko = out.knowledge.risiko;
+    if (touched.knwEgen) data.knowledge.egenskaper = out.knowledge.egenskaper;
+  }
+  if (touched.goals) data.selectedGoals = { ...out.selectedGoals };
+  return data;
+}
+
 const SectionLabel = ({ children, light = false, className = '' }) => (
   <span className={`block text-[11px] font-medium tracking-[0.1em] uppercase mb-3 ${light ? 'text-[oklch(0.85_0.08_235.3)]' : 'text-[oklch(0.29_0.12_274.6)]'} ${className}`}>
     {children}
@@ -209,30 +400,41 @@ function App() {
 
   useEffect(() => {
     window.MalsetningerGetExportText = () => {
-      const payload = {
-        selectedGoals,
-        educationLevel,
-        experience,
-        knowledge,
-      };
       const t = totalsRef.current;
-      const goalLine = t && t.sortedGoals && t.sortedGoals.length
-        ? `  Valgte mål: ${t.sortedGoals.map((g) => `${g.title}:${g.importance}`).join('; ')}`
-        : '  Valgte mål: (ingen)';
-      return [
-        `Malsetninger state (json): ${JSON.stringify(payload)}`,
-        '',
-        'Utdata (visning):',
-        `  Erfaring score (snitt): ${t ? t.expScore : ''}`,
-        `  Kunnskap score (snitt): ${t ? t.knwScore : ''}`,
-        `  Samlet score: ${t ? t.total : ''}`,
-        goalLine,
-      ].join('\n');
+      const lines = [];
+      let n = 1;
+      const push = (label, value) => {
+        lines.push(`${n} : ${label} : ${value}`);
+        n += 1;
+      };
+      push('Utdanning', educationLevel || 'ingen');
+      ['aksjer', 'renter', 'alternativt'].forEach((cat) => {
+        const ex = experience[cat] || {};
+        push(`Erfaring ${cat} – type`, ex.type ?? '');
+        push(`Erfaring ${cat} – volum`, ex.volume ?? '');
+        push(`Erfaring ${cat} – horisont`, ex.period ?? '');
+      });
+      const pr = knowledge.produkter || {};
+      push('Kunnskap produkt aksjer', String(pr.aksjer ?? 0));
+      push('Kunnskap produkt renter', String(pr.renter ?? 0));
+      push('Kunnskap produkt alternativt', String(pr.alternativt ?? 0));
+      push('Kunnskap risiko', String(knowledge.risiko ?? 0));
+      push('Kunnskap egenskaper', String(knowledge.egenskaper ?? 0));
+      goalOptions.forEach((g) => {
+        const imp = selectedGoals[g.id];
+        push(`Mål ${g.title}`, imp ? String(imp) : '0');
+      });
+      if (t) {
+        push('Score erfaring (snitt)', t.expScore);
+        push('Score kunnskap (snitt)', t.knwScore);
+        push('Score samlet', t.total);
+      }
+      return lines.join('\n');
     };
     return () => {
       if (window.MalsetningerGetExportText) delete window.MalsetningerGetExportText;
     };
-  }, [selectedGoals, educationLevel, experience, knowledge]);
+  }, [selectedGoals, educationLevel, experience, knowledge, goalOptions]);
 
   useEffect(() => {
     window.MalsetningerGetSelectedGoalsForDashboard = () => {
@@ -269,65 +471,85 @@ function App() {
 
   useEffect(() => {
     window.MalsetningerApplyExportText = (sectionBody) => {
-      const text = String(sectionBody || '').trim();
-      if (!text) return false;
-      const lines = text.split('\n').map((l) => l.trimEnd());
-      const jsonLine = lines.find((l) => l.startsWith('Malsetninger state (json):'));
-      if (!jsonLine) return false;
-      const jsonPart = jsonLine.slice('Malsetninger state (json):'.length).trim();
-      let data;
-      try {
-        data = JSON.parse(jsonPart);
-      } catch {
-        return false;
-      }
-      if (!data || typeof data !== 'object') return false;
-      try {
-        if (data.selectedGoals && typeof data.selectedGoals === 'object') {
-          const sg = {};
-          Object.keys(data.selectedGoals).forEach((k) => {
-            const v = Number(data.selectedGoals[k]);
-            if (v >= 1 && v <= 3) sg[k] = v;
-          });
-          setSelectedGoals(sg);
-        }
-        if (['ingen', 'relevant', 'hoyere'].includes(data.educationLevel)) {
-          setEducationLevel(data.educationLevel);
-        }
-        const mergeCat = (src, fallback) => {
-          if (!src || typeof src !== 'object') return fallback;
-          const type = ['enkel', 'fond', 'derivater', 'kompleks'].includes(src.type) ? src.type : fallback.type;
-          const volume = ['lav', 'middels', 'hoy'].includes(src.volume) ? src.volume : fallback.volume;
-          const period = ['kort', 'middels', 'lang'].includes(src.period) ? src.period : fallback.period;
-          return { type, volume, period };
-        };
-        if (data.experience && typeof data.experience === 'object') {
-          setExperience((prev) => ({
-            aksjer: mergeCat(data.experience.aksjer, prev.aksjer),
-            renter: mergeCat(data.experience.renter, prev.renter),
-            alternativt: mergeCat(data.experience.alternativt, prev.alternativt),
-          }));
-        }
-        if (data.knowledge && typeof data.knowledge === 'object') {
-          const produkter = data.knowledge.produkter || {};
-          const clampLvl = (x, fb) => {
-            const n = Number(x);
-            return Number.isFinite(n) ? Math.max(0, Math.min(3, Math.round(n))) : fb;
+      const raw = String(sectionBody || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n').trim();
+      if (!raw) return false;
+
+      const applyFromData = (data) => {
+        if (!data || typeof data !== 'object') return false;
+        try {
+          if (data.selectedGoals && typeof data.selectedGoals === 'object') {
+            const sg = {};
+            Object.keys(data.selectedGoals).forEach((k) => {
+              const v = Number(data.selectedGoals[k]);
+              if (v >= 1 && v <= 3) sg[k] = v;
+            });
+            setSelectedGoals(sg);
+          }
+          if (['ingen', 'relevant', 'hoyere'].includes(data.educationLevel)) {
+            setEducationLevel(data.educationLevel);
+          }
+          const mergeCat = (src, fallback) => {
+            if (!src || typeof src !== 'object') return fallback;
+            const type = ['enkel', 'fond', 'derivater', 'kompleks'].includes(src.type) ? src.type : fallback.type;
+            const volume = ['lav', 'middels', 'hoy'].includes(src.volume) ? src.volume : fallback.volume;
+            const period = ['kort', 'middels', 'lang'].includes(src.period) ? src.period : fallback.period;
+            return { type, volume, period };
           };
-          setKnowledge((prev) => ({
-            produkter: {
-              aksjer: clampLvl(produkter.aksjer, prev.produkter.aksjer),
-              renter: clampLvl(produkter.renter, prev.produkter.renter),
-              alternativt: clampLvl(produkter.alternativt, prev.produkter.alternativt),
-            },
-            risiko: Math.max(1, Math.min(5, Number(data.knowledge.risiko) || prev.risiko)),
-            egenskaper: Math.max(1, Math.min(5, Number(data.knowledge.egenskaper) || prev.egenskaper)),
-          }));
+          if (data.experience && typeof data.experience === 'object') {
+            setExperience((prev) => ({
+              aksjer: mergeCat(data.experience.aksjer, prev.aksjer),
+              renter: mergeCat(data.experience.renter, prev.renter),
+              alternativt: mergeCat(data.experience.alternativt, prev.alternativt),
+            }));
+          }
+          if (data.knowledge && typeof data.knowledge === 'object') {
+            const produkter = data.knowledge.produkter || {};
+            const clampLvl = (x, fb) => {
+              const n = Number(x);
+              return Number.isFinite(n) ? Math.max(0, Math.min(3, Math.round(n))) : fb;
+            };
+            setKnowledge((prev) => ({
+              produkter: {
+                aksjer: produkter.aksjer !== undefined ? clampLvl(produkter.aksjer, prev.produkter.aksjer) : prev.produkter.aksjer,
+                renter: produkter.renter !== undefined ? clampLvl(produkter.renter, prev.produkter.renter) : prev.produkter.renter,
+                alternativt: produkter.alternativt !== undefined ? clampLvl(produkter.alternativt, prev.produkter.alternativt) : prev.produkter.alternativt,
+              },
+              risiko:
+                data.knowledge.risiko !== undefined
+                  ? Math.max(1, Math.min(5, Number(data.knowledge.risiko) || prev.risiko))
+                  : prev.risiko,
+              egenskaper:
+                data.knowledge.egenskaper !== undefined
+                  ? Math.max(1, Math.min(5, Number(data.knowledge.egenskaper) || prev.egenskaper))
+                  : prev.egenskaper,
+            }));
+          }
+          return true;
+        } catch {
+          return false;
         }
-        return true;
-      } catch {
-        return false;
+      };
+
+      const MB = 'Malsetninger state (json):';
+      if (raw.includes(MB)) {
+        let jsonPart = extractJsonObjectAfterMarker(raw, MB);
+        if (!jsonPart) {
+          const linesSplit = raw.split('\n').map((l) => l.trimEnd());
+          const jsonLine = linesSplit.find((l) => l.startsWith(MB));
+          if (jsonLine) jsonPart = jsonLine.slice(MB.length).trim();
+        }
+        if (jsonPart) {
+          try {
+            const parsed = JSON.parse(jsonPart);
+            if (applyFromData(parsed)) return true;
+          } catch {
+            /* linjeformat under */
+          }
+        }
       }
+      const fromLines = parseMalsetningerExportLines(raw);
+      if (fromLines && applyFromData(fromLines)) return true;
+      return false;
     };
     return () => {
       if (window.MalsetningerApplyExportText) delete window.MalsetningerApplyExportText;

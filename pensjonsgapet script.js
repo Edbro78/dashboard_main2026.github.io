@@ -1,5 +1,30 @@
 document.addEventListener('DOMContentLoaded', function() {
 
+        function extractJsonObjectAfterMarker(text, marker) {
+            const raw = String(text || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+            const idx = raw.indexOf(marker);
+            if (idx < 0) return null;
+            const braceStart = raw.indexOf('{', idx + marker.length);
+            if (braceStart < 0) return null;
+            let depth = 0, inString = false, esc = false;
+            for (let i = braceStart; i < raw.length; i++) {
+                const c = raw[i];
+                if (inString) {
+                    if (esc) { esc = false; continue; }
+                    if (c === '\\') { esc = true; continue; }
+                    if (c === '"') inString = false;
+                    continue;
+                }
+                if (c === '"') { inString = true; continue; }
+                if (c === '{') depth++;
+                else if (c === '}') {
+                    depth--;
+                    if (depth === 0) return raw.slice(braceStart, i + 1);
+                }
+            }
+            return null;
+        }
+
         // --- GLOBAL APP STATE ---
 
 
@@ -11,9 +36,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const copyButton = document.getElementById('copyButton');
         
         const generateOutputText = () => {
-            let outputText = '';
-            
-            // Input fields (16 stk)
+            let n = 1;
+            const out = [];
+            const push = (label, displayValue) => {
+                out.push(`${n} : ${label} : ${displayValue}`);
+                n += 1;
+            };
             const inputLabels = {
                 'age': 'Din alder',
                 'retirementAge': 'Pensjonsalder',
@@ -30,44 +58,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 'desiredPensionLevel': 'Ønsket pensjonsnivå',
                 'cpiRate': 'Forventet årlig KPI'
             };
-            
             const INGEN_DATA = 'ingen data';
             const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA : v;
-            
-            outputText += 'INPUTFELTER:\n';
-            outputText += '================\n\n';
-            
-            // Add input values – felt uten data gir "ingen data"
-            Object.keys(inputLabels).forEach(id => {
+            Object.keys(inputLabels).forEach(function (id) {
                 const element = document.getElementById(id);
-                if (element) {
-                    const value = element.value;
-                    const label = inputLabels[id];
-                    const hasValue = value !== undefined && value !== null && String(value).trim() !== '';
-                    let displayValue = INGEN_DATA;
-                    if (hasValue) {
-                        if (id === 'age' || id === 'retirementAge') {
-                            displayValue = `${value} år`;
-                        } else if (id === 'grunnbelop' || id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
-                            displayValue = `${parseFloat(value).toLocaleString('nb-NO')} kr`;
-                        } else if (id === 'otpRate' || id === 'desiredPensionLevel' || id === 'cpiRate') {
-                            displayValue = `${parseFloat(value).toFixed(1)} %`;
-                        } else if (id === 'expectedReturn') {
-                            const returnToStock = { 5: 0, 5.6: 20, 6.3: 45, 6.7: 55, 7: 65, 7.5: 85, 8: 100 };
-                            const ret = parseFloat(value);
-                            const stock = returnToStock[ret] !== undefined ? returnToStock[ret] : ret;
-                            displayValue = `${stock}% aksjer (${ret}% avkastning)`;
-                        } else if (id === 'payoutYears') {
-                            displayValue = `${value} år`;
-                        } else {
-                            displayValue = value;
-                        }
+                if (!element) return;
+                const value = element.value;
+                const label = inputLabels[id];
+                const hasValue = value !== undefined && value !== null && String(value).trim() !== '';
+                let displayValue = INGEN_DATA;
+                if (hasValue) {
+                    if (id === 'age' || id === 'retirementAge') {
+                        displayValue = `${value} år`;
+                    } else if (id === 'grunnbelop' || id === 'currentSalary' || id === 'currentOTPSaldo' || id === 'currentIPSBalance' || id === 'ipsAnnualSaving' || id === 'annualFripoliserPayout' || id === 'socialSecurityEstimate') {
+                        displayValue = `${parseFloat(value).toLocaleString('nb-NO')} kr`;
+                    } else if (id === 'otpRate' || id === 'desiredPensionLevel' || id === 'cpiRate') {
+                        displayValue = `${parseFloat(value).toFixed(1)} %`;
+                    } else if (id === 'expectedReturn') {
+                        const returnToStock = { 5: 0, 5.6: 20, 6.3: 45, 6.7: 55, 7: 65, 7.5: 85, 8: 100 };
+                        const ret = parseFloat(value);
+                        const stock = returnToStock[ret] !== undefined ? returnToStock[ret] : ret;
+                        displayValue = `${stock}% aksjer (${ret}% avkastning)`;
+                    } else if (id === 'payoutYears') {
+                        displayValue = `${value} år`;
+                    } else {
+                        displayValue = value;
                     }
-                    outputText += `${label}: ${displayValue}\n`;
                 }
+                push(label, displayValue);
             });
-            
-            // Add combination solution values
             const comboLumpSum = document.getElementById('combo-lump-sum');
             const comboMonthly = document.getElementById('combo-monthly');
             const customComboInput = document.getElementById('customComboPercent');
@@ -76,45 +95,84 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (customComboInput && customComboInput.value) {
                     comboPercent = ` (${customComboInput.value}%)`;
                 } else {
-                    // Check which button is selected
                     const selectedButton = document.querySelector('.combo-btn.bg-\\[var\\(--accent-blue-light\\)\\]');
                     if (selectedButton) {
                         comboPercent = ` (${selectedButton.getAttribute('data-percent')}%)`;
                     }
                 }
-                outputText += `Kombinasjonsløsning - Engangsinnskudd${comboPercent}: ${orIngenData(comboLumpSum.textContent) || comboLumpSum.textContent || INGEN_DATA}\n`;
-                outputText += `Kombinasjonsløsning - Månedlig sparing${comboPercent}: ${orIngenData(comboMonthly.textContent) || comboMonthly.textContent || INGEN_DATA}\n`;
+                push(`Kombinasjonsløsning – Engangsinnskudd${comboPercent}`, orIngenData(comboLumpSum.textContent) || comboLumpSum.textContent || INGEN_DATA);
+                push(`Kombinasjonsløsning – Månedlig sparing${comboPercent}`, orIngenData(comboMonthly.textContent) || comboMonthly.textContent || INGEN_DATA);
             }
-            
-            outputText += '\n\nRESULTATER:\n';
-            outputText += '===========\n\n';
-            
-            // Results (4 stk)
+            var ccpStore = document.getElementById('customComboPercent');
+            var selBtnStore = document.querySelector('.combo-btn.bg-\\[var\\(--accent-blue-light\\)\\]');
+            if (ccpStore) {
+                push('Kombinasjonsløsning – lagret skreddersydd %', String(ccpStore.value).trim()
+                    ? `${parseFloat(ccpStore.value).toFixed(1)} %`
+                    : INGEN_DATA);
+            }
+            push('Kombinasjonsløsning – lagret knappvalg', (selBtnStore && selBtnStore.getAttribute('data-percent'))
+                ? `${selBtnStore.getAttribute('data-percent')} %`
+                : INGEN_DATA);
             const totalAnnualPension = document.getElementById('total-annual-pension');
             const pensionPercentage = document.getElementById('pension-percentage');
             const lumpSumToday = document.getElementById('lump-sum-today');
             const monthlySavingNeeded = document.getElementById('monthly-saving-needed');
-            
             if (totalAnnualPension) {
-                outputText += `Årlig pensjon (estimat): ${orIngenData(totalAnnualPension.textContent) || totalAnnualPension.textContent || INGEN_DATA}\n`;
+                push('Årlig pensjon (estimat)', orIngenData(totalAnnualPension.textContent) || totalAnnualPension.textContent || INGEN_DATA);
             }
             if (pensionPercentage) {
-                outputText += `% av sluttlønn: ${orIngenData(pensionPercentage.textContent) || pensionPercentage.textContent || INGEN_DATA}\n`;
+                push('% av sluttlønn', orIngenData(pensionPercentage.textContent) || pensionPercentage.textContent || INGEN_DATA);
             }
             if (lumpSumToday) {
-                outputText += `Nødvendig engangsinnskudd i dag: ${orIngenData(lumpSumToday.textContent) || lumpSumToday.textContent || INGEN_DATA}\n`;
+                push('Nødvendig engangsinnskudd i dag', orIngenData(lumpSumToday.textContent) || lumpSumToday.textContent || INGEN_DATA);
             }
             if (monthlySavingNeeded) {
-                outputText += `Alternativ månedlig sparing: ${orIngenData(monthlySavingNeeded.textContent) || monthlySavingNeeded.textContent || INGEN_DATA}\n`;
+                push('Alternativ månedlig sparing', orIngenData(monthlySavingNeeded.textContent) || monthlySavingNeeded.textContent || INGEN_DATA);
             }
-            
-            return outputText;
+            return out.join('\n');
         };
         
         window.PensjonsgapetGetOutputText = function() { return generateOutputText(); };
         
         window.PensjonsgapetApplyInputText = function(text) {
             if (!text || !text.trim()) return;
+            const PJ = 'Pensjonsgapet state (json):';
+            var raw = String(text).replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
+            var js = extractJsonObjectAfterMarker(raw, PJ);
+            if (!js) {
+                var pj = raw.indexOf(PJ);
+                if (pj >= 0) {
+                    js = raw.slice(pj + PJ.length).trim();
+                    var nl = js.indexOf('\n');
+                    if (nl >= 0) js = js.slice(0, nl).trim();
+                }
+            }
+            if (js) {
+                try {
+                    var snap = JSON.parse(js);
+                    if (snap && snap.v === 1 && snap.inputs && typeof snap.inputs === 'object') {
+                        Object.keys(snap.inputs).forEach(function (id) {
+                            var el = document.getElementById(id);
+                            var v = snap.inputs[id];
+                            // Inkluder 0 og "0" – ikkje hopp over med == null
+                            if (el && v !== null && v !== undefined) {
+                                el.value = String(v);
+                                if (el.type === 'range') el.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        });
+                        if (snap.customComboPercent != null) {
+                            var cc = document.getElementById('customComboPercent');
+                            if (cc) cc.value = String(snap.customComboPercent);
+                        }
+                        if (snap.comboPercentSelected != null) {
+                            var b = document.querySelector('.combo-btn[data-percent="' + String(snap.comboPercentSelected) + '"]');
+                            if (b) b.click();
+                        }
+                        if (typeof DashboardApp !== 'undefined' && DashboardApp.calculatePension) DashboardApp.calculatePension();
+                        return;
+                    }
+                } catch (e) { console.warn('Pensjonsgapet state (json):', e); }
+            }
             const labelToId = {
                 'Din alder': 'age', 'Pensjonsalder': 'retirementAge', 'Grunnbeløp (1G)': 'grunnbelop',
                 'Dagens årslønn': 'currentSalary', 'OTP Saldo i dag': 'currentOTPSaldo', 'OTP-sats': 'otpRate',
@@ -127,10 +185,37 @@ document.addEventListener('DOMContentLoaded', function() {
             const stockToReturn = { 0: 5, 20: 5.6, 45: 6.3, 55: 6.7, 65: 7, 85: 7.5, 100: 8 };
             const lines = text.split('\n').map(l => l.trim()).filter(l => l);
             lines.forEach(line => {
-                const colonIdx = line.indexOf(':');
-                if (colonIdx < 0) return;
-                const label = line.substring(0, colonIdx).trim();
-                const valueStr = line.substring(colonIdx + 1).trim();
+                let label, valueStr;
+                const triple = line.match(/^(\d+)\s*:\s*(.+?)\s*:\s*(.+)$/);
+                if (triple) {
+                    label = triple[2].trim();
+                    valueStr = triple[3].trim();
+                } else {
+                    const colonIdx = line.indexOf(':');
+                    if (colonIdx < 0) return;
+                    label = line.substring(0, colonIdx).trim();
+                    valueStr = line.substring(colonIdx + 1).trim();
+                }
+                if (label === 'Kombinasjonsløsning – lagret skreddersydd %') {
+                    const cc = document.getElementById('customComboPercent');
+                    if (cc) {
+                        const rawPct = String(valueStr).replace(',', '.').replace(/[^\d.-]/g, '').trim();
+                        const pv = parseFloat(rawPct);
+                        if (!isNaN(pv)) {
+                            cc.value = String(pv);
+                            cc.dispatchEvent(new Event('input', { bubbles: true }));
+                        }
+                    }
+                    return;
+                }
+                if (label === 'Kombinasjonsløsning – lagret knappvalg') {
+                    const mPct = String(valueStr).match(/(\d+)/);
+                    if (mPct) {
+                        const b = document.querySelector('.combo-btn[data-percent="' + mPct[1] + '"]');
+                        if (b) b.click();
+                    }
+                    return;
+                }
                 const id = labelToId[label];
                 if (!id) return;
                 const el = document.getElementById(id);
