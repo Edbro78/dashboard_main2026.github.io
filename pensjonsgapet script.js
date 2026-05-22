@@ -304,7 +304,7 @@ document.addEventListener('DOMContentLoaded', function() {
             inputsConfig: [
                 { id: 'age', label: 'Din alder', type: 'range', min: 18, max: 70, step: 1, value: 45, unit: 'år' },
                 { id: 'retirementAge', label: 'Pensjonsalder', type: 'range', min: 62, max: 72, step: 1, value: 67, unit: 'år' },
-                { id: 'grunnbelop', label: 'Grunnbeløp (1G)', type: 'number', value: 130160, unit: 'kr' },
+                { id: 'grunnbelop', label: 'Grunnbeløp (1G)', type: 'number', value: 136549, unit: 'kr' },
                 { id: 'currentSalary', label: 'Dagens årslønn', type: 'range', min: 0, max: 15000000, step: 10000, value: 0, unit: 'kr' },
                 { id: 'currentOTPSaldo', label: 'OTP Saldo i dag', type: 'range', min: 0, max: 10000000, step: 10000, value: 500000, unit: 'kr' },
                 { id: 'otpRate', label: 'OTP-sats', type: 'range', min: 2, max: 8, step: 0.1, value: 5, unit: '%' },

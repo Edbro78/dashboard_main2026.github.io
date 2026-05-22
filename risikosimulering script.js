@@ -6870,7 +6870,6 @@ function initializeMoneyValueCalculations() {
     
     // Initialize modals
     initializeHistoricalKPIModal();
-    initializeDisclaimerModal();
     
     // Initialize double-click editing for present amount
     initializePresentAmountEditing();
@@ -7183,53 +7182,6 @@ function populateKPITable(tableBody) {
         `;
         tableBody.appendChild(row);
     });
-}
-
-// Initialize Disclaimer Modal
-let disclaimerModalInitialized = false;
-function initializeDisclaimerModal() {
-    // Prevent duplicate initialization
-    if (disclaimerModalInitialized) {
-        return;
-    }
-    
-    const modal = document.getElementById('disclaimer-modal');
-    const openBtn = document.getElementById('disclaimer-btn');
-    const closeBtn = document.getElementById('close-disclaimer-modal');
-
-    if (!modal || !openBtn || !closeBtn) {
-        return; // Elements not found
-    }
-
-    // Open modal
-    openBtn.addEventListener('click', function() {
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    });
-
-    // Close modal
-    closeBtn.addEventListener('click', function() {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-    });
-
-    // Close modal when clicking outside
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-
-    // Close modal with Escape key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            modal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-    
-    disclaimerModalInitialized = true;
 }
 
 // ========================================
@@ -7777,7 +7729,6 @@ async function init() {
     
     // Initialize modals (should work from start, not just when money tab is opened)
     initializeHistoricalKPIModal();
-    initializeDisclaimerModal();
     initializeYearByYearModal();
     initializePyramidStatsModal();
     initializePyramidFullscreen();

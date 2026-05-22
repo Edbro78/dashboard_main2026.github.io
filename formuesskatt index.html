@@ -21,14 +21,8 @@
 <div id="page1" class="page active" style="display: block !important;">
 <div class="dashboard-container min-h-screen w-full flex flex-col items-center justify-center p-4 lg:p-8 formuesskatt-dashboard">
 <div class="w-full mx-auto flex flex-col min-h-0">
-<header class="text-center formuesskatt-header relative"> 
-<!-- Disclaimer Button -->
-<button id="disclaimerBtn" class="absolute left-0 top-0 bg-[#24385B] hover:bg-[#364A6E] text-white font-semibold py-2 px-3 rounded-md text-sm transition-colors">
-    Disclaimer / forklaring
-</button>
-
+<header class="text-center formuesskatt-header"> 
 <h1 class="formuesskatt-title">Formuesskatt</h1> 
-<p class="text-slate-400 paragraph-text"></p> 
 
 </header>
 
@@ -122,65 +116,8 @@
 </div>
 </div>
 
-<!-- Disclaimer Modal -->
-<div id="disclaimerModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[80vh] overflow-y-auto">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold text-gray-900">Disclaimer / forklaring</h2>
-                <button id="closeDisclaimerModal" class="text-gray-400 hover:text-gray-600 text-2xl font-bold">&times;</button>
-            </div>
-            <div class="text-gray-700 space-y-4 text-sm leading-relaxed">
-                <p><strong>Disclaimer:</strong></p>
-
-                <p>Resultatet av de beregninger som gjøres i kalkulatoren vil variere ut ifra hvilke tall som legges til grunn. Tallene som legges til grunn bestemmes i samtale mellom rådgiver og deltaker i møtet. Resultatet vil dermed kunne variere fra de tallene som fremkommer offisielle dokumenter i tilknytning til ytelse av investeringsrådgivning.</p>
-
-                <p>Beregningene i kalkulatoren må ansees som statiske og er kun ment for illustrasjonsformål. For konkrete fremstillinger, vises det til offisielle dokumenter knyttet til rådgivningen.</p>
-
-                <p><strong>Merk følgende:</strong></p>
-
-                <p>Modellen gir en indikativ beregning av Formuesskatt. Kun ment til illustrasjonsformål og ikke ment som et skattemessig råd. For korrekt historisk utregning av Formuesskatt bør klienten sjekke skattemeldingen for tidligere år.</p>
-
-                <p><strong>Bil:</strong> særskilte verdsettelsesregler</p>
-
-                <p><strong>Båt:</strong> særskilte verdsettelsesregler</p>
-
-                <p><strong>Fritidseiendom</strong> skal settes til historisk skatteverdi (ofte langt under 10 %), men maks 30 % av markedsverdi.</p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- Custom JavaScript -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const disclaimerBtn = document.getElementById('disclaimerBtn');
-            const disclaimerModal = document.getElementById('disclaimerModal');
-            const closeDisclaimerModal = document.getElementById('closeDisclaimerModal');
-            
-            if (disclaimerBtn && disclaimerModal && closeDisclaimerModal) {
-                disclaimerBtn.addEventListener('click', function() {
-                    disclaimerModal.classList.remove('hidden');
-                });
-                
-                closeDisclaimerModal.addEventListener('click', function() {
-                    disclaimerModal.classList.add('hidden');
-                });
-                
-                disclaimerModal.addEventListener('click', function(e) {
-                    if (e.target === disclaimerModal) {
-                        disclaimerModal.classList.add('hidden');
-                    }
-                });
-                
-                document.addEventListener('keydown', function(e) {
-                    if (e.key === 'Escape' && !disclaimerModal.classList.contains('hidden')) {
-                        disclaimerModal.classList.add('hidden');
-                    }
-                });
-            }
-        });
-    </script>
-    <script src="formuesskatt script.js"></script>
+    <script src="formuesskatt script.js?v=primar-innslag-14mnok"></script>
 </body>
 </html>

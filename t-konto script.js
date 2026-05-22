@@ -9361,7 +9361,7 @@ function renderAnalysisModule(root) {
   updateTopSummaries();
 }
 
-// --- Risikoevne (TBE) ---
+// --- Risikoevne (tapsbærende evne) ---
 function renderTbeModule(root) {
   root.innerHTML = "";
 
@@ -9369,7 +9369,7 @@ function renderTbeModule(root) {
   panel.className = "panel";
 
   const heading = document.createElement("h3");
-  heading.textContent = "Risikoevne (TBE)";
+  heading.textContent = "Risikoevne";
   panel.appendChild(heading);
 
   // Hent grunnlag
@@ -9674,7 +9674,7 @@ function renderTbeModule(root) {
   concl.className = `tbe-conclusion ${overall}`;
   const title = document.createElement("div");
   title.className = "tbe-title";
-  title.textContent = `Samlet TBE: ${statusLabel(overall)} (${totalScore} poeng)`;
+  title.textContent = `Samlet Risikoevne: ${statusLabel(overall)} (${totalScore} poeng)`;
   const expl = document.createElement("p");
   let reason = "";
   if (overall === "low") {
@@ -9690,7 +9690,7 @@ function renderTbeModule(root) {
   concl.appendChild(expl);
   panel.appendChild(concl);
 
-  // Grunnlagsblokk bevisst utelatt i TBE-visningen
+  // Grunnlagsblokk bevisst utelatt i risikoevne-visningen
 
   root.appendChild(panel);
   updateTopSummaries();
@@ -10230,7 +10230,11 @@ function generateOutputText() {
 
   (AppState.incomes || []).forEach((income) => {
     const incomeName = orIngenData(income.name) || "Inntekt";
-    lines.push(`${counter}: ${incomeName}: ${formatValue(income.amount)}`);
+    /** Mål og behov-kontantstrøm-toggel: eksport er ja/nei (ikke beløp — beløp synkes fra Mål og behov når aktiv). */
+    const lineSuffix = isMoBUtbetalingIncomeRow(income)
+      ? income._maalOgBehovUtbetalingToggleUI === true ? "ja" : "nei"
+      : formatValue(income.amount);
+    lines.push(`${counter}: ${incomeName}: ${lineSuffix}`);
     counter++;
   });
 
@@ -10601,6 +10605,43 @@ function parseInputText(text) {
   const fdChildrenIn = [];
   const fdCompaniesIn = [];
 
+  /**
+   * Eksport/Input: linje «Utbetalinger fra Mål og behov» bruker ja/nei som verdi (eldre eksporter brukte beløp).
+   * Parse same regex som ved inntekt-hint til parseSection.
+   */
+  function mergeMoBParsedIncomeRow(name, valueStr) {
+    const label = String(name || "").normalize("NFC").trim();
+    if (!/^UTBETALING(?:ER)?\s+FRA\s+M[ÅA]L\s+OG\s+BEHOV$/i.test(label)) return null;
+    const low = String(valueStr || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\u00a0/g, " ")
+      .trim();
+    if (low === "ja") {
+      return {
+        name: label,
+        amount: 0,
+        _isMoBUtbetalingRow: true,
+        _maalOgBehovUtbetalingToggleUI: true
+      };
+    }
+    if (low === "nei") {
+      return {
+        name: label,
+        amount: 0,
+        _isMoBUtbetalingRow: true,
+        _maalOgBehovUtbetalingToggleUI: false
+      };
+    }
+    const amount = parseValue(valueStr);
+    return {
+      name: label,
+      amount,
+      _isMoBUtbetalingRow: true,
+      _maalOgBehovUtbetalingToggleUI: amount !== 0
+    };
+  }
+
   /** Tabeller i familiediagram: tab kan bli til mellomrom frå utklippstavle. */
   function splitFamiliediagramCols(valueStr, minCols) {
     const raw = String(valueStr || "").replace(/\u00a0/g, " ").replace(/\u202f/g, " ");
@@ -10705,7 +10746,8 @@ function parseInputText(text) {
         const nextNorm = String(nextRaw).replace(/\u00a0/g, " ").replace(/\u202f/g, " ");
         const lanetypeM = nextNorm.match(/^\d+\s*:\s*(.+?)\s*-\s*Lånetype\s*:\s*(.+)$/i);
         const isDebtAmountLine = !!(lanetypeM && lanetypeM[1].trim() === name);
-        const value = parseValue(valueStr);
+        const mobParsed = mergeMoBParsedIncomeRow(name, valueStr);
+        const value = mobParsed ? mobParsed.amount : parseValue(valueStr);
 
         if (isDebtAmountLine) {
           parseSection = "debts";
@@ -10716,9 +10758,9 @@ function parseInputText(text) {
           });
         } else if (parseSection === "debts") {
           parseSection = "incomes";
-          incomes.push({ name: name, amount: value });
+          incomes.push(mobParsed ?? { name: name, amount: value });
         } else if (parseSection === "incomes") {
-          incomes.push({ name: name, amount: value });
+          incomes.push(mobParsed ?? { name: name, amount: value });
         } else {
           const incomeHint =
             /L[ØO]NN|PENSJON|UTBYT|UTBYTT|SKATTEFRIE\s*INNTEKTER|UTBETALINGER?\s*FRA\s*M[ÅA]L\s*OG\s*BEHOV|INNTEKTSSKATT|UTBYTTESKATT|FORMUESSKATT|ÅRLIGE\s*KOSTNADER|ANNEN\s+INNTEKT|HONORAR|PROVISJON|LEIE|KONSULENT|DRIFT|DIVIDENDE|INNTEKT|SKATT|KOSTNAD/i.test(
@@ -10726,7 +10768,7 @@ function parseInputText(text) {
             );
           if (incomeHint) {
             parseSection = "incomes";
-            incomes.push({ name: name, amount: value });
+            incomes.push(mobParsed ?? { name: name, amount: value });
           } else {
             assets.push({ name: name, amount: value });
           }
@@ -10957,11 +10999,20 @@ function parseInputText(text) {
   }
   
   if (incomes.length > 0) {
-    AppState.incomes = incomes.map((i) => ({
-      id: genId(),
-      name: i.name,
-      amount: i.amount
-    }));
+    AppState.incomes = incomes.map((i) => {
+      const row = {
+        id: genId(),
+        name: i.name,
+        amount: Number(i.amount) || 0
+      };
+      if (i._isMoBUtbetalingRow === true) row._isMoBUtbetalingRow = true;
+      if (typeof i._maalOgBehovUtbetalingToggleUI === "boolean") {
+        row._maalOgBehovUtbetalingToggleUI = i._maalOgBehovUtbetalingToggleUI;
+      }
+      return row;
+    });
+    ensureIncomeRows();
+    syncSkattefrieMoBAmountFromToggle();
     reorderIncomesForDisplay();
     const wealthTaxAfterRestore = AppState.incomes.find(i => i.name === "Formuesskatt");
     if (wealthTaxAfterRestore) setFormuesskattForMaalOgBehov(wealthTaxAfterRestore.amount);

@@ -2498,7 +2498,6 @@ body {
 }
 
 /* Header buttons */
-.disclaimer-btn,
 .historical-kpi-btn {
     background: var(--card);
     color: var(--muted-foreground);
@@ -2514,7 +2513,6 @@ body {
     margin-left: var(--space-xs);
 }
 
-.disclaimer-btn:hover,
 .historical-kpi-btn:hover {
     background: var(--background);
     color: var(--foreground);
@@ -2663,21 +2661,6 @@ body {
     background: var(--accent);
 }
 
-/* Disclaimer text styling */
-.disclaimer-text {
-    font-family: var(--font-sans);
-    font-size: var(--text-sm);
-    line-height: 1.6;
-    color: var(--foreground);
-}
-
-.disclaimer-text p {
-    margin-bottom: var(--space-md);
-}
-
-.disclaimer-text p:last-child {
-    margin-bottom: 0;
-}
 
 /* Year by Year Modal */
 .year-by-year-modal {

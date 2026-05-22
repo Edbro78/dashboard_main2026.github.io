@@ -599,34 +599,6 @@ header.text-center.mb-1.relative {
     min-height: 100dvh;
 }
 
-/* Disclaimer-knapp: sekundær stil */
-#disclaimerBtn {
-    background-color: var(--bg-white) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border-color) !important;
-    box-shadow: var(--panel-shadow);
-}
-#disclaimerBtn:hover {
-    border-color: var(--primary-btn) !important;
-    transform: translateY(-2px);
-}
-
-/* --- Modaler (panel: hvit, kant #DDDDDD, skygge) --- */
-#disclaimerModal > div {
-    box-shadow: var(--panel-shadow);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-}
-#disclaimerModal h2 {
-    color: var(--text-primary);
-}
-#disclaimerModal .text-gray-700 {
-    color: var(--text-primary) !important;
-}
-#disclaimerModal .text-gray-900 {
-    color: var(--text-primary) !important;
-}
-
 /* Side 2 (kjøpekraft): lys tema */
 #page2 {
     background-color: var(--bg-page) !important;

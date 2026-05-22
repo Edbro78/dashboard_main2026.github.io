@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Rabattsatser/verdivurderingsfaktorer for ulike eiendelstyper.
         // Disse representerer hvor mye av eiendelens verdi som medregnes i formuegrunnlaget.
         discounts: {
-            // For primærbolig: 25% verdivurdering (dvs. 75% rabatt) opp til terskel på 10M, og 70% verdivurdering (dvs. 30% rabatt) over terskel.
+            // For primærbolig: 25% verdivurdering (dvs. 75% rabatt) opp til terskel på 14M, og 70% verdivurdering (dvs. 30% rabatt) over terskel.
             'primary-residence': { valuation_under_threshold: 0.25, valuation_over_threshold: 0.70 },
             'holiday-home': 0.30, // 30% verdivurdering
             'land-plot': 0.80,    // 80% verdivurdering
@@ -60,6 +60,8 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         // Applikasjonsstatus, f.eks. antall personer for skatteberegninger.
         state: { personCount: 1 },
+        // Innslag primærbolig: verdivurdering 25 % (75 % rabatt) på verdi inntil dette beløpet, deretter 70 % av overskuddet.
+        primaryResidenceValuationThresholdNok: 14000000,
         // Skaleringsfaktor for å øke rekkevidden (max) på alle sliders.
         rangeScaleFactor: 3,
         
@@ -198,8 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Beregner alle formuesskattkomponenter basert på gjeldende inputverdier.
         calculateAll: function() {
             const values = this.getValues();
-            // Fast terskel for primærbolig (tidligere input-felt)
-            const primaryResidenceFixedThreshold = 10000000; 
+            const primaryResidenceFixedThreshold = this.primaryResidenceValuationThresholdNok;
 
             // Bestemmer skattefritt beløp basert på personantall
             const taxFreeAllowance = this.state.personCount === 1 ? 1900000 : 3800000;
@@ -215,7 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 let valuedAmount = assetValue; 
 
                 if (key === 'primary-residence') {
-                    // Primærbolig verdivurderes til 25% opp til terskel, og 70% over terskel
+                    // Primærbolig verdivurderes til 25% opp til 14 MNOK, og 70% av verdi over 14 MNOK
                     const valFactors = this.discounts[key];
                     valuedAmount = (Math.min(assetValue, primaryResidenceFixedThreshold) * valFactors.valuation_under_threshold) +
                                    (Math.max(0, assetValue - primaryResidenceFixedThreshold) * valFactors.valuation_over_threshold);
