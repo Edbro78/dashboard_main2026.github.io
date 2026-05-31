@@ -205,7 +205,9 @@ const LEGEND_DATA = [
 
 const INITIAL_APP_STATE = {
     initialPortfolioSize: 10000000,
+    portfolio1Name: PORTFOLIO1_NAME_DEFAULT,
     pensionPortfolioSize: 0,
+    portfolio2Name: PORTFOLIO2_NAME_DEFAULT,
     additionalPensionAmount: 0,
     investedCapital: 0,
     investmentYears: 10,
@@ -276,6 +278,18 @@ if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState;
 
 /** Samme som h1 i Mål og behov; brukes også som overskrift på første panel i Fremtidige verdier. */
 const MAAL_PANEL_TITLE_DEFAULT = 'Samlet forvaltning - fremtidige verdier';
+const PORTFOLIO1_NAME_DEFAULT = 'Portefølje I';
+const PORTFOLIO2_NAME_DEFAULT = 'Portefølje II';
+
+function resolvePortfolio1Name(name) {
+    const n = String(name ?? '').trim();
+    return n || PORTFOLIO1_NAME_DEFAULT;
+}
+
+function resolvePortfolio2Name(name) {
+    const n = String(name ?? '').trim();
+    return n || PORTFOLIO2_NAME_DEFAULT;
+}
 
 const STOCK_ALLOCATION_OPTIONS = [
     { label: '100% Renter', value: 0 },
@@ -814,12 +828,31 @@ const formatCurrency = (value) => new Intl.NumberFormat('nb-NO', { style: 'curre
 const formatNumberRaw = (value) => new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
 // --- HELPER & CHILD COMPONENTS --- //
-const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, displayValue, allowDirectInput, inline, thumbColor }) => {
+const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, displayValue, allowDirectInput, inline, thumbColor, editableLabel, labelValue, onLabelChange, labelPlaceholder }) => {
 const [textValue, setTextValue] = React.useState(() => (isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)}${unit ? ` ${unit}` : ''}`));
 
 React.useEffect(() => {
 setTextValue(isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)}${unit ? ` ${unit}` : ''}`);
 }, [value, isCurrency, unit]);
+
+const renderLabel = () => {
+    if (editableLabel) {
+        return (
+            <input
+                type="text"
+                value={labelValue ?? ''}
+                onChange={(e) => onLabelChange && onLabelChange(e.target.value)}
+                placeholder={labelPlaceholder || label}
+                className="typo-label text-[#333333]/80 bg-transparent border-none outline-none w-full p-0 m-0"
+                aria-label={`Navn på ${labelPlaceholder || label}`}
+            />
+        );
+    }
+    if (inline) {
+        return <label htmlFor={id} className="typo-label text-[#333333]/80 whitespace-nowrap normal-case min-w-[90px]">{label}</label>;
+    }
+    return <label htmlFor={id} className="typo-label text-[#333333]/80">{label}</label>;
+};
 
 const parseCurrencyInput = (raw) => {
 const digitsOnly = String(raw).replace(/[^0-9]/g, '');
@@ -839,7 +872,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
         <div>
             {inline ? (
                 <div className="relative flex items-center gap-4 mt-1 pr-36">
-                    <label htmlFor={id} className="typo-label text-[#333333]/80 whitespace-nowrap normal-case min-w-[90px]">{label}</label>
+                    {renderLabel()}
                     <input
                         type="range"
                         id={id}
@@ -869,7 +902,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
                 </div>
             ) : (
                 <>
-                    <label htmlFor={id} className="typo-label text-[#333333]/80">{label}</label>
+                    {renderLabel()}
                     <div className="flex items-center gap-4 mt-1">
                         <input
                             type="range"
@@ -2566,8 +2599,8 @@ function App() {
         // Summen Portefølje I + Portefølje II + Likviditetsfond (2026) – brukes av T-konto Eiendeler «Investeringer Mål og behov» og Risikosimulering
         const sum2026 = (state.initialPortfolioSize || 0) + (state.pensionPortfolioSize || 0) + (state.additionalPensionAmount || 0);
         try {
-            localStorage.setItem('maalOgBehovSum2026', String(Math.round(sum2026)));
-            localStorage.setItem('maalOgBehovAksjeandelP1', String(state.row1StockAllocation ?? 0));
+            sessionStorage.setItem('maalOgBehovSum2026', String(Math.round(sum2026)));
+            sessionStorage.setItem('maalOgBehovAksjeandelP1', String(state.row1StockAllocation ?? 0));
         } catch (e) {}
     }, [state]);
 
@@ -2812,7 +2845,7 @@ function App() {
         } else {
             // Skru på: lagre full state (inkl. hendelser), sett alt til default, overstyr kun de tillatte feltene fra pensjon
             try {
-                const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('pensjonsgapetHentAltFraPension') : null;
+                const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pensjonsgapetHentAltFraPension') : null;
                 const data = raw ? JSON.parse(raw) : null;
                 if (!data || typeof data.engangsinnskudd !== 'number') return;
                 // Dykkopi av state slik at hendelser og resten gjenopprettes ved deaktivering
@@ -3915,8 +3948,8 @@ function App() {
             return Math.round(-n + (-en));
         });
         try {
-            localStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(totalPerYear));
-            localStorage.setItem('maalOgBehovNettoUtbetalingTilTKontoPerYear', JSON.stringify(nettoTilTKontoPerYear));
+            sessionStorage.setItem('maalOgBehovHovedstolPerYear', JSON.stringify(totalPerYear));
+            sessionStorage.setItem('maalOgBehovNettoUtbetalingTilTKontoPerYear', JSON.stringify(nettoTilTKontoPerYear));
         } catch (e) {}
         try {
             if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
@@ -4035,6 +4068,8 @@ lines.push(`34 Skattesats hoved (%) : ${state.taxRate.toFixed(2)}`);
 lines.push(`35 Forventet rente bankinnskudd (%) : ${state.bankDepositRate.toFixed(1)}`);
 lines.push(`36 Formuesskatt fra T-konto : ${state.wealthTaxFromTKonto ? 'Ja' : 'Nei'}`);
 lines.push(`37 Målsøk utbetaling tøm siste år : ${state.goalSeekPayoutDrainFinalYear ? 'Ja' : 'Nei'}`);
+lines.push(`38 Portefølje I navn : ${orIngenData(resolvePortfolio1Name(state.portfolio1Name))}`);
+lines.push(`39 Portefølje II navn : ${orIngenData(resolvePortfolio2Name(state.portfolio2Name))}`);
 return lines.join('\n');
 }, [state, prognosis, panelTitle]);
 
@@ -4285,6 +4320,12 @@ updates.wealthTaxFromTKonto = parseBoolean(value);
 break;
 case 37: // Målsøk utbetaling tøm siste år
 updates.goalSeekPayoutDrainFinalYear = parseBoolean(value);
+break;
+case 38: // Portefølje I navn
+updates.portfolio1Name = value.trim() || PORTFOLIO1_NAME_DEFAULT;
+break;
+case 39: // Portefølje II navn
+updates.portfolio2Name = value.trim() || PORTFOLIO2_NAME_DEFAULT;
 break;
 }
 
@@ -5380,13 +5421,13 @@ return () => document.removeEventListener('keydown', onKey);
             : 0;
 
         const bars = [];
-        if (p1 > 0) bars.push({ key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1 });
-        if (p2 > 0) bars.push({ key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2 });
+        if (p1 > 0) bars.push({ key: 'p1', label: resolvePortfolio1Name(state.portfolio1Name), stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1 });
+        if (p2 > 0) bars.push({ key: 'p2', label: resolvePortfolio2Name(state.portfolio2Name), stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2 });
         if (lf > 0) bars.push({ key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: FORUTSETNING_RENTEPORTEFOLJE });
         // Totalportefølje vises alltid
         bars.push({ key: 'tot', label: 'Totalportefølje', stockPct: totalStock, color: CHART_COLORS.hovedstol });
         return bars;
-    }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation]);
+    }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation, state.portfolio1Name, state.portfolio2Name]);
 
     // Fixed-order slots for original view, keep positions even if some portfolios are zero
     const assumptionSlots = React.useMemo(() => {
@@ -5403,12 +5444,12 @@ return () => document.removeEventListener('keydown', onKey);
             : 0;
 
         return [
-            { key: 'p1', label: 'Portefølje I', stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1, present: p1 > 0 },
-            { key: 'p2', label: 'Portefølje II', stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2, present: p2 > 0 },
+            { key: 'p1', label: resolvePortfolio1Name(state.portfolio1Name), stockPct: p1Stock, color: FORUTSETNING_AKSJE_P1, present: p1 > 0 },
+            { key: 'p2', label: resolvePortfolio2Name(state.portfolio2Name), stockPct: p2Stock, color: FORUTSETNING_AKSJE_P2, present: p2 > 0 },
             { key: 'lf', label: 'Likviditetsfond', stockPct: lfStock, color: FORUTSETNING_RENTEPORTEFOLJE, present: lf > 0 },
             { key: 'tot', label: 'Totalportefølje', stockPct: totalStock, color: CHART_COLORS.hovedstol, present: true },
         ];
-    }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation]);
+    }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation, state.portfolio1Name, state.portfolio2Name]);
 
     return (
         <div className="maal-og-behov-tab font-sans text-[#333333] bg-white p-4 sm:p-6 pr-8 sm:pr-12 min-h-screen w-full box-border">
@@ -5508,9 +5549,9 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I" value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
+                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
                             <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
+                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
                             </div>
 <div className="mt-3">
 <SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#88CCEE" />
@@ -5998,8 +6039,8 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                         const heightFor = (v) => (total > 0 ? Math.max(8, Math.round((v / total) * maxHeight)) : 8);
 
                                         const items = [];
-                                        if (p1 > 0) items.push({ key: 'p1w', label: 'Portefølje I', value: p1, color: CHART_COLORS.hovedstol });
-                                        if (p2 > 0) items.push({ key: 'p2w', label: 'Portefølje II', value: p2, color: CHART_COLORS.sparing });
+                                        if (p1 > 0) items.push({ key: 'p1w', label: resolvePortfolio1Name(state.portfolio1Name), value: p1, color: CHART_COLORS.hovedstol });
+                                        if (p2 > 0) items.push({ key: 'p2w', label: resolvePortfolio2Name(state.portfolio2Name), value: p2, color: CHART_COLORS.sparing });
                                         if (lf > 0) items.push({ key: 'lfw', label: 'Likviditetsfond', value: lf, color: CHART_COLORS.avkastning });
 
                                         // Calculate pixel heights with per-item minimums (LF + P2), then scale to fit container if needed

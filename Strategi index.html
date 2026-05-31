@@ -264,7 +264,7 @@
         function updateTotaltMandat() {
             var el = document.getElementById('totalt-mandat-value');
             if (!el) return;
-            var raw = localStorage.getItem('maalOgBehovSum2026');
+            var raw = sessionStorage.getItem('maalOgBehovSum2026');
             el.textContent = formatMandat(raw);
         }
 

@@ -760,12 +760,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     const portfolio = (values.currentOTPSaldo || 0) + (values.currentIPSBalance || 0);
                     const saving = (values.ipsAnnualSaving || 0) + pmt;
-                    localStorage.setItem('pensjonsgapetPortefoljeOgSparing', JSON.stringify({ portfolio, saving }));
+                    sessionStorage.setItem('pensjonsgapetPortefoljeOgSparing', JSON.stringify({ portfolio, saving }));
                 } catch (e) {}
 
                 // Eksporter pensjonsdata til T-konto kontantstrøm-prognose (kun visning i fremtidsgraf)
                 try {
-                    localStorage.setItem('pensjonsgapetTKontoAarligPensjon', JSON.stringify({
+                    sessionStorage.setItem('pensjonsgapetTKontoAarligPensjon', JSON.stringify({
                         annualPension: Math.max(0, Math.round(totalAnnualPension)),
                         age: Math.max(0, Number(values.age) || 0),
                         retirementAge: Math.max(0, Number(values.retirementAge) || 0),
@@ -849,7 +849,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             const expRet = values.expectedReturn;
                             aksjeandel = returnToStock[expRet] !== undefined ? returnToStock[expRet] : 65;
                         }
-                        localStorage.setItem('pensjonsgapetHentAltFraPension', JSON.stringify({
+                        sessionStorage.setItem('pensjonsgapetHentAltFraPension', JSON.stringify({
                             engangsinnskudd,
                             aarligSparing,
                             yearsToRetirement: n,

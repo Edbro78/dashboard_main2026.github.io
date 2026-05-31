@@ -7747,12 +7747,12 @@ async function init() {
                     sum2026 = Math.round((parentState.initialPortfolioSize || 0) + (parentState.pensionPortfolioSize || 0) + (parentState.additionalPensionAmount || 0));
                     aksjeandelP1 = parseFloat(parentState.row1StockAllocation) || 0;
                 } else {
-                    sum2026 = parseInt(localStorage.getItem('maalOgBehovSum2026') || '0', 10);
-                    aksjeandelP1 = parseFloat(localStorage.getItem('maalOgBehovAksjeandelP1') || '0') || 0;
+                    sum2026 = parseInt(sessionStorage.getItem('maalOgBehovSum2026') || '0', 10);
+                    aksjeandelP1 = parseFloat(sessionStorage.getItem('maalOgBehovAksjeandelP1') || '0') || 0;
                 }
             } catch (e) {
-                sum2026 = parseInt(localStorage.getItem('maalOgBehovSum2026') || '0', 10);
-                aksjeandelP1 = parseFloat(localStorage.getItem('maalOgBehovAksjeandelP1') || '0') || 0;
+                sum2026 = parseInt(sessionStorage.getItem('maalOgBehovSum2026') || '0', 10);
+                aksjeandelP1 = parseFloat(sessionStorage.getItem('maalOgBehovAksjeandelP1') || '0') || 0;
             }
             aksjeandelP1 = Math.max(0, Math.min(100, aksjeandelP1));
             if (sum2026 > 0) {

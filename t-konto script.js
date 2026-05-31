@@ -34,6 +34,36 @@ function isMaalOgBehovPortfolioAsset(a) {
 // Unntak: «Investeringer Mål og behov»-raden henter beløp fra Mål og behov og er også låst mot sletting (stabil flagg `maalOgBehovPortfolio`).
 const DEFAULT_ASSET_NAMES = ["Bankinnskudd", "Primærbolig", "Fritidseiendom", "Sekundærbolig", "Tomt"];
 
+/** Maks beløp (NOK) for eiendeler – slider og manuell inntasting. */
+const ASSET_AMOUNT_MAX = 1000000000;
+
+/** Gjenkjenner standard-eiendeler som skal ha låst navn og ingen sletting (case-insensitiv + eldre navn). */
+function isDefaultProtectedAssetName(name) {
+  const n = String(name || "").trim();
+  if (!n) return false;
+  const upper = n.toUpperCase();
+  if (DEFAULT_ASSET_NAMES.some((d) => d.toUpperCase() === upper)) return true;
+  if (/^BANK$/i.test(n) || /^BANKINNSKUDD$/i.test(n)) return true;
+  if (/^FAST\s*EIENDOM$/i.test(n) || /^EIENDOM$/i.test(n) || /^PRIMÆRBOLIG$/i.test(n)) return true;
+  if (/^FRITIDSEIENDOM$/i.test(n)) return true;
+  if (/^SEKUNDÆREIENDOM$/i.test(n) || /^SEKUNDÆRBOLIG$/i.test(n)) return true;
+  if (/^TOMT$/i.test(n)) return true;
+  return false;
+}
+
+/** Etter import: sikre at standard-eiendeler og Mål og behov-raden beholder beskyttelse mot sletting/navneendring. */
+function applyProtectedAssetFlags(asset) {
+  if (!asset || typeof asset !== "object") return;
+  if (isDefaultProtectedAssetName(asset.name)) {
+    asset.noRename = true;
+    asset.noDelete = true;
+  }
+  if (isMaalOgBehovPortfolioAsset(asset)) {
+    asset.maalOgBehovPortfolio = true;
+    asset.noDelete = true;
+  }
+}
+
 const AppState = {
   assets: [
     { id: genId(), name: "Bankinnskudd", amount: 2000000, noRename: true, noDelete: true },
@@ -99,7 +129,7 @@ function ensureCashflowRoutingState() {
 
 function getPensjonForecastData() {
   try {
-    const raw = localStorage.getItem("pensjonsgapetTKontoAarligPensjon");
+    const raw = sessionStorage.getItem("pensjonsgapetTKontoAarligPensjon");
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (!data || typeof data !== "object") return null;
@@ -7975,10 +8005,10 @@ function makeBlock(title, amountText, variant, grow, heightPx) {
   return b;
 }
 
-/** Sum Portefølje I + Portefølje II + Likviditetsfond (2026) fra Mål og behov-fanen (localStorage). */
+/** Sum Portefølje I + Portefølje II + Likviditetsfond (2026) fra Mål og behov-fanen (sessionStorage). */
 function getMaalOgBehovSum2026() {
   try {
-    const v = localStorage.getItem("maalOgBehovSum2026");
+    const v = sessionStorage.getItem("maalOgBehovSum2026");
     return v != null ? Number(v) : 0;
   } catch (e) {
     return 0;
@@ -7988,7 +8018,7 @@ function getMaalOgBehovSum2026() {
 /** Total porteføljeverdi for et gitt år fra Mål og behov-fanen (sum av hovedstol, avkastning, sparing, hendelser, netto utbetaling, skatt på hendelser, løpende renteskatt). Array: [start, 2026, 2027, ...]. */
 function getMaalOgBehovHovedstolForYear(yearVal) {
   try {
-    const raw = localStorage.getItem("maalOgBehovHovedstolPerYear");
+    const raw = sessionStorage.getItem("maalOgBehovHovedstolPerYear");
     if (raw == null) return getMaalOgBehovSum2026();
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr) || arr.length === 0) return getMaalOgBehovSum2026();
@@ -8011,7 +8041,7 @@ function getMaalOgBehovNettoUtbetalingForYear(calendarYear) {
   if (!Number.isFinite(Y)) return 0;
   const idx = Y - 2026 + 1;
   try {
-    const raw = localStorage.getItem("maalOgBehovNettoUtbetalingTilTKontoPerYear");
+    const raw = sessionStorage.getItem("maalOgBehovNettoUtbetalingTilTKontoPerYear");
     if (raw == null) return 0;
     const arr = JSON.parse(raw);
     if (!Array.isArray(arr) || arr.length === 0) return 0;
@@ -8089,13 +8119,13 @@ function refreshTkontoViewsAfterMoBPrognosis() {
   else if (section === "Inntekter" && typeof renderIncomeModule === "function") renderIncomeModule(moduleRoot);
 }
 
-/** Eksporter årlig formuesskatt (inntekter-fanen) til Mål og behov via localStorage. */
+/** Eksporter årlig formuesskatt (inntekter-fanen) til Mål og behov via sessionStorage. */
 function setFormuesskattForMaalOgBehov(value) {
   try {
     const v = Math.max(0, Math.round(Number(value) || 0));
-    localStorage.setItem("tKontoFormuesskatt", String(v));
+    sessionStorage.setItem("tKontoFormuesskatt", String(v));
   } catch (e) {
-    // Ignorer lagringsfeil (for eksempel hvis localStorage er deaktivert)
+    // Ignorer lagringsfeil (for eksempel hvis sessionStorage er deaktivert)
   }
 }
 
@@ -8446,23 +8476,7 @@ function createItemRow(collectionName, item) {
           if (amount) amount.textContent = formatNOK(Number(range.max));
         }
       } else if (collectionName === "assets") {
-        const label = String(item.name || name.value || "").toUpperCase();
-        const originalLabel = String(originalName || "").toUpperCase();
-        const assetType = item.assetType;
-        const isInvestment =
-          item.maalOgBehovPortfolio === true ||
-          assetType === "investeringer" ||
-          /^INVESTERINGER$/i.test(label) ||
-          /^INVESTERINGER$/i.test(originalLabel);
-        const isEiendom = assetType === "eiendom" || assetType === "fritidseiendom" || assetType === "sekundaereiendom" || assetType === "tomt" || (/^EIENDOM$/i.test(label) && !/FAST/i.test(label));
-        const isFastEiendom = /^FAST\s*EIENDOM$/i.test(label);
-        const isAndreEiendeler = assetType === "andre" || /^ANDRE\s*EIENDELER$/i.test(label);
-        if (/^BANK$/i.test(label)) range.max = "100000000";
-        else if (isFastEiendom) range.max = "100000000";
-        else if (isEiendom) range.max = "100000000";
-        else if (isInvestment) range.max = "100000000";
-        else if (isAndreEiendeler) range.max = "250000000";
-        else range.max = "50000000";
+        range.max = String(ASSET_AMOUNT_MAX);
         if (Number(range.value) > Number(range.max)) {
           range.value = range.max;
           // Hold AppState synkronisert når verdi må clamps til max.
@@ -8510,7 +8524,7 @@ function createItemRow(collectionName, item) {
       amount.style.cursor = "text";
       amount.addEventListener("dblclick", function startAmountEdit() {
         const currentVal = Number(range.value) || 0;
-        const maxVal = Number(range.max) || 50000000;
+        const maxVal = ASSET_AMOUNT_MAX;
         const input = document.createElement("input");
         input.type = "text";
         input.className = "asset-amount";
@@ -10572,6 +10586,7 @@ function parseInputText(text) {
         Object.keys(data).forEach((k) => {
           AppState[k] = data[k];
         });
+        (AppState.assets || []).forEach(applyProtectedAssetFlags);
         syncGenIdFromImportedState();
         try {
           if (typeof window.dispatchEvent === "function") {
@@ -10942,14 +10957,6 @@ function parseInputText(text) {
         name: migratedName,
         amount: a.amount
       };
-      // Default-eiendeler: navn skal ikke kunne endres
-      const isLegacyDefaultAsset =
-        /^BANK$/i.test(a.name) ||
-        /^FAST\s*EIENDOM$/i.test(a.name) ||
-        /^SEKUNDÆREIENDOM$/i.test(a.name);
-      if (DEFAULT_ASSET_NAMES.includes(a.name) || isLegacyDefaultAsset) {
-        asset.noRename = true;
-      }
       // Bruk assetType fra output hvis den er lagret, ellers sett basert på navn
       if (assetTypeMap.has(a.name)) {
         asset.assetType = assetTypeMap.get(a.name);
@@ -10985,6 +10992,7 @@ function parseInputText(text) {
       } else if (/investeringer\s*mål\s*og\s*behov/i.test(String(asset.name || ""))) {
         asset.maalOgBehovPortfolio = true;
       }
+      applyProtectedAssetFlags(asset);
       return asset;
     });
   }
