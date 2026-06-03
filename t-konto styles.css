@@ -64,6 +64,25 @@
   --shadow-button: 0 2px 4px rgba(0, 0, 0, 0.1);
   --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   --shadow-focus: 0 0 0 2px rgba(153, 217, 242, 0.35);
+  /* Standard designmanual – kort, lister, progress */
+  --shadow-card: 0 4px 10px rgba(0, 0, 0, 0.06);
+  --shadow-list: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-progress: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --radius-lg: 8px;
+  --radius-sm: 4px;
+  /* Inntekter – de fem øverste radene (diskret, ikke cyan som eiendeler) */
+  --income-primary-bg: #F8F7F5;
+  --income-primary-border: rgba(51, 51, 51, 0.06);
+  --income-primary-row-bg: #FDFCFB;
+  /* Datavisualisering (Standard designmanual) */
+  --chart-dark-blue: #002359;
+  --chart-yale-blue: #12337E;
+  --chart-violet-blue: #1E4B8B;
+  --chart-crayola-blue: #447DF7;
+  --chart-jordy-blue: #9BEBFA;
+  --chart-lavender: #D8E4FD;
+  --chart-income-green: #0C8F4A;
+  --chart-income-green-light: #B5ECD0;
 }
 
 /* Grunnoppsett */
@@ -891,25 +910,23 @@ p { /* Avsnitt */
   transform: translateY(0);
 }
 
-/* Struktur modul styling */
+/* Struktur modul styling (Familieforhold – organisering / innebygd dashboard) */
 .panel-struktur {
-  --struktur-privat-bg: #E8F4FC;
-  /* Inaktiv Privat II: nøytral, behagelig grå (ikke blålig) */
-  --struktur-privat-bg-inactive: #E8EAED;
-  --struktur-privat-accent: #154D7A;
-  --struktur-holding-bg: #B8C9D8;
-  --struktur-holding-bg-active: #8FA8C0;
-  --struktur-holding-accent: #002D72;
-  /* Streker privat → holding: myk, behagelig blå */
-  --struktur-connection-stroke: #6B9DC9;
-  --struktur-connection-stroke-muted: rgba(107, 157, 201, 0.88);
-  --struktur-connection-label: #5888B8;
+  --struktur-privat-bg: var(--sp-cyan-20);
+  --struktur-privat-bg-inactive: var(--sp-background);
+  --struktur-privat-accent: var(--sp-blue);
+  --struktur-holding-bg: var(--sp-cyan-20);
+  --struktur-holding-bg-active: #b8dce8;
+  --struktur-holding-accent: var(--sp-blue);
+  --struktur-connection-stroke: #12337E;
+  --struktur-connection-stroke-muted: rgba(18, 51, 126, 0.55);
+  --struktur-connection-label: var(--sp-blue);
   min-height: calc(605px * 1.15);
-  padding: calc(32px * 1.15);
-  background: var(--BG_CARD);
-  border: 1px solid var(--BORDER_LIGHT);
-  border-radius: 12px;
-  box-shadow: var(--shadow-panel);
+  padding: 0;
+  background: #EEF2F7;
+  border: 1px solid #D4DCE8;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 4px 12px rgba(18, 51, 126, 0.07);
   position: relative;
   /* Overstyr .panel { overflow: hidden } – ellers klippes/kolapser forbindelses-SVG */
   overflow: visible;
@@ -1403,78 +1420,107 @@ p { /* Avsnitt */
   }
 }
 
-.assets { display: flex; flex-direction: column; gap: 24px; }
+.assets { display: flex; flex-direction: column; gap: 20px; }
 
-.asset-row { 
-  display: grid; 
-  grid-template-columns: minmax(300px, 1fr) auto; 
-  gap: 16px; 
-  padding: 16px;
+.asset-row {
+  display: grid;
+  grid-template-columns: minmax(300px, 1fr) auto;
+  gap: 16px;
+  padding: 14px 16px;
   background: #ffffff;
-  border-radius: 12px;
-  box-shadow: var(--shadow-panel);
-  border: 1px solid var(--BORDER_LIGHT);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-list);
+  border: 1px solid rgba(0, 45, 114, 0.08);
   align-items: center;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+
+.panel-assets .asset-row:hover,
+.panel-income .asset-row:hover,
+.panel-debt .asset-row:hover {
+  border-color: rgba(153, 217, 242, 0.65);
+  box-shadow: var(--shadow-list), 0 0 0 1px rgba(153, 217, 242, 0.25);
+}
+
 .asset-col { display: flex; flex-direction: column; gap: 10px; }
 
 .asset-top { display: flex; align-items: center; gap: 10px; }
 
 .asset-name {
   flex: 1;
-  border: 1px solid var(--BORDER_LIGHT);
+  border: 1px solid var(--sp-border);
   background: #ffffff;
-  color: var(--GRAY_TEXT_DARK);
-  border-radius: 10px;
+  color: var(--sp-dark-blue);
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
+  font-family: var(--font-sans);
   font-weight: var(--weight-medium);
-  letter-spacing: 0.1em; /* 10% */
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.asset-name:focus {
+  outline: none;
+  border-color: var(--sp-cyan-40);
+  box-shadow: var(--shadow-focus);
 }
 
 .asset-entity-select {
-  border: 1px solid var(--BORDER_LIGHT);
+  border: 1px solid var(--sp-border);
   background: #ffffff;
-  color: var(--GRAY_TEXT_DARK);
-  border-radius: 10px;
+  color: var(--sp-blue);
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
+  font-family: var(--font-sans);
   font-weight: var(--weight-medium);
-  font-size: 14px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
   cursor: pointer;
   outline: none;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   min-width: 140px;
 }
 
 .asset-entity-select:hover {
-  border-color: var(--P_ACCENT);
+  border-color: var(--sp-cyan-40);
   box-shadow: var(--shadow-focus);
 }
 
 .asset-entity-select:focus {
-  border-color: var(--P_ACCENT);
+  border-color: var(--sp-cyan-40);
   box-shadow: var(--shadow-focus);
 }
 
-/* Kostnadsrader: svakt rødskjær på felt og rød verdi */
-.is-cost .asset-name { background: var(--ERROR_LIGHT_BG); }
-.is-cost .asset-amount { color: var(--ERROR_DEBT); }
+/* Kostnadsrader: cyan/blå palett (S&P) */
+.is-cost .asset-name { background: var(--sp-cyan-20); border-color: rgba(153, 217, 242, 0.85); }
+.is-cost .asset-amount { color: var(--sp-dark-blue); }
 .is-cost .asset-range::-webkit-slider-runnable-track {
-  background: linear-gradient(90deg, #F9D3D0 0%, #FDE8E7 100%);
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 55%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
 }
 .is-cost .asset-range::-moz-range-track {
-  background: linear-gradient(90deg, #F9D3D0 0%, #FDE8E7 100%);
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 55%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
 }
 
 .asset-delete {
   appearance: none;
   width: 28px;
   height: 28px;
-  border-radius: 8px;
-  border: 1px solid var(--BORDER_LIGHT);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--sp-border);
   background: #ffffff;
-  color: var(--GRAY_TEXT_SECONDARY);
+  color: var(--sp-blue);
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.asset-delete:hover {
+  background: var(--sp-cyan-20);
+  border-color: var(--sp-cyan-40);
+  color: var(--sp-dark-blue);
 }
 
 /* Toggle switch knapp */
@@ -1513,10 +1559,6 @@ p { /* Avsnitt */
 }
 
 .income-pension-toggle-label {
-  font-size: 14px;
-  font-weight: var(--weight-medium);
-  color: var(--GRAY_TEXT_DARK);
-  text-transform: none;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -1528,9 +1570,6 @@ p { /* Avsnitt */
 
 .income-pension-toggle-state {
   min-width: 26px;
-  font-size: 14px;
-  font-weight: var(--weight-semibold);
-  color: var(--GRAY_TEXT_SECONDARY);
   text-align: left;
 }
 
@@ -1554,10 +1593,10 @@ p { /* Avsnitt */
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: #E5E7EB; /* Grå når av */
+  background-color: var(--sp-border);
   transition: 0.3s;
-  border-radius: 41px; /* 20% mindre: 51px * 0.8 = 40.8px, avrundet til 41px */
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 41px;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .asset-toggle-slider:before {
@@ -1574,7 +1613,7 @@ p { /* Avsnitt */
 }
 
 .asset-toggle-switch input:checked + .asset-toggle-slider {
-  background-color: var(--success-green); /* Grønn når på */
+  background-color: var(--sp-blue);
 }
 
 .asset-toggle-switch input:checked + .asset-toggle-slider:before {
@@ -1586,28 +1625,41 @@ p { /* Avsnitt */
 }
 
 .asset-toggle-switch input:checked + .asset-toggle-slider:hover {
-  box-shadow: inset 0 2px 4px rgba(12, 143, 74, 0.2);
+  box-shadow: inset 0 2px 4px rgba(0, 45, 114, 0.25);
 }
 
 .asset-amount {
   align-self: center;
+  font-family: var(--font-sans);
   font-weight: var(--weight-bold);
-  font-size: 1.25rem; /* ca 20px */
-  color: var(--GRAY_TEXT_SECONDARY);
-  justify-self: end; /* hold tallene inne i høyre kolonne */
-  white-space: nowrap; /* ikke bryt siffer over flere linjer */
+  font-size: 1rem;
+  color: var(--sp-dark-blue);
+  font-variant-numeric: tabular-nums;
+  justify-self: end;
+  white-space: nowrap;
   width: auto;
-  max-width: 280px; /* Gjør feltet smalere */
+  max-width: 280px;
   box-sizing: border-box;
   text-align: right;
   padding: 10px 16px;
-  border: 1px solid var(--BORDER_LIGHT);
+  border: 1px solid rgba(0, 45, 114, 0.1);
   background: #ffffff;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-assets .asset-amount:focus,
+.panel-income .asset-amount:focus,
+.panel-debt .asset-amount:focus,
+input.asset-amount:focus {
+  outline: none;
+  border-color: var(--sp-cyan-40);
+  box-shadow: var(--shadow-focus);
 }
 
 /* Stakk rader på smale skjermer for å sikre at hele tallet vises */
@@ -1618,6 +1670,49 @@ p { /* Avsnitt */
 
 .asset-range { width: 100%; height: 6px; }
 .year-range { width: 100%; height: 8px; }
+
+/* --- Eiendeler, Inntekter, Gjeld: felles seksjonsflate (Standard designmanual) --- */
+.panel.panel-assets,
+.panel.panel-income,
+.panel.panel-debt {
+  background: var(--sp-background);
+  border: 1px solid rgba(0, 45, 114, 0.07);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  color: var(--sp-foreground);
+}
+
+.panel-debt .section-label {
+  margin-top: 14px;
+  margin-bottom: 8px;
+}
+
+.panel-debt .section-label .debt-startyear-hint {
+  color: var(--GRAY_TEXT_SECONDARY);
+  font-weight: var(--weight-book);
+  letter-spacing: 0;
+}
+
+.panel-debt .select select {
+  border-radius: var(--radius-sm);
+  border-color: var(--sp-border);
+  box-shadow: var(--shadow-list);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-debt .select select:hover {
+  border-color: var(--sp-cyan-40);
+}
+
+.panel-debt .select select:focus {
+  outline: none;
+  border-color: var(--sp-cyan-40);
+  box-shadow: var(--shadow-focus);
+}
+
+.panel-debt .select:after {
+  border-top-color: var(--sp-blue);
+}
 
 /* Redusert høyde for inntekter- og kostnadsbokser (ca 15% lavere – mindre scroll ved 100 % zoom) */
 .panel-income > h3 {
@@ -1642,27 +1737,11 @@ p { /* Avsnitt */
 .panel-income .asset-top {
   gap: calc(6.5px * 0.855);
 }
-.panel-income .asset-name {
-  box-sizing: border-box;
-  min-height: calc(2.25rem * 0.855);
-  padding: calc(6.5px * 0.855) calc(9.5px * 0.855);
-  font-size: inherit; /* match eiendeler (ingen egen font-size override) */
-  line-height: 1.3;
-}
 .panel-income .asset-name-readonly {
   /* Sørg for at readonly-navnet fyller samme bredde som editable felter */
-  flex: 1; /* match `.asset-name` sin flex-basis: 0% => fyller tilgjengelig bredde */
-  width: 100%; /* sikre identisk bredde (100%) */
-  min-width: 0; /* viktig i flex for å unngå “min-width:auto” som kan gi avvik */
-}
-.panel-income .asset-amount {
-  box-sizing: border-box;
-  min-height: calc(2.25rem * 0.855);
-  padding: calc(6.5px * 0.855) calc(12.5px * 0.855);
-  font-size: 1rem; /* identisk med eiendeler */
-  line-height: 1.3;
-  width: 392px;
-  max-width: 392px;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
 }
 /* Sliderne i inntekter-fanen: samme bredde som eiendeler, litt lavere track */
 .panel-income .asset-range {
@@ -1692,6 +1771,38 @@ p { /* Avsnitt */
   transform: translateX(22.8px); /* 24 * 0.95 */
 }
 
+/* Inntekter: de fem øverste radene – diskret varm nøytral (skiller seg fra cyan eiendeler) */
+.panel-income .assets .asset-row:nth-child(-n+5) {
+  background: var(--income-primary-row-bg);
+  border-color: var(--income-primary-border);
+  box-shadow: var(--shadow-list);
+}
+
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-name,
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-name-readonly {
+  background: var(--income-primary-bg);
+  border-color: var(--income-primary-border);
+  box-shadow: none;
+}
+
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-amount {
+  border-color: var(--income-primary-border);
+  background: #ffffff;
+}
+
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, #f2f1ef 0%, #ebeae8 100%);
+}
+
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-moz-range-track {
+  background: linear-gradient(90deg, #f2f1ef 0%, #ebeae8 100%);
+}
+
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-webkit-slider-thumb,
+.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-moz-range-thumb {
+  background: var(--sp-blue);
+}
+
 /* Fjern liten overskrift i Gjeld-fanen og juster toppmarg */
 .panel-debt > h3 {
   display: none;
@@ -1714,13 +1825,6 @@ p { /* Avsnitt */
 }
 .panel-assets .asset-row {
   padding: calc(14px * 0.855) calc(14px * 0.855) calc(14px * 0.855) calc(16px * 0.855);
-  background: linear-gradient(165deg, #ffffff 0%, #fafcfe 48%, #f5f9fc 100%);
-  border: 1px solid rgba(0, 45, 114, 0.09);
-  border-radius: 14px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 1px 2px rgba(0, 35, 89, 0.04),
-    0 10px 28px rgba(0, 45, 114, 0.07);
 }
 
 .panel-assets .asset-col {
@@ -1731,97 +1835,102 @@ p { /* Avsnitt */
   gap: calc(7px * 0.855);
 }
 
-.panel-assets .asset-name {
+/* Typografi felles: Eiendeler er fasit — Inntekter og Gjeld arver samme font/størrelse/farge */
+.panel-assets .asset-name,
+.panel-income .asset-name,
+.panel-debt .asset-name,
+.panel-debt .section-label {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  font-size: 0.8125rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1.3;
   box-sizing: border-box;
   min-height: calc(2.25rem * 0.855);
   padding: calc(7px * 0.855) calc(10px * 0.855);
-  line-height: 1.3;
 }
 
-/* Privat-nedtrekk: lavere felt (10% mindre høyde) */
-.panel-assets .asset-entity-select {
+.panel-assets .asset-name:not(.asset-name-readonly),
+.panel-income .asset-name:not(.asset-name-readonly),
+.panel-debt .asset-name:not(.asset-name-readonly),
+.panel-debt .section-label {
+  color: var(--sp-dark-blue);
+}
+
+.panel-assets .asset-name-readonly,
+.panel-income .asset-name-readonly,
+.panel-debt .asset-name-readonly {
+  cursor: default;
+  color: var(--sp-blue);
+  background: var(--sp-cyan-20);
+  border: 1px solid rgba(153, 217, 242, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.panel-assets .asset-name:not(.asset-name-readonly),
+.panel-income .asset-name:not(.asset-name-readonly),
+.panel-debt .asset-name:not(.asset-name-readonly) {
+  background: #ffffff;
+  border-color: rgba(0, 45, 114, 0.12);
+}
+
+.panel-assets .asset-entity-select,
+.panel-income .asset-entity-select,
+.panel-debt .select select {
   box-sizing: border-box;
   min-height: calc(2.25rem * 0.855);
   padding: calc(7px * 0.855) calc(12px * 0.855);
-  font-size: 13px;
-  background: linear-gradient(180deg, #ffffff 0%, #f6fafc 100%);
-  border: 1px solid rgba(0, 45, 114, 0.11);
-  border-radius: 11px;
-  color: var(--sp-dark-blue);
-  box-shadow: 0 1px 2px rgba(0, 35, 89, 0.05);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  color: var(--sp-blue);
 }
 
-.panel-assets .asset-entity-select:hover {
-  border-color: rgba(153, 217, 242, 0.95);
-  box-shadow: 0 0 0 1px rgba(153, 217, 242, 0.5), 0 4px 12px rgba(0, 45, 114, 0.08);
+.panel-debt .select select {
+  padding-right: 40px;
+  text-transform: uppercase;
 }
 
-.panel-assets .asset-entity-select:focus {
-  border-color: var(--sp-cyan-40);
-  box-shadow: 0 0 0 3px rgba(153, 217, 242, 0.45);
-}
-
-/* Redigerbare eiendelsnavn (egendefinerte rader): hvit med diskret kant */
-.panel-assets .asset-name:not(.asset-name-readonly) {
-  background: #ffffff;
-  border: 1px solid rgba(0, 45, 114, 0.12);
-  border-radius: 12px;
-  color: var(--sp-dark-blue);
-  box-shadow: inset 0 1px 2px rgba(0, 35, 89, 0.04);
-}
-
-.panel-assets .asset-name:not(.asset-name-readonly):focus {
-  outline: none;
-  border-color: var(--sp-cyan-40);
-  box-shadow: 0 0 0 3px rgba(153, 217, 242, 0.35);
-}
-
-/* Default-eiendeler: navn er låst — myk «glass»-flate i stedet for flat grå */
-.panel-assets .asset-name-readonly {
-  cursor: default;
-  color: var(--sp-dark-blue);
-  letter-spacing: 0.08em;
-  background: linear-gradient(180deg, #f0f7fb 0%, #e3eef6 55%, #dce8f2 100%);
-  border: 1px solid rgba(153, 217, 242, 0.75);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.75),
-    inset 0 -1px 0 rgba(0, 45, 114, 0.04);
-}
-
-.panel-assets .asset-amount {
+.panel-assets .asset-amount,
+.panel-income .asset-amount,
+.panel-debt .asset-amount,
+input.asset-amount {
   box-sizing: border-box;
   min-height: calc(2.25rem * 0.855);
   padding: calc(8px * 0.855) calc(14px * 0.855);
-  font-size: 1rem; /* 1.1rem − ca 10% */
   line-height: 1.3;
-  width: 392px; /* 30% reduksjon: 560px * 0.7 = 392px */
-  max-width: 392px; /* Sikrer at den ikke blir bredere */
+  width: 392px;
+  max-width: 392px;
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
   color: var(--sp-dark-blue);
-  background: linear-gradient(180deg, #ffffff 0%, #f8fbfd 100%);
+  background: #ffffff;
   border: 1px solid rgba(0, 45, 114, 0.1);
-  border-radius: 12px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.95),
-    0 1px 2px rgba(0, 35, 89, 0.05);
+  border-radius: var(--radius-sm);
 }
 
-.panel-assets .asset-delete {
+.panel-income .income-pension-toggle-label,
+.panel-income .income-pension-toggle-state {
+  font-family: var(--font-sans);
+  font-weight: var(--weight-medium);
+  font-size: 0.8125rem;
+  color: var(--sp-blue);
+  letter-spacing: 0.04em;
+}
+
+.panel-income .income-pension-toggle-label {
+  text-transform: none;
+}
+
+.panel-assets .asset-delete,
+.panel-income .asset-delete,
+.panel-debt .asset-delete {
   width: calc(26px * 0.855);
   height: calc(26px * 0.855);
-  border-radius: calc(9px * 0.855);
-  border-color: rgba(0, 45, 114, 0.12);
-  color: var(--sp-blue);
-  background: linear-gradient(180deg, #ffffff 0%, #f3f7fa 100%);
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-.panel-assets .asset-delete:hover {
-  background: var(--sp-cyan-20);
-  border-color: var(--sp-cyan-40);
-  color: var(--sp-dark-blue);
 }
 
 /* Reduser bredden på sliderene i eiendeler-fanen med 50% */
@@ -1851,52 +1960,121 @@ p { /* Avsnitt */
   margin-top: calc(-1 * (20px - 7px * 0.855) / 2);
   width: 20px;
   height: 20px;
-  background: var(--P_ACCENT);
+  background: var(--sp-blue);
   border: 2px solid #ffffff;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
 }
 
 .panel-assets .asset-range::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  background: var(--P_ACCENT);
+  background: var(--sp-blue);
   border: 2px solid #ffffff;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
 }
 
-/* Redusert høyde for gjeld-bokser (20% mindre) */
+/* Gjeld: kompakte rader (samme proporsjoner som før) */
 .panel-debt .asset-row {
-  padding: 12px; /* identisk med eiendeler */
+  padding: 12px;
 }
 
 .panel-debt .asset-col {
-  gap: 7px; /* identisk med eiendeler */
+  gap: calc(7px * 0.855);
 }
 
 .panel-debt .asset-top {
-  gap: 7px; /* identisk med eiendeler */
+  gap: calc(7px * 0.855);
 }
 
-.panel-debt .asset-name {
-  padding: 7px 10px; /* identisk med eiendeler */
-}
-
-.panel-debt .asset-amount {
-  padding: 7px 13px; /* identisk med eiendeler */
-  font-size: 1rem; /* identisk med eiendeler */
-  width: 392px; /* Samme bredde som eiendeler-fanen */
-  max-width: 392px; /* Sikrer at den ikke blir bredere */
-}
-
-/* Sliderne i gjeld-fanen skal være like brede som i eiendeler-fanen */
 .panel-debt .asset-range {
   width: 50%;
 }
 
-/* Slett-knapp skal matche eiendeler */
-.panel-debt .asset-delete {
-  width: 26px;
-  height: 26px;
+/* Gjeld-slider: blå palett (ikke rød) */
+.panel-debt .asset-range::-webkit-slider-runnable-track,
+.debt .asset-range::-webkit-slider-runnable-track {
+  height: calc(7px * 0.855);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, #9bc5de 100%);
+  box-shadow: var(--shadow-progress);
+}
+
+.panel-debt .asset-range::-moz-range-track,
+.debt .asset-range::-moz-range-track {
+  height: calc(7px * 0.855);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, #9bc5de 100%);
+  box-shadow: var(--shadow-progress);
+}
+
+.panel-debt .asset-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: calc(-1 * (20px - 7px * 0.855) / 2);
+  width: 20px;
+  height: 20px;
+  background: var(--sp-blue);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
+}
+
+.panel-debt .asset-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--sp-blue);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
+}
+
+/* Inntekter-slider */
+.panel-income .asset-range::-webkit-slider-runnable-track {
+  height: calc(5.7px * 0.855);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
+}
+
+.panel-income .asset-range::-moz-range-track {
+  height: calc(5.7px * 0.855);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
+}
+
+.panel-income .asset-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  margin-top: calc(-1 * (20px - 5.7px * 0.855) / 2);
+  width: 20px;
+  height: 20px;
+  background: var(--sp-blue);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
+}
+
+.panel-income .asset-range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--sp-blue);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
+}
+
+/* Gjeld: diskret skille mellom låneposter (kun visuelt) */
+.panel-debt > .assets > div {
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(0, 45, 114, 0.06);
+}
+
+.panel-debt > .assets > div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 /* Fremtidig utvikling – År-knapper kort og tydeligere stil */
@@ -2055,11 +2233,12 @@ p { /* Avsnitt */
 .year-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 6px rgba(153, 217, 242, 0.35); }
 .year-range:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 6px rgba(153, 217, 242, 0.35); }
 
-/* Range styling – WebKit (track border, thumb S&P Cyan 40) */
+/* Range styling – WebKit (S&P blå/cyan) */
 .asset-range::-webkit-slider-runnable-track {
   height: 6px;
-  background: var(--BORDER_LIGHT);
-  border-radius: 6px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #d0e4ef 100%);
+  border-radius: 999px;
+  box-shadow: var(--shadow-progress);
 }
 .asset-range::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -2067,23 +2246,26 @@ p { /* Avsnitt */
   margin-top: -7px;
   width: 20px;
   height: 20px;
-  background: var(--P_ACCENT);
+  background: var(--sp-blue);
   border: 2px solid #ffffff;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.18);
 }
 
 /* Range styling - Firefox */
 .asset-range::-moz-range-track {
   height: 6px;
-  background: var(--BORDER_LIGHT);
-  border-radius: 6px;
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #d0e4ef 100%);
+  border-radius: 999px;
+  box-shadow: var(--shadow-progress);
 }
 .asset-range::-moz-range-thumb {
   width: 20px;
   height: 20px;
-  background: var(--P_ACCENT);
+  background: var(--sp-blue);
   border: 2px solid #ffffff;
   border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 35, 89, 0.18);
 }
 
 .btn-add {
@@ -2093,22 +2275,24 @@ p { /* Avsnitt */
   color: var(--sp-cyan-40);
   border: none;
   padding: 14px 18px;
-  border-radius: 12px;
-  font-weight: 700;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-weight: var(--weight-bold);
+  font-size: 0.8125rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
   box-shadow: var(--shadow-button);
   transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
 }
-.btn-add:hover { background: var(--sp-dark-blue); transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12); }
+.btn-add:hover {
+  background: var(--sp-dark-blue);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
 
 /* --- Gjeld modul --- */
-.debt .asset-range { /* reuse markup; different color track for gjeld */ height: 6px; }
-.debt .asset-range::-webkit-slider-runnable-track { background: linear-gradient(90deg, #F9D3D0 0%, #FDE8E7 100%); }
-.debt .asset-range::-moz-range-track {
-  background: linear-gradient(90deg, #F9D3D0 0%, #FDE8E7 100%);
-}
+.debt .asset-range { height: 6px; }
 
 .section-label {
   margin-top: 6px;
@@ -2385,6 +2569,14 @@ p { /* Avsnitt */
 .waterfall-chart-card {
   overflow: visible;
   max-width: none;
+  background: var(--sp-background);
+  border: 1px solid rgba(0, 45, 114, 0.07);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.waterfall-chart-card.panel {
+  padding: 20px 24px 16px;
 }
 .waterfall-chart-card .t-konto-year-strip {
   margin-bottom: 0;
@@ -2417,7 +2609,7 @@ p { /* Avsnitt */
 .waterfall-quick-action svg {
   width: 22px;
   height: 22px;
-  fill: #335D9E;
+  fill: var(--sp-blue);
 }
 .waterfall-base-strip {
   width: 100%;

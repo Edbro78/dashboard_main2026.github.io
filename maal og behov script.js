@@ -826,14 +826,20 @@ ChartJS.register(
 
 const formatCurrency = (value) => new Intl.NumberFormat('nb-NO', { style: 'currency', currency: 'NOK', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 const formatNumberRaw = (value) => new Intl.NumberFormat('nb-NO', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+/** Beløp med tusenskilletegn, uten «kr» (samme som T-konto). */
+const formatNOKPlain = (value) => formatNumberRaw(value);
 
 // --- HELPER & CHILD COMPONENTS --- //
-const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, displayValue, allowDirectInput, inline, thumbColor, editableLabel, labelValue, onLabelChange, labelPlaceholder }) => {
-const [textValue, setTextValue] = React.useState(() => (isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)}${unit ? ` ${unit}` : ''}`));
+const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, noKrSuffix, displayValue, allowDirectInput, inline, thumbColor, editableLabel, labelValue, onLabelChange, labelPlaceholder }) => {
+const formatSliderAmount = (v) => {
+  if (!isCurrency) return `${formatNumberRaw(v)}${unit ? ` ${unit}` : ''}`;
+  return noKrSuffix ? formatNOKPlain(v) : formatCurrency(v);
+};
+const [textValue, setTextValue] = React.useState(() => formatSliderAmount(value));
 
 React.useEffect(() => {
-setTextValue(isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)}${unit ? ` ${unit}` : ''}`);
-}, [value, isCurrency, unit]);
+setTextValue(formatSliderAmount(value));
+}, [value, isCurrency, unit, noKrSuffix]);
 
 const renderLabel = () => {
     if (editableLabel) {
@@ -865,7 +871,7 @@ if (!allowDirectInput) return;
 let parsed = isCurrency ? parseCurrencyInput(textValue) : parseFloat(String(textValue).replace(/[^0-9.\-]/g, '')) || 0;
 parsed = Math.min(max, Math.max(min, parsed));
 onChange(id, parsed);
-setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${unit ? ` ${unit}` : ''}`);
+setTextValue(formatSliderAmount(parsed));
 };
 
     return (
@@ -896,7 +902,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
                         />
                     ) : (
                     <span className="typo-paragraph text-[#333333] w-32 text-right pr-1 absolute right-2">
-                            {displayValue ?? (isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)} ${unit}`)}
+                            {displayValue ?? formatSliderAmount(value)}
                         </span>
                     )}
                 </div>
@@ -927,7 +933,7 @@ setTextValue(isCurrency ? formatCurrency(parsed) : `${formatNumberRaw(parsed)}${
                             />
                         ) : (
                         <span className="typo-paragraph text-[#333333] w-32 text-right pr-1">
-                                {displayValue ?? (isCurrency ? formatCurrency(value) : `${formatNumberRaw(value)} ${unit}`)}
+                                {displayValue ?? formatSliderAmount(value)}
                             </span>
                         )}
                     </div>
@@ -1361,19 +1367,19 @@ function TKontoDashboard() {
                         <div className="pe-grid">
                             <div className="pe-item summary-card summary-assets" id="summary-assets-button" role="button" tabIndex="0">
                                 <div className="summary-title">Eiendeler</div>
-                                <div id="sum-assets" className="summary-value">0 kr</div>
+                                <div id="sum-assets" className="summary-value">0</div>
                             </div>
                             <div className="pe-item summary-card summary-debts" id="summary-development-button" role="button" tabIndex="0">
                                 <div className="summary-title danger">Gjeld</div>
-                                <div id="sum-debts" className="summary-value">0 kr</div>
+                                <div id="sum-debts" className="summary-value">0</div>
                             </div>
                             <div className="pe-item summary-card summary-equity" id="summary-financing-button" role="button" tabIndex="0">
                                 <div className="summary-title success">Egenkapital</div>
-                                <div id="sum-equity" className="summary-value">0 kr</div>
+                                <div id="sum-equity" className="summary-value">0</div>
                             </div>
                             <div className="pe-item summary-card summary-cash" id="summary-equity-return-button" role="button" tabIndex="0">
                                 <div className="summary-title success-dark">Kontantstrøm</div>
-                                <div id="sum-cashflow" className="summary-value">0 kr</div>
+                                <div id="sum-cashflow" className="summary-value">0</div>
                             </div>
                         </div>
                     </div>
@@ -1919,19 +1925,33 @@ function StrategiMalsetningerStrip({ goals }) {
 }
 
 // TabBar component for browser-like tabs
-function TabBar({ tabs, activeTab, onTabClick }) {
+function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
+    const titleText = String(panelTitleLabel || '').trim();
     return (
-        <div className="tab-bar">
-            {tabs.map((tab, index) => (
-                <div
-                    key={index}
-                    className={`tab ${activeTab === index ? 'active' : ''}`}
-                    title={tab.name}
-                    onClick={() => onTabClick(index)}
-                >
-                    <span>{tab.name}</span>
+        <div className="tab-bar-header">
+            <div className="tab-bar">
+                {tabs.map((tab, index) => (
+                    <div
+                        key={index}
+                        className={`tab ${activeTab === index ? 'active' : ''}`}
+                        title={tab.name}
+                        onClick={() => onTabClick(index)}
+                    >
+                        <span>{tab.name}</span>
+                    </div>
+                ))}
+            </div>
+            {titleText ? (
+                <div className="tab-bar-panel-title-slot">
+                    <div
+                        className="tab tab-bar-panel-title"
+                        title={titleText}
+                        aria-label={`Paneltittel: ${titleText}`}
+                    >
+                        <span>{titleText}</span>
+                    </div>
                 </div>
-            ))}
+            ) : null}
         </div>
     );
 }
@@ -2061,6 +2081,18 @@ function TabContainer() {
     const pensjonsgapetIframeRef = React.useRef(null);
     const formuesskattIframeRef = React.useRef(null);
     const [strategiMalsetningerGoals, setStrategiMalsetningerGoals] = useState([]);
+    const [headerPanelTitle, setHeaderPanelTitle] = useState(
+        () => MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT
+    );
+
+    useEffect(() => {
+        const syncHeaderPanelTitle = () => {
+            setHeaderPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
+        };
+        syncHeaderPanelTitle();
+        window.addEventListener('maal-og-behov-panel-title-changed', syncHeaderPanelTitle);
+        return () => window.removeEventListener('maal-og-behov-panel-title-changed', syncHeaderPanelTitle);
+    }, []);
 
     useEffect(() => {
         const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -2454,10 +2486,11 @@ function TabContainer() {
 
     return (
         <div className="tab-container">
-            <TabBar 
-                tabs={tabs} 
-                activeTab={activeTab} 
-                onTabClick={setActiveTab} 
+            <TabBar
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabClick={setActiveTab}
+                panelTitleLabel={headerPanelTitle}
             />
             <div className="tab-content" style={{ position: 'relative' }}>
                 {tabs.map((tab, index) => (
@@ -5549,12 +5582,12 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
+                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#4A6D8C" />
                             <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#3388CC" />
+                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3388CC" />
                             </div>
 <div className="mt-3">
-<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#88CCEE" />
+<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#88CCEE" />
 </div>
                     </div>
                     <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
