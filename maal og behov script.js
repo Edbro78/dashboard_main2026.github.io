@@ -4698,7 +4698,7 @@ return () => document.removeEventListener('keydown', onKey);
 
         // Hvis selv enorme verdier ikke holder, bruk det som øvre grense
         if (last < 0) {
-            high = 100000000; // Maks 100MNOK
+            high = 1000000000; // Maks 1 mrd
         } else {
             // Binærsøk etter minste Portefølje I størrelse som gir ikke-negativ hovedstol i siste år
             for (let i = 0; i < 100; i++) {
@@ -5582,12 +5582,12 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={100000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#4A6D8C" />
+                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#4A6D8C" />
                             <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={100000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3388CC" />
+                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3388CC" />
                             </div>
 <div className="mt-3">
-<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={50000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#88CCEE" />
+<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#88CCEE" />
 </div>
                     </div>
                     <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
