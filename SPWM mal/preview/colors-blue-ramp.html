@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Colors" name="Blue ramp" subtitle="Primary blue 25 → 800 (Main)" viewport="700x160" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:24px 28px;box-sizing:border-box;}
+  .title{font-size:13px;font-weight:600;color:var(--gray-500);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;}
+  .ramp{display:flex;gap:0;border-radius:10px;overflow:hidden;border:1px solid var(--gray-200);}
+  .cell{flex:1;height:88px;display:flex;flex-direction:column;justify-content:flex-end;padding:8px 6px;box-sizing:border-box;}
+  .n{font-size:12px;font-weight:600;}
+  .h{font-size:9.5px;opacity:.8;font-variant-numeric:tabular-nums;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="title">Brand primary · Blue</div>
+  <div class="ramp">
+    <div class="cell" style="background:#F9FBFE;color:#475467"><div class="n">25</div><div class="h">F9FBFE</div></div>
+    <div class="cell" style="background:#EEF5FF;color:#475467"><div class="n">100</div><div class="h">EEF5FF</div></div>
+    <div class="cell" style="background:#E6EFFB;color:#475467"><div class="n">200</div><div class="h">E6EFFB</div></div>
+    <div class="cell" style="background:#B5CFF5;color:#0A2A5E"><div class="n">300</div><div class="h">B5CFF5</div></div>
+    <div class="cell" style="background:#84AEED;color:#0A2A5E"><div class="n">500</div><div class="h">84AEED</div></div>
+    <div class="cell" style="background:#6096E8;color:#fff"><div class="n">600</div><div class="h">6096E8</div></div>
+    <div class="cell" style="background:#3B7EE3;color:#fff"><div class="n">700</div><div class="h">3B7EE3</div></div>
+    <div class="cell" style="background:#0A5EDC;color:#fff"><div class="n">800·Main</div><div class="h">0A5EDC</div></div>
+  </div>
+</div>
+</body>
+</html>

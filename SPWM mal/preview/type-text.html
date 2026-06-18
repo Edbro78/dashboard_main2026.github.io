@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Type" name="Text scale" subtitle="Text xs → xl, UI & body" viewport="700x240" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);color:var(--sp-navy);}
+  .card{padding:26px 32px;box-sizing:border-box;}
+  .row{display:flex;align-items:baseline;justify-content:space-between;gap:24px;padding:8px 0;border-bottom:1px solid var(--gray-100);}
+  .row:last-child{border-bottom:0;}
+  .sample{color:var(--gray-900);white-space:nowrap;}
+  .spec{font-size:12px;color:var(--gray-500);white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="row"><span class="sample" style="font-size:20px;line-height:1.2">Text xl — the quick brown fox</span><span class="spec">20 / 30</span></div>
+  <div class="row"><span class="sample" style="font-size:18px;line-height:1.2">Text lg — the quick brown fox</span><span class="spec">18 / 28</span></div>
+  <div class="row"><span class="sample" style="font-size:16px;line-height:1.2">Text md — the quick brown fox jumps</span><span class="spec">16 / 24 · body</span></div>
+  <div class="row"><span class="sample" style="font-size:14px;line-height:1.2">Text sm — the quick brown fox jumps over</span><span class="spec">14 / 20</span></div>
+  <div class="row"><span class="sample" style="font-size:12px;line-height:1.2">Text xs — the quick brown fox jumps over the lazy dog</span><span class="spec">12 / 18</span></div>
+</div>
+</body>
+</html>

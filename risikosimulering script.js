@@ -974,27 +974,27 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r},${g},${b},${alpha})`;
 }
 
-/* S&P Wealth Management fargepalett */
+/* S&P / SPWM chart palette */
 const chartColors = {
     current: {
-        main: '#002D72',
-        light: '#CCECF9',
-        border: '#002D72'
+        main: '#0A5EDC',
+        light: '#EEF5FF',
+        border: '#0A5EDC'
     },
     new: {
-        main: '#99D9F2',
-        light: '#CCECF9',
-        border: '#99D9F2'
+        main: '#99BEF5',
+        light: '#EEF5FF',
+        border: '#99BEF5'
     },
     drawdown: {
-        main: '#CC4B4B',
-        light: '#FDE8E7'
+        main: '#D92D20',
+        light: '#FEF3F2'
     },
-    stocks: '#99D9F2',
-    riskFree: '#002D72',
-    highYield: '#99D9F2',
-    nurse: '#66CC99',
-    gold: '#888888'
+    stocks: '#99BEF5',
+    riskFree: '#0A5EDC',
+    highYield: '#99BEF5',
+    nurse: '#079455',
+    gold: '#667085'
 };
 
 const commonChartOptions = {
@@ -1011,7 +1011,7 @@ const commonChartOptions = {
                 usePointStyle: true,
                 padding: 20,
                 font: {
-                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+                    family: "'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif",
                     size: 13
                 }
             }
@@ -1019,11 +1019,11 @@ const commonChartOptions = {
         tooltip: {
             backgroundColor: 'rgba(74, 109, 140, 0.95)',
             titleFont: {
-                family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+                family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                 size: 14
             },
             bodyFont: {
-                family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+                family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
                 size: 13
             },
             padding: 12,
@@ -1045,7 +1045,7 @@ const commonChartOptions = {
             },
             ticks: {
                 font: {
-                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+                    family: "'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif",
                     size: 11
                 }
             }
@@ -1056,7 +1056,7 @@ const commonChartOptions = {
             },
             ticks: {
                 font: {
-                    family: "'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif",
+                    family: "'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif",
                     size: 11
                 }
             }
@@ -1167,17 +1167,17 @@ function updateTreemapChart(type) {
     // Disable image smoothing for crisp edges
     ctx.imageSmoothingEnabled = false;
     
-    // Farger – S&P Wealth Management palett
+    // Farger — SPWM palett
     const assetClassColors = {
-        'Likviditet/kontanter': '#99D9F2',   // Cyan 40
-        'Renter IG': '#002D72',               // Blue
-        'Renter High Yield': '#99D9F2',      // Cyan 40
-        'Norske aksjer': '#002D72',           // Blue
-        'Nordiske aksjer': '#002D72',         // Blue
-        'Emerging markets aksjer': '#333333', // Coal
-        'Globale aksjer': '#99D9F2',          // Cyan 40
-        'Alternative strategier': '#002359', // Dark Blue
-        'Annet': '#333333'                   // Coal
+        'Likviditet/kontanter': '#99BEF5',
+        'Renter IG': '#0A5EDC',
+        'Renter High Yield': '#99BEF5',
+        'Norske aksjer': '#0A5EDC',
+        'Nordiske aksjer': '#0A5EDC',
+        'Emerging markets aksjer': '#344054',
+        'Globale aksjer': '#99BEF5',
+        'Alternative strategier': '#002359',
+        'Annet': '#344054'
     };
     // Alle aktivaklasser med andel > 0% (samme nivå som i Aktivaklasser-fanen)
     const aksjerWeights = { 'Norske aksjer': 10, 'Nordiske aksjer': 10, 'Emerging markets aksjer': 20, 'Globale aksjer': 60 };
@@ -1276,7 +1276,7 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
     // Draw text if space allows
     if (width > 60 && height > 30) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 12px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.font = 'bold 12px Hanken Grotesk, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -1297,7 +1297,7 @@ function drawTreemapCell(ctx, x, y, width, height, item) {
         });
         
         // Draw value
-        ctx.font = '13px Whitney, -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.font = '13px Hanken Grotesk, -apple-system, BlinkMacSystemFont, sans-serif';
         ctx.textBaseline = 'middle';
         ctx.fillText(Math.round(item.value) + '%', textX, startY + totalLabelHeight + 4 + valueHeight / 2);
     }
@@ -1474,8 +1474,8 @@ function createOverviewChart() {
                 tooltip: {
                     ...commonChartOptions.plugins.tooltip,
                     backgroundColor: '#ffffff',
-                    titleColor: '#333333',
-                    bodyColor: '#333333',
+                    titleColor: '#344054',
+                    bodyColor: '#344054',
                     borderColor: '#DDDDDD',
                     borderWidth: 1,
                     callbacks: {
@@ -1616,11 +1616,11 @@ function createAssetClassesChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99D9F2' },
-        { key: 'riskFree', name: 'Renter', color: '#002D72' },
-        { key: 'highYield', name: 'Aksjer', color: '#99D9F2' },
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99BEF5' },
+        { key: 'riskFree', name: 'Renter', color: '#0A5EDC' },
+        { key: 'highYield', name: 'Aksjer', color: '#99BEF5' },
         { key: 'nordicStocks', name: 'Alternative strategier', color: '#002359' },
-        { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
+        { key: 'emergingMarkets', name: 'Annet', color: '#344054' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
     if (assetClasses.length === 0) {
@@ -1687,8 +1687,8 @@ function createAssetClassesChart() {
                 tooltip: {
                     ...commonChartOptions.plugins.tooltip,
                     backgroundColor: '#ffffff',
-                    titleColor: '#333333',
-                    bodyColor: '#333333',
+                    titleColor: '#344054',
+                    bodyColor: '#344054',
                     borderColor: '#DDDDDD',
                     borderWidth: 1,
                     callbacks: {
@@ -1842,11 +1842,11 @@ function createAllocationChart() {
     
     // Get asset classes with allocation > 0 in new portfolio
     const assetClasses = [
-        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99D9F2' },
-        { key: 'riskFree', name: 'Renter', color: '#002D72' },
-        { key: 'highYield', name: 'Aksjer', color: '#99D9F2' },
+        { key: 'stocks', name: 'Likviditet/kontanter', color: '#99BEF5' },
+        { key: 'riskFree', name: 'Renter', color: '#0A5EDC' },
+        { key: 'highYield', name: 'Aksjer', color: '#99BEF5' },
         { key: 'nordicStocks', name: 'Alternative strategier', color: '#002359' },
-        { key: 'emergingMarkets', name: 'Annet', color: '#333333' }
+        { key: 'emergingMarkets', name: 'Annet', color: '#344054' }
     ].filter(asset => state.newPortfolio[asset.key] > 0);
     
     if (assetClasses.length === 0) {
@@ -2550,7 +2550,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         // Draw percentage in center - WITH % sign
         // Smaller text size for readability
         const percentFontSize = Math.max(15, Math.min(26, bubble.radius * 0.165)); /* +10 % */
-        ctx.font = `700 ${percentFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.font = `700 ${percentFontSize}px Hanken Grotesk, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const percentText = bubble.percentage.toFixed(1) + '%';
         ctx.strokeText(percentText, bubble.x, bubble.y);
@@ -2559,7 +2559,7 @@ function drawBubbleChart(canvas, ctx, yearData, assetClasses, maxValue) {
         // Draw value below - use JetBrains Mono like input tab
         // Smaller text size for readability
         const valueFontSize = Math.max(11, Math.min(18, bubble.radius * 0.11)); /* +10 % */
-        ctx.font = `700 ${valueFontSize}px Whitney, -apple-system, BlinkMacSystemFont, sans-serif`;
+        ctx.font = `700 ${valueFontSize}px Hanken Grotesk, -apple-system, BlinkMacSystemFont, sans-serif`;
         ctx.lineWidth = 2;
         const valueY = bubble.y + bubble.radius * 0.30;
         ctx.strokeText(formatCurrency(bubble.value), bubble.x, valueY);
@@ -3008,7 +3008,7 @@ function createEquityChart(portfolioValues, drawdowns) {
                 enabled: true,
                 backgroundColor: 'rgba(74, 109, 140, 0.95)',
                 titleFont: { family: "'Inter', sans-serif", size: 12 },
-                bodyFont: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
+                bodyFont: { family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
                 padding: 8,
                 cornerRadius: 4,
                 callbacks: {
@@ -3034,7 +3034,7 @@ function createEquityChart(portfolioValues, drawdowns) {
             y: {
                 grid: { color: 'rgba(74, 109, 140, 0.05)' },
                 ticks: {
-                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */ /* +10 % */
+                    font: { family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */ /* +10 % */
                     callback: function(value) {
                         return (value / 1000000).toFixed(0) + 'M';
                     }
@@ -3050,7 +3050,7 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'Porteføljeverdi',
                     data: portfolioValues.map(v => ({ x: v.date, y: v.value })),
-                    borderColor: '#002D72',
+                    borderColor: '#0A5EDC',
                     backgroundColor: 'rgba(153, 217, 242, 0.3)',
                     borderWidth: 2,
                     fill: true,
@@ -3061,7 +3061,7 @@ function createEquityChart(portfolioValues, drawdowns) {
                 {
                     label: 'All-Time High',
                     data: drawdowns.map(d => ({ x: d.date, y: d.peak })),
-                    borderColor: '#002D72',
+                    borderColor: '#0A5EDC',
                     borderWidth: 1.5,
                     borderDash: [4, 4],
                     fill: false,
@@ -3153,7 +3153,7 @@ function createUnderwaterChart(drawdowns, viewType = 'percent') {
                 grid: { display: false },
                 position: 'bottom',
                 ticks: { 
-                    font: { family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
+                    font: { family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif", size: 12 }, /* +10 % */
                     padding: 8
                 },
                 min: state.drawdownZoom.isZoomed ? state.drawdownZoom.minX : undefined,
@@ -3788,7 +3788,7 @@ function createNurseChart(tabNumber = 1) {
                     },
                     ticks: {
                         font: {
-                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
+                            family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         callback: function(value) {
@@ -3805,7 +3805,7 @@ function createNurseChart(tabNumber = 1) {
                     },
                     ticks: {
                         font: {
-                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
+                            family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         color: isGoldTab ? chartColors.gold : (isBigMacTab ? '#DA291C' : (isOilTab ? '#000000' : (isM2OsloTab ? '#808080' : chartColors.nurse))),
@@ -4592,16 +4592,16 @@ function calculateStats(data) {
     return { mean, stddev };
 }
 
-// Get color style based on return interval (Mål og behov: rød #CC4B4B, grønn #0C8F4A)
-function getReturnColorStyle(returnValue) {
+// Get color style for negative returns in pyramid — SPWM semantic farger
+function getPyramidNegativeColorStyle(returnValue, useHalfYears, useQuarters) {
+    if (useHalfYears || useQuarters) {
+        if (returnValue < -20) return 'background-color: #B14444;';
+        if (returnValue < -10) return 'background-color: #CC4B4B;';
+        return 'background-color: #E06B6B;';
+    }
     if (returnValue < -35) return 'background-color: #B14444;';
     if (returnValue < -25) return 'background-color: #CC4B4B;';
-    if (returnValue < -5) return 'background-color: #E06B6B;';
-    if (returnValue < 5) return 'background-color: rgba(102, 204, 221, 0.6);';
-    if (returnValue < 15) return 'background-color: #66CC99;';
-    if (returnValue < 25) return 'background-color: #0C8F4A;';
-    if (returnValue < 35) return 'background-color: #0A7A3F;';
-    return 'background-color: #086B36;';
+    return 'background-color: #E06B6B;';
 }
 
 // Lagret høyde for pyramide-chart slik at den ikke flytter seg ved hver oppdatering
@@ -4828,6 +4828,14 @@ function createPyramidChart() {
         const binB = bins[b];
         return binA.start - binB.start;
     });
+
+    // Hyppigste intervall = mørkest grønn; høyere intervaller = gradvis lysere
+    const PYRAMID_GREEN_SCALE = ['#05603A', '#067647', '#079455', '#A6F4C5'];
+    const binsAtOrAboveMostFrequent = sortedBinKeys.filter(k => bins[k].start >= mostFrequentBin.start);
+    const binGreenColors = {};
+    binsAtOrAboveMostFrequent.forEach((k, idx) => {
+        binGreenColors[k] = PYRAMID_GREEN_SCALE[Math.min(idx, PYRAMID_GREEN_SCALE.length - 1)];
+    });
     
     container.innerHTML = `
         <div class="pyramid-chart" style="display: flex; align-items: flex-end; gap: 2px; height: ${staticChartHeight}px; padding: ${topPadding}px 20px ${xAxisSpace + xAxisLabelHeight + bottomPadding}px 20px; border-bottom: 2px solid var(--border); position: relative; box-sizing: border-box; background: var(--secondary);">
@@ -4839,30 +4847,17 @@ function createPyramidChart() {
                         <!-- Boxes container - positioned above x-axis with clear separation (one box height) -->
                         <div class="pyramid-stack" style="width: 100%; display: flex; flex-direction: column-reverse; align-items: center; justify-content: flex-end; min-height: 0; max-height: ${contentHeight}px; margin-bottom: ${xAxisSpace}px; overflow: hidden;">
                             ${bin.items.map(item => {
-                                let colorStyle = getReturnColorStyle(item.return);
-                                // Special case: if in middle bin (-5 to 5) and return is negative, use red
-                                if (bin.start === -5 && item.return < 0) {
-                                    colorStyle = 'background-color: #E06B6B;';
-                                }
-                                // For half years and quarters: all negative values should be red
-                                if ((useHalfYears || useQuarters) && item.return < 0) {
-                                    if (item.return < -20) {
-                                        colorStyle = 'background-color: #B14444;';
-                                    } else if (item.return < -10) {
-                                        colorStyle = 'background-color: #CC4B4B;';
-                                    } else {
-                                        colorStyle = 'background-color: #E06B6B;';
-                                    }
-                                }
-                                // For full year: all negative values should be red
-                                if (!useHalfYears && !useQuarters && item.return < 0) {
-                                    if (item.return < -35) {
-                                        colorStyle = 'background-color: #B14444;';
-                                    } else if (item.return < -25) {
-                                        colorStyle = 'background-color: #CC4B4B;';
-                                    } else {
-                                        colorStyle = 'background-color: #E06B6B;';
-                                    }
+                                let colorStyle;
+                                if (item.return < 0) {
+                                    colorStyle = getPyramidNegativeColorStyle(item.return, useHalfYears, useQuarters);
+                                } else if (binKey === '0-5') {
+                                    colorStyle = 'background-color: #D0D5DD;';
+                                } else if (binGreenColors[binKey]) {
+                                    colorStyle = `background-color: ${binGreenColors[binKey]};`;
+                                } else if (item.return < 5) {
+                                    colorStyle = 'background-color: #E6EFFB;';
+                                } else {
+                                    colorStyle = 'background-color: #079455;';
                                 }
                                 
                                 const displayLabel = (useQuarters || useHalfYears) ? item.label : item.year.toString();
@@ -4891,7 +4886,7 @@ function createPyramidChart() {
                             }).join('')}
                         </div>
                         <!-- X-axis label - alltid nederst i chart-området -->
-                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 12px; font-family: Whitney, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
+                        <div class="pyramid-bin-label" style="position: absolute; bottom: ${bottomPadding}px; left: 0; right: 0; font-size: 12px; font-family: Hanken Grotesk, -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text-secondary); white-space: nowrap; text-align: center; width: 100%; height: ${xAxisLabelHeight}px; display: flex; align-items: center; justify-content: center; z-index: 10;">
                             ${useQuarters ? `${bin.start}%` : (useHalfYears ? `${bin.start}%` : `${bin.start}% - ${bin.end}%`)}
                         </div>
                     </div>
@@ -5368,7 +5363,7 @@ function createKPIStackedBarChart(ctx, tabNumber) {
                     },
                     ticks: {
                         font: {
-                            family: "'Whitney', -apple-system, BlinkMacSystemFont, sans-serif",
+                            family: "'Hanken Grotesk', -apple-system, BlinkMacSystemFont, sans-serif",
                             size: 11
                         },
                         callback: function(value) {

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Input fields" subtitle="Default / focus / error" viewport="700x160" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:26px 30px;box-sizing:border-box;display:flex;gap:20px;flex-wrap:wrap;}
+  .field{width:300px;}
+  .lbl{font-size:16px;font-weight:500;color:var(--gray-700);margin-bottom:6px;}
+  .inp{height:44px;border-radius:8px;border:1px solid var(--gray-300);background:#fff;display:flex;align-items:center;gap:8px;padding:0 12px;box-sizing:border-box;font-size:16px;color:var(--gray-900);}
+  .inp.placeholder{color:var(--gray-500);}
+  .inp.focus{border-color:var(--blue-main);box-shadow:0 0 0 4px var(--ring);}
+  .inp.error{border-color:var(--error-500);}
+  .inp i{color:var(--gray-500);font-size:18px;}
+  .hint{font-size:13px;margin-top:6px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="field">
+    <div class="lbl">Inputfelt label</div>
+    <div class="inp placeholder">Inputfelt innhold</div>
+  </div>
+  <div class="field">
+    <div class="lbl">Søk</div>
+    <div class="inp focus"><i class='bx bx-search'></i><span style="color:var(--gray-900)">Aksjefond</span></div>
+  </div>
+  <div class="field">
+    <div class="lbl">E-post</div>
+    <div class="inp error">navn@feil</div>
+    <div class="hint" style="color:var(--error-700)">Ugyldig e-postadresse</div>
+  </div>
+</div>
+</body>
+</html>

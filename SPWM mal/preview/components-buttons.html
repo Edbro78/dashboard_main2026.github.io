@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Buttons — primary set" subtitle="Primary / secondary / tertiary · states" viewport="700x240" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:26px 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .btn{font-family:var(--font-sans);font-weight:600;font-size:16px;border-radius:8px;padding:10px 16px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;line-height:1;}
+  .primary{background:var(--blue-main);color:#fff;}
+  .primary.hover{background:var(--sp-navy-pressed);}
+  .secondary{background:#fff;color:var(--sp-navy);border-color:var(--gray-300);}
+  .tertiary{background:transparent;color:var(--blue-main);}
+  .disabled{background:var(--blue-300);color:#fff;}
+  .tag{font-size:11px;color:var(--gray-400);width:64px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="row"><span class="tag">Default</span><button class="btn primary">Lagre</button><button class="btn secondary">Avbryt</button><button class="btn tertiary">Se detaljer</button></div>
+  <div class="row"><span class="tag">Hover</span><button class="btn primary hover">Lagre</button><button class="btn secondary" style="background:var(--gray-50)">Avbryt</button><button class="btn tertiary" style="text-decoration:underline">Se detaljer</button></div>
+  <div class="row"><span class="tag">Icon</span><button class="btn primary"><i class='bx bx-plus'></i>Ny rapport</button><button class="btn secondary"><i class='bx bx-download'></i>Last ned</button></div>
+  <div class="row"><span class="tag">Disabled</span><button class="btn disabled">Lagre</button></div>
+</div>
+</body>
+</html>

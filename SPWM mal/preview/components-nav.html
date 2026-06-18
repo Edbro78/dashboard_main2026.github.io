@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Sidebar nav items" subtitle="Active / hover / default + footer" viewport="700x330" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:24px 30px;box-sizing:border-box;display:flex;gap:30px;}
+  .col{width:232px;display:flex;flex-direction:column;gap:8px;}
+  .ci{font-size:11px;font-weight:600;color:var(--gray-400);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+  .nav{display:flex;align-items:center;gap:12px;height:44px;border-radius:8px;padding:0 12px;box-sizing:border-box;font-size:16px;font-weight:500;color:var(--sp-navy);}
+  .nav i{font-size:20px;}
+  .nav.active{background:var(--blue-100);}
+  .nav.hover{background:var(--gray-50);}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="col">
+    <div class="ci">Sidebar nav · states</div>
+    <div class="nav active"><i class='bx bx-home-alt-2'></i>Hjem</div>
+    <div class="nav hover"><i class='bx bx-pie-chart-alt-2'></i>Investeringer</div>
+    <div class="nav"><i class='bx bx-wallet'></i>Pensjon</div>
+    <div class="nav"><i class='bx bx-file'></i>Dokumenter</div>
+    <div class="nav"><i class='bx bx-edit-alt'></i>Tilbakemelding</div>
+  </div>
+  <div class="col">
+    <div class="ci">Footer nav</div>
+    <div class="nav" style="height:auto;color:var(--gray-500);font-size:14px;font-weight:400;padding:0 12px">Klientvelger</div>
+    <div class="nav" style="border:1px solid var(--gray-300)"><i class='bx bx-group'></i>Isak Design Test AS<i class='bx bx-chevron-down' style="margin-left:auto;font-size:18px"></i></div>
+    <div class="nav"><i class='bx bx-user'></i>Min side</div>
+    <div class="nav"><i class='bx bx-log-out'></i>Logg ut</div>
+  </div>
+</div>
+</body>
+</html>

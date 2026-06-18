@@ -1,26 +1,23 @@
     /* Custom styles for the investment prognosis calculator */
 
-    /* S&P Wealth Management fargevariabler (offisiell palett) */
+    /* S&P / SPWM — legacy aliases (colors_and_type.css må lastes først) */
     :root {
-        --sp-background: #F5F3F3;   /* Light Grey */
-        --sp-foreground: #333333;   /* Coal */
-        --sp-dark-blue: #002359;    /* Dark Blue */
-        --sp-blue: #002D72;         /* Blue */
-        --sp-cyan-40: #99D9F2;      /* Cyan 40 */
-        --sp-cyan-20: #CCECF9;      /* Cyan 20 */
-        --sp-border: #CECCCC;       /* Outline border */
-        --thumb-color: #99D9F2;     /* Sliders og interaksjoner */
-        /* Samme farge som fanetekst (Risikosimulering m.fl.) og panel-tittel «Mål og behov» */
-        --tab-and-title-color: #4a5568;
+        --sp-background: var(--gray-50);
+        --sp-foreground: var(--gray-700);
+        --sp-dark-blue: var(--sp-navy);
+        --sp-blue: var(--blue-main);
+        --sp-cyan-40: var(--blue-400);
+        --sp-cyan-20: var(--blue-100);
+        --sp-border: var(--gray-200);
+        --thumb-color: var(--blue-main);
+        /* Panel-tittel og seksjonsoverskrifter */
+        --tab-and-title-color: var(--sp-navy);
         /*
          * Strategi index.html: body p-8 / md:p-16 – samme horisontale marg som <main>-rutenettet.
          */
         --strategi-body-padding-x: 2rem;
-        /* Strategi index.html body --bg-color (grå bak flisene) */
-        --strategi-page-bg: oklch(0.96 0.00 0.0);
-        /* Strategi index.html --tile-cyan-20 (.tile-cyan, bl.a. Tidshorisont) */
-        --strategi-tile-cyan-20: oklch(0.92 0.03 210);
-        /* Strategi .tile – innrykk slik at målkort linjer med Mandat-tekst */
+        --strategi-page-bg: var(--gray-50);
+        --strategi-tile-cyan-20: var(--blue-100);
         --strategi-tile-padding-x: 2rem;
     }
 
@@ -37,14 +34,14 @@
     @font-face { font-family: 'Whitney'; src: local('Whitney Book'), local('Whitney-Book'), local('Whitney Light'); font-style: normal; font-weight: 400; font-display: swap; }
     @font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
 
-    /* Base font */
+    /* Base font — SPWM sans (Hanken Grotesk) */
     body,
     .font-sans {
-        font-family: 'Whitney', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-        font-weight: 400;
+        font-family: var(--font-sans);
+        font-weight: var(--fw-book);
         line-height: 1.5;
-        background-color: var(--sp-background);
-        color: var(--sp-foreground);
+        background-color: var(--gray-50);
+        color: var(--gray-700);
     }
 
     /* Headings (Overskrifter) */
@@ -60,10 +57,19 @@
     .panel .typo-h1,
     .panel .typo-h2 { margin-top: 0; }
 
-    /* Panel-tittel «Mål og behov» – samme farge som fanetekst (én kilde: --tab-and-title-color) */
+    /* Panel-tittel «Mål og behov» – samme størrelse som typo-h2 (f.eks. Aksjeandel) */
     .maal-panel-title,
-    .maal-panel-title.typo-h1 { color: var(--tab-and-title-color) !important; }
-    .maal-panel-title-editable { border-color: var(--tab-and-title-color) !important; color: var(--tab-and-title-color) !important; }
+    .maal-panel-title.typo-h1 {
+        color: var(--tab-and-title-color) !important;
+        font-size: clamp(calc(1.125rem * var(--heading-scale)), calc(3.5vw * var(--heading-scale)), calc(5rem * var(--heading-scale)));
+        line-height: 1.15;
+    }
+    .maal-panel-title-editable {
+        border-color: var(--tab-and-title-color) !important;
+        color: var(--tab-and-title-color) !important;
+        font-size: clamp(calc(1.125rem * var(--heading-scale)), calc(3.5vw * var(--heading-scale)), calc(5rem * var(--heading-scale)));
+        line-height: 1.15;
+    }
 
     /* Tekstelementer */
     .typo-label {
@@ -139,32 +145,41 @@
         height: 300px;
     }
 
-    /* Panel styles – lekker skygge på hvite containere */
+    /* Panel — SPWM card */
     .panel {
-        background: #ffffff;
-        border: 1px solid var(--sp-border);
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+        background: var(--white);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        box-shadow: var(--shadow-sm);
     }
 
-    /* Alle containere i Mål og behov – lekker skygge (subtil, myk, jevn) */
-    .maal-og-behov-tab [class*="bg-white"][class*="rounded"]:not([class*="shadow-2xl"]) {
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    /* Mål og behov + Fremtidige verdier — subtile skygger */
+    .maal-og-behov-tab [class*="bg-white"][class*="rounded"]:not([class*="shadow-2xl"]),
+    .fremtidige-verdier-tab [class*="bg-white"][class*="rounded"]:not([class*="shadow-2xl"]) {
+        box-shadow: var(--shadow-sm);
     }
-    .maal-og-behov-tab [class*="bg-gray-50"][class*="rounded"] {
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    .maal-og-behov-tab [class*="bg-gray-50"][class*="rounded"],
+    .fremtidige-verdier-tab [class*="bg-gray-50"][class*="rounded"] {
+        box-shadow: var(--shadow-xs);
     }
     .maal-og-behov-tab button[class*="rounded-lg"],
     .maal-og-behov-tab button[class*="rounded-md"],
     .maal-og-behov-tab button[class*="rounded-xl"],
     .maal-og-behov-tab button[class*="rounded-full"],
-    .maal-og-behov-tab button[class*="rounded-2xl"] {
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    .maal-og-behov-tab button[class*="rounded-2xl"],
+    .fremtidige-verdier-tab button[class*="rounded-lg"],
+    .fremtidige-verdier-tab button[class*="rounded-md"],
+    .fremtidige-verdier-tab button[class*="rounded-xl"],
+    .fremtidige-verdier-tab button[class*="rounded-full"],
+    .fremtidige-verdier-tab button[class*="rounded-2xl"] {
+        box-shadow: var(--shadow-xs);
     }
     .maal-og-behov-tab input[class*="bg-white"],
-    .maal-og-behov-tab input[class*="rounded"] {
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+    .maal-og-behov-tab input[class*="rounded"],
+    .fremtidige-verdier-tab input[class*="bg-white"],
+    .fremtidige-verdier-tab input[class*="rounded"] {
+        box-shadow: none;
     }
 
     /* Grid layout */
@@ -180,74 +195,74 @@
         }
     }
 
-    /* Form input styles – lekker skygge */
+    /* Form input — SPWM */
     .form-input {
-        background: #ffffff;
-        border: 1px solid var(--sp-border);
-        border-radius: 6px;
+        background: var(--white);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-md);
         padding: 6px 12px;
-        color: var(--sp-foreground);
-        box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08), 0 6px 32px rgba(0, 0, 0, 0.06);
+        color: var(--gray-700);
+        box-shadow: none;
     }
 
     .form-input:focus {
         outline: none;
-        border-color: var(--sp-cyan-40);
-        box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.25);
+        border-color: var(--blue-main);
+        box-shadow: 0 0 0 3px var(--ring);
     }
 
-    /* Button styles – i tråd med manualen */
+    /* Buttons — SPWM primary / secondary */
     .btn-primary {
-        background: var(--sp-blue);
-        color: var(--sp-cyan-40);
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        padding: 8px 20px;
-        border-radius: 8px;
+        background: var(--blue-main);
+        color: var(--white);
+        font-weight: var(--fw-semibold);
+        text-transform: none;
+        letter-spacing: 0;
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
         border: none;
-        transition: all 0.2s ease-in-out;
-        transform: translateY(0);
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+        transition: background 0.15s ease;
+        transform: none;
+        box-shadow: var(--shadow-xs);
     }
 
     .btn-primary:hover {
-        background: var(--sp-dark-blue);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.24);
+        background: var(--sp-navy-pressed);
+        transform: none;
+        box-shadow: var(--shadow-xs);
     }
 
-    /* Outline-variant iht. manual: 1px ramme, Coal tekst */
     .btn-secondary {
-        background: transparent;
-        border: 1px solid var(--sp-border);
-        color: var(--sp-foreground);
-        padding: 10px 18px;
-        border-radius: 8px;
-        transition: all 0.2s ease-in-out;
+        background: var(--white);
+        border: 1px solid var(--gray-300);
+        color: var(--sp-navy);
+        padding: 10px 16px;
+        border-radius: var(--radius-md);
+        transition: background 0.15s ease;
         box-shadow: none;
-        font-weight: 500;
+        font-weight: var(--fw-medium);
     }
 
     .btn-secondary:hover {
-        background: var(--sp-cyan-20);
-        transform: translateY(-1px);
+        background: var(--gray-50);
+        transform: none;
     }
 
     .btn-secondary.active {
-        background: var(--sp-cyan-40);
-        color: #ffffff;
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        background: var(--blue-100);
+        color: var(--sp-navy);
+        border-color: var(--gray-200);
+        box-shadow: none;
     }
 
-    /* Event row styles – lekker skygge */
+    /* Event row — SPWM soft surface */
     .event-row {
-        background: var(--sp-cyan-20);
-        border: 1px solid var(--sp-border);
-        border-radius: 8px;
+        background: var(--blue-50);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
         padding: 12px;
         margin-bottom: 12px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07), 0 4px 24px rgba(0, 0, 0, 0.05);
+        box-shadow: none;
     }
 
     .event-slider-track {
@@ -323,8 +338,8 @@
     }
 
     .output-textarea:focus {
-        border-color: var(--sp-cyan-40);
-        box-shadow: 0 0 0 3px rgba(153, 217, 242, 0.35);
+        border-color: var(--blue-main);
+        box-shadow: 0 0 0 3px var(--ring);
     }
 
     .copy-btn {
@@ -444,7 +459,7 @@
         opacity: 0.7;
     }
 
-    /* Browser-like tab styles – premium med halo */
+    /* Tab bar — SPWM wealth portal shell (flat nav, ingen gradienter) */
     .tab-container {
         display: flex;
         flex-direction: column;
@@ -454,38 +469,78 @@
 
     .tab-bar-header {
         display: flex;
-        align-items: flex-end;
-        gap: 12px;
-        background: linear-gradient(180deg, var(--sp-background) 0%, #E8EAEE 100%);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-        padding: 0 3rem 0 14px;
-        min-height: 48px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        align-items: center;
+        gap: var(--space-4);
+        background: var(--white);
+        border-bottom: 1px solid var(--gray-200);
+        padding: var(--space-3) var(--space-6);
+        padding-right: var(--space-3);
+        min-height: 58px;
+        box-sizing: border-box;
+        box-shadow: none;
+    }
+
+    .tab-bar-brand {
+        display: flex;
+        align-items: center;
+        flex: 0 0 auto;
+        padding-right: var(--space-2);
+    }
+
+    .tab-bar-brand-logo {
+        display: block;
+        height: 33.6px;
+        width: auto;
+        max-width: 177.6px;
     }
 
     .tab-bar {
         display: flex;
-        align-items: flex-end;
-        flex: 1 1 auto;
+        align-items: center;
+        flex: 1 1 0;
         min-width: 0;
-        gap: 4px;
+        gap: 2px;
         overflow-x: auto;
-        padding: 0 4px 0 0;
+        overflow-y: hidden;
+        padding: 0;
+        scrollbar-width: thin;
     }
 
     .tab-bar-panel-title-slot {
         display: flex;
-        align-items: flex-end;
+        align-items: center;
         justify-content: center;
-        flex: 0 0 auto;
-        padding: 0 1.25rem 0 8px;
+        flex: 0 1 auto;
+        min-width: 0;
+        max-width: min(360px, 28vw);
+        padding: 0 var(--space-2);
     }
 
-    /* Samme plassering og hjørner som inaktiv fane (.tab) */
+    /* Speiler fast fullskjerm-knapp (right: 1rem, bredde 32px) */
+    .tab-bar-header-end-spacer {
+        flex: 0 0 calc(1rem + 32px);
+        width: calc(1rem + 32px);
+        height: 1px;
+    }
+
     .tab.tab-bar-panel-title {
-        max-width: min(280px, 32vw);
+        display: inline-flex;
+        align-items: center;
+        height: auto;
+        min-width: 0;
+        max-width: 100%;
+        padding: var(--space-1) var(--space-3);
+        border-radius: var(--radius-md);
+        background: var(--gray-50);
+        border: 1px solid var(--gray-200);
         cursor: default;
         pointer-events: none;
+        font-family: var(--font-sans);
+        font-size: var(--text-sm-size);
+        font-weight: var(--fw-medium);
+        line-height: var(--text-sm-lh);
+        color: var(--gray-600);
+        box-shadow: none;
     }
 
     .tab.tab-bar-panel-title span {
@@ -499,88 +554,67 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 10px 18px;
-        background: linear-gradient(180deg, #E4E6EA 0%, #D8DCE2 100%);
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-bottom: none;
-        border-radius: 10px 10px 0 0;
+        flex-shrink: 0;
+        height: 36px;
+        padding: 0 10px;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-md);
         cursor: pointer;
         user-select: none;
-        min-width: 120px;
-        max-width: 240px;
         position: relative;
-        transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--tab-and-title-color);
+        transition: background 0.15s ease, color 0.15s ease;
+        font-family: var(--font-sans);
+        font-size: var(--text-sm-size);
+        font-weight: var(--fw-medium);
+        line-height: var(--text-sm-lh);
+        color: var(--sp-navy);
         white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        box-shadow: none;
     }
 
-    .tab::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.28s ease;
+    .tab span {
+        white-space: nowrap;
     }
 
     .tab:first-child {
         margin-left: 0;
     }
 
-    /* Aktiv fane – bruker S&P blåtoner */
     .tab.active {
-        background: linear-gradient(180deg, var(--sp-blue) 0%, var(--sp-dark-blue) 100%);
-        border-color: rgba(0, 35, 89, 0.65);
-        border-bottom-color: transparent;
-        z-index: 2;
-        color: #ffffff;
-        font-weight: 600;
-        box-shadow:
-            0 -2px 0 0 var(--sp-dark-blue),
-            0 4px 20px -4px rgba(0, 35, 89, 0.45),
-            0 8px 32px -8px rgba(0, 35, 89, 0.25),
-            inset 0 1px 0 rgba(255, 255, 255, 0.2);
-    }
-
-    .tab.active::before {
-        opacity: 1;
-        box-shadow: inset 0 0 24px 2px rgba(255, 255, 255, 0.08);
-    }
-
-    /* Inaktiv fane – hover-halo */
-    .tab:not(.active) {
-        background: linear-gradient(180deg, #E4E6EA 0%, #D8DCE2 100%);
+        background: var(--blue-100);
+        color: var(--sp-navy);
+        font-weight: var(--fw-semibold);
+        z-index: 1;
+        box-shadow: none;
     }
 
     .tab:not(.active):hover {
-        background: linear-gradient(180deg, #F0F2F6 0%, #E2E6EC 100%);
-        border-color: rgba(0, 0, 0, 0.1);
-        box-shadow:
-            0 2px 8px -2px rgba(0, 0, 0, 0.08),
-            0 4px 16px -4px rgba(0, 45, 114, 0.18);
+        background: var(--gray-50);
+        color: var(--sp-navy);
+        box-shadow: none;
     }
 
-    /* Strategi-fanen: målkort i samme bredde som hero + høyrekolonne, skygge som .tile */
+    .tab:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px var(--ring);
+    }
+
+    /* Strategi-fanen — SPWM målsetninger-stripe */
     .strategi-malsetninger-strip-outer {
         flex-shrink: 0;
         box-sizing: border-box;
-        padding: 0.65rem var(--strategi-body-padding-x) 0.68rem;
+        padding: 0.5rem var(--strategi-body-padding-x) 0.2rem;
         background: var(--strategi-page-bg);
     }
 
     .strategi-malsetninger-strip-card {
         box-sizing: border-box;
         width: 100%;
-        border-radius: 4px;
-        /* Strategi index.html .tile */
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
-        background: var(--strategi-tile-cyan-20);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-200);
+        box-shadow: var(--shadow-sm);
+        background: var(--blue-50);
         padding: 0.55rem var(--strategi-tile-padding-x) 0.65rem;
     }
 
@@ -597,24 +631,23 @@
         display: block;
         width: 100%;
         text-align: center;
-        /* Strategi index.html .label-style (samme som «TIDSHORISONT») – Inter lastes via strategi-inter.css */
-        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
-        font-weight: 500;
-        font-size: 0.75rem;
+        font-family: var(--font-sans);
+        font-weight: var(--fw-medium);
+        font-size: var(--text-xs-size);
         letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: oklch(0.32 0.00 0.0);
-        opacity: 0.7;
+        color: var(--gray-500);
+        opacity: 1;
         margin: 0 0 0.5rem;
         padding-bottom: 0;
         border-bottom: none;
     }
 
     .strategi-malsetninger-strip__empty {
-        font-family: 'Whitney', sans-serif;
+        font-family: var(--font-sans);
         font-size: 0.8125rem;
-        color: var(--sp-foreground);
-        opacity: 0.45;
+        color: var(--gray-500);
+        opacity: 1;
         font-style: italic;
         padding: 0.35rem 0;
         text-align: center;
@@ -631,20 +664,16 @@
         min-width: 6.325rem;
         max-width: 8.25rem;
         padding: 0.42rem 0.45rem 0.48rem;
-        border: 1px solid transparent;
-        border-radius: 6px;
-        box-shadow:
-            0 2px 8px rgba(0, 35, 89, 0.08),
-            0 1px 2px rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-xs);
         animation: strategi-goal-chip-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        transition: background 0.15s ease, border-color 0.15s ease;
     }
 
     .strategi-goal-chip:hover {
-        transform: translateY(-2px);
-        box-shadow:
-            0 8px 28px -6px rgba(0, 35, 89, 0.22),
-            0 2px 6px rgba(0, 0, 0, 0.06);
+        transform: none;
+        box-shadow: var(--shadow-xs);
     }
 
     @keyframes strategi-goal-chip-in {
@@ -659,24 +688,22 @@
     }
 
     .strategi-goal-chip--i1 {
-        background: oklch(0.85 0.08 235.3);
-        color: oklch(0.24 0.08 273.1);
-        border-color: oklch(0.85 0.08 235.3);
+        background: var(--blue-100);
+        color: var(--sp-navy);
+        border-color: var(--blue-200);
     }
 
     .strategi-goal-chip--i2 {
-        background: oklch(0.29 0.12 274.6);
-        color: #fff;
-        border-color: oklch(0.29 0.12 274.6);
+        background: var(--blue-main);
+        color: var(--white);
+        border-color: var(--blue-main);
     }
 
     .strategi-goal-chip--i3 {
-        background: oklch(0.24 0.08 273.1);
-        color: #fff;
-        border-color: oklch(0.24 0.08 273.1);
-        box-shadow:
-            0 4px 16px -2px rgba(0, 35, 89, 0.35),
-            0 2px 6px rgba(0, 0, 0, 0.08);
+        background: var(--sp-navy);
+        color: var(--white);
+        border-color: var(--sp-navy);
+        box-shadow: var(--shadow-xs);
     }
 
     .strategi-goal-chip__icon {
@@ -687,17 +714,18 @@
     }
 
     .strategi-goal-chip--i1 .strategi-goal-chip__sub {
-        opacity: 0.58;
+        opacity: 0.7;
+        color: var(--gray-600);
     }
 
     .strategi-goal-chip--i2 .strategi-goal-chip__sub,
     .strategi-goal-chip--i3 .strategi-goal-chip__sub {
-        opacity: 0.72;
+        opacity: 0.85;
     }
 
     .strategi-goal-chip__title {
-        font-family: 'Whitney', sans-serif;
-        font-weight: 700;
+        font-family: var(--font-sans);
+        font-weight: var(--fw-semibold);
         font-size: 10px;
         line-height: 1.15;
         letter-spacing: 0.08em;
@@ -705,8 +733,8 @@
     }
 
     .strategi-goal-chip__sub {
-        font-family: 'Whitney', sans-serif;
-        font-weight: 700;
+        font-family: var(--font-sans);
+        font-weight: var(--fw-medium);
         font-size: 9px;
         line-height: 1.1;
         letter-spacing: 0.06em;
@@ -716,17 +744,183 @@
     .tab-content {
         flex: 1;
         overflow: auto;
-        background: white;
+        background: var(--gray-50);
     }
 
     .tab-content.hidden {
         display: none;
     }
 
-/* Sidestilt verktøyknapp (sim / Sp. / Utb. / Port.): tydelig aktiv ramme.
-   Tailwind ring + shadow-lg på samme knapp konkurrerer om box-shadow, så ringen kan forsvinne. */
-.maal-og-behov-tab button.mbh-side-tool-active {
-    outline: 5px solid #0057ff;
-    outline-offset: 4px;
+/* ============================================================================
+   SPWM tab canvas — Mål og behov + Fremtidige verdier
+   ============================================================================ */
+.maal-og-behov-tab,
+.fremtidige-verdier-tab {
+    --thumb-color: var(--blue-main);
+    background: var(--gray-50) !important;
+    color: var(--gray-700);
+    padding: var(--space-6) var(--space-8) var(--space-10) !important;
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+.maal-og-behov-tab .typo-h1,
+.maal-og-behov-tab .typo-h2,
+.maal-og-behov-tab .typo-h3,
+.maal-og-behov-tab .maal-panel-title,
+.fremtidige-verdier-tab .fv-panel-heading {
+    color: var(--sp-navy) !important;
+    font-family: var(--font-display);
+}
+
+.fremtidige-verdier-tab .fv-panel-heading {
+    font-weight: var(--fw-semibold);
+    font-size: var(--text-lg-size);
+    line-height: var(--text-lg-lh);
+    text-align: center;
+    margin-bottom: var(--space-4);
+}
+
+.fremtidige-verdier-tab .fv-empty {
+    color: var(--gray-500) !important;
+    font-size: var(--text-sm-size);
+}
+
+.maal-og-behov-tab .maal-panel-title-editable {
+    border-color: var(--gray-300) !important;
+    color: var(--sp-navy) !important;
+}
+
+/* Legacy Tailwind hex-klasser → SPWM tokens */
+.maal-og-behov-tab [class*="text-[#4A6D8C]"],
+.fremtidige-verdier-tab [class*="text-[#4A6D8C]"] { color: var(--sp-navy) !important; }
+.maal-og-behov-tab [class*="text-[#333333]"],
+.fremtidige-verdier-tab [class*="text-[#333333]"] { color: var(--gray-700) !important; }
+.maal-og-behov-tab [class*="border-[#DDDDDD]"],
+.fremtidige-verdier-tab [class*="border-[#DDDDDD]"] { border-color: var(--gray-200) !important; }
+.maal-og-behov-tab [class*="bg-[#DDDDDD]"],
+.fremtidige-verdier-tab [class*="bg-[#DDDDDD]"] { background-color: var(--gray-200) !important; }
+
+.maal-og-behov-tab [class*="bg-[#4A6D8C]"],
+.fremtidige-verdier-tab [class*="bg-[#4A6D8C]"] {
+    background-color: var(--blue-main) !important;
+    color: var(--white) !important;
+    border-color: var(--blue-main) !important;
+}
+.maal-og-behov-tab [class*="bg-[#3388CC]"],
+.maal-og-behov-tab [class*="bg-[#3498DB]"],
+.maal-og-behov-tab [class*="bg-[#2980B9]"],
+.fremtidige-verdier-tab [class*="bg-[#3388CC]"],
+.fremtidige-verdier-tab [class*="bg-[#3498DB]"],
+.fremtidige-verdier-tab [class*="bg-[#2980B9]"] {
+    background-color: var(--blue-700) !important;
+    color: var(--white) !important;
+}
+.maal-og-behov-tab [class*="bg-[#66CCDD]"],
+.fremtidige-verdier-tab [class*="bg-[#66CCDD]"] {
+    background-color: var(--blue-main) !important;
+    color: var(--white) !important;
+    border-color: var(--blue-main) !important;
+}
+.maal-og-behov-tab [class*="bg-[#66CCDD]/20"],
+.maal-og-behov-tab [class*="bg-[#66CCDD]/30"],
+.fremtidige-verdier-tab [class*="bg-[#66CCDD]/20"],
+.fremtidige-verdier-tab [class*="bg-[#66CCDD]/30"] {
+    background-color: var(--blue-100) !important;
+    color: var(--sp-navy) !important;
+}
+.maal-og-behov-tab [class*="border-[#66CCDD]"],
+.fremtidige-verdier-tab [class*="border-[#66CCDD]"] {
+    border-color: var(--blue-main) !important;
+}
+.maal-og-behov-tab [class*="bg-[#88CCEE]"],
+.fremtidige-verdier-tab [class*="bg-[#88CCEE]"] {
+    background-color: var(--blue-300) !important;
+    color: var(--sp-navy) !important;
+}
+.maal-og-behov-tab [class*="bg-[#1A2A47]"],
+.fremtidige-verdier-tab [class*="bg-[#1A2A47]"] {
+    background-color: var(--sp-navy) !important;
+    color: var(--white) !important;
+}
+.maal-og-behov-tab [class*="bg-[#22C55E]"],
+.maal-og-behov-tab [class*="bg-[#66CC99]"],
+.fremtidige-verdier-tab [class*="bg-[#22C55E]"],
+.fremtidige-verdier-tab [class*="bg-[#66CC99]"] {
+    background-color: var(--success-600) !important;
+    color: var(--white) !important;
+}
+.maal-og-behov-tab [class*="bg-[#888888]"],
+.maal-og-behov-tab [class*="bg-[#999999]"],
+.maal-og-behov-tab [class*="bg-[#CCCCCC]"],
+.fremtidige-verdier-tab [class*="bg-[#888888]"],
+.fremtidige-verdier-tab [class*="bg-[#999999]"],
+.fremtidige-verdier-tab [class*="bg-[#CCCCCC]"] {
+    background-color: var(--gray-500) !important;
+    color: var(--white) !important;
+}
+
+.maal-og-behov-tab button[class*="bg-white"][class*="border"][class*="text-[#333333]"]:hover,
+.maal-og-behov-tab button[class*="hover:bg-gray-100"]:hover,
+.fremtidige-verdier-tab button[class*="bg-white"][class*="border"][class*="text-[#333333]"]:hover,
+.fremtidige-verdier-tab button[class*="hover:bg-gray-100"]:hover {
+    background-color: var(--gray-50) !important;
+}
+
+.maal-og-behov-tab input[type="range"]::-webkit-slider-thumb,
+.fremtidige-verdier-tab input[type="range"]::-webkit-slider-thumb {
+    background: var(--blue-main) !important;
+}
+.maal-og-behov-tab input[type="range"]::-moz-range-thumb,
+.fremtidige-verdier-tab input[type="range"]::-moz-range-thumb {
+    background: var(--blue-main) !important;
+}
+
+.maal-og-behov-tab input:focus,
+.maal-og-behov-tab textarea:focus,
+.fremtidige-verdier-tab input:focus,
+.fremtidige-verdier-tab textarea:focus {
+    outline: none;
+    border-color: var(--blue-main) !important;
+    box-shadow: 0 0 0 3px var(--ring) !important;
+}
+
+.maal-og-behov-tab [class*="focus:ring-[#66CCDD]"]:focus,
+.fremtidige-verdier-tab [class*="focus:ring-[#66CCDD]"]:focus {
+    --tw-ring-color: var(--ring) !important;
+}
+
+.maal-og-behov-tab [class*="shadow-lg"],
+.maal-og-behov-tab [class*="shadow-md"],
+.fremtidige-verdier-tab [class*="shadow-lg"],
+.fremtidige-verdier-tab [class*="shadow-md"] {
+    box-shadow: var(--shadow-xs) !important;
+}
+
+.maal-og-behov-tab button[class*="hover:-translate-y"],
+.fremtidige-verdier-tab button[class*="hover:-translate-y"] {
+    transform: none !important;
+}
+.maal-og-behov-tab button[class*="hover:-translate-y"]:hover,
+.fremtidige-verdier-tab button[class*="hover:-translate-y"]:hover {
+    transform: none !important;
+}
+
+.maal-og-behov-tab .legend-container,
+.maal-og-behov-tab [class*="text-[#333333]/90"],
+.fremtidige-verdier-tab .legend-container,
+.fremtidige-verdier-tab [class*="text-[#333333]/90"] {
+    color: var(--gray-600) !important;
+}
+
+.maal-og-behov-tab [class*="text-[#66CC99]"],
+.fremtidige-verdier-tab [class*="text-[#66CC99]"] { color: var(--success-600) !important; }
+.maal-og-behov-tab [class*="text-[#E06B6B]"],
+.fremtidige-verdier-tab [class*="text-[#E06B6B]"] { color: var(--error-600) !important; }
+
+.maal-og-behov-tab button.mbh-side-tool-active,
+.fremtidige-verdier-tab button.mbh-side-tool-active {
+    outline: 3px solid var(--blue-main);
+    outline-offset: 2px;
     z-index: 2;
 }

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="Buttons — destructive & icon" subtitle="Destructive, small, pill icon buttons" viewport="700x220" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:26px 30px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;}
+  .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;}
+  .btn{font-family:var(--font-sans);font-weight:600;font-size:16px;border-radius:8px;padding:10px 16px;border:1px solid transparent;cursor:pointer;display:inline-flex;align-items:center;gap:8px;line-height:1;}
+  .destructive{background:var(--error-700);color:#fff;}
+  .dest-outline{background:#fff;color:var(--error-700);border-color:var(--error-border);}
+  .icon-btn{width:40px;height:40px;border-radius:100px;display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;cursor:pointer;font-size:18px;}
+  .tag{font-size:11px;color:var(--gray-400);width:80px;}
+  .sm{font-size:14px;padding:8px 14px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="row"><span class="tag">Destructive</span><button class="btn destructive"><i class='bx bx-trash'></i>Slett</button><button class="btn dest-outline">Slett</button></div>
+  <div class="row"><span class="tag">Small</span><button class="btn primary sm" style="background:var(--blue-main);color:#fff">Lagre</button><button class="btn secondary sm" style="background:#fff;color:var(--sp-navy);border-color:var(--gray-300)">Avbryt</button></div>
+  <div class="row"><span class="tag">Icon · pill</span>
+    <button class="icon-btn" style="background:var(--blue-main);color:#fff"><i class='bx bx-x'></i></button>
+    <button class="icon-btn" style="background:var(--blue-100);color:var(--blue-main)"><i class='bx bx-x'></i></button>
+    <button class="icon-btn" style="background:#fff;color:var(--gray-700);border-color:var(--gray-300)"><i class='bx bx-x'></i></button>
+    <button class="icon-btn" style="background:#fff;color:var(--gray-700)"><i class='bx bx-dots-horizontal-rounded'></i></button>
+  </div>
+</div>
+</body>
+</html>

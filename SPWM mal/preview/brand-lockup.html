@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Brand" name="Logo — clear space & sizing" subtitle="Clear space, min size, usage" viewport="700x160" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:28px 32px;box-sizing:border-box;display:flex;gap:36px;align-items:center;}
+  .clearspace{position:relative;padding:22px;border:1px dashed var(--blue-300);border-radius:8px;background:var(--blue-25);}
+  .clearspace img{height:34px;display:block;}
+  .sizes{display:flex;align-items:flex-end;gap:28px;}
+  .sizes img{display:block;}
+  .lbl{font-size:11px;color:var(--gray-500);margin-top:8px;text-align:center;}
+  .cap{font-size:12px;color:var(--gray-500);max-width:170px;line-height:1.5;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div>
+    <div class="clearspace"><img src="../assets/spwm-logo.svg" alt="logo"></div>
+    <div class="lbl">Clear space = cap height on all sides</div>
+  </div>
+  <div class="sizes">
+    <div><img src="../assets/spwm-logo.svg" style="height:34px" alt="logo"><div class="lbl">Desktop nav · 34px</div></div>
+    <div><img src="../assets/spwm-logo.svg" style="height:22px" alt="logo"><div class="lbl">Min · 20px</div></div>
+  </div>
+  <div class="cap">Horizontal lockup includes the “Wealth Management” descriptor. Keep clear space; never recolor or stretch.</div>
+</div>
+</body>
+</html>

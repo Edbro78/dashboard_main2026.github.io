@@ -87,8 +87,7 @@ const AppState = {
     { id: genId(), name: "LØNNSINNTEKT", amount: 1500000 },
     { id: genId(), name: "UTBYTTER", amount: 0 },
     { id: genId(), name: "Skattefrie inntekter", amount: 0 },
-    { id: genId(), name: "PENSJONSINNTEKT", amount: 0 },
-    { id: genId(), name: "Utbetalinger fra Mål og behov", amount: 0, _isMoBUtbetalingRow: true, _maalOgBehovUtbetalingToggleUI: true },
+    { id: genId(), name: "Utbetalinger fra Mål og behov", amount: 0, _isMoBUtbetalingRow: true, _maalOgBehovUtbetalingToggleUI: false },
     { id: genId(), name: "Inntektsskatt", amount: 0 },
     { id: genId(), name: "Utbytteskatt", amount: 0 },
     { id: genId(), name: "Formuesskatt", amount: 0 },
@@ -359,6 +358,9 @@ function initTKontoDashboard() {
 
   if (AppState.lastActiveSection === "Treemap") {
     AppState.lastActiveSection = "T-Konto";
+  }
+  if (AppState.lastActiveSection === "Analyse") {
+    AppState.lastActiveSection = "Forside";
   }
 
   const stepperList = document.getElementById("stepper-list");
@@ -2261,31 +2263,28 @@ function getAssetColorByName(name, assetType, asset) {
   if (asset && asset.maalOgBehovPortfolio === true) return "#002359";
   if (/investeringer\s*mål\s*og\s*behov/i.test(nameStr)) return "#002359";
 
-  // Sjekk assetType (kategori lagres og brukes også etter navnendring, farger fra S&P-palett)
-  if (assetType === "fritidseiendom") return "#99D9F2";   // Cyan 40
-  if (assetType === "sekundaereiendom") return "#334F7A"; // Lysnet variant av Hovedstol-blå (#002359)
-  if (assetType === "tomt") return "#CCECF9";             // Cyan 20
-  if (assetType === "eiendom") return "#85ACED";          // Primærbolig (fast eiendom)
-  if (assetType === "investeringer") return "#B4C6F4";     // Investeringer (øvrige)
-  if (assetType === "bilbat") return "#00ACEC";            // Bil/Båt
-  if (assetType === "andre") return "#2C405B";             // Andre eiendeler
+  if (assetType === "fritidseiendom") return "#6096E8";
+  if (assetType === "sekundaereiendom") return "#264472";
+  if (assetType === "tomt") return "#B5CFF5";
+  if (assetType === "eiendom") return "#3B7EE3";
+  if (assetType === "investeringer") return "#9747FF";
+  if (assetType === "bilbat") return "#0A5EDC";
+  if (assetType === "andre") return "#405A82";
 
-  // Deretter sjekk navn (for bakoverkompatibilitet når assetType mangler)
-  if (/^BANKINNSKUDD$/i.test(U)) return "#5A8BA2"; // Bankinnskudd
-  if (/^PRIMÆRBOLIG$/i.test(U)) return "#85ACED"; // Primærbolig
-  if (/^BANK$/i.test(U)) return "#5A8BA2"; // Bank
-  if (/^FAST\s*EIENDOM$/i.test(U)) return "#85ACED"; // Fast eiendom
-  if (/^FRITIDSEIENDOM$/i.test(U)) return "#99D9F2";  // Fritidseiendom
-  if (/^SEKUNDÆRBOLIG$/i.test(U)) return "#334F7A"; // Sekundærbolig
-  if (/^SEKUNDÆREIENDOM$/i.test(U)) return "#334F7A"; // Sekundæreiendom
-  if (/^TOMT$/i.test(U)) return "#CCECF9";             // Tomt
-  if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#85ACED";
-  if (/^INVESTERINGER$/i.test(U)) return "#B4C6F4"; // Andre investeringslinjer
-  if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#00ACEC"; // Bil/Båt
-  if (/^ANDRE\s*EIENDELER$/i.test(U)) return "#2C405B"; // Andre eiendeler
+  if (/^BANKINNSKUDD$/i.test(U)) return "#597093";
+  if (/^PRIMÆRBOLIG$/i.test(U)) return "#3B7EE3";
+  if (/^BANK$/i.test(U)) return "#597093";
+  if (/^FAST\s*EIENDOM$/i.test(U)) return "#3B7EE3";
+  if (/^FRITIDSEIENDOM$/i.test(U)) return "#6096E8";
+  if (/^SEKUNDÆRBOLIG$/i.test(U)) return "#264472";
+  if (/^SEKUNDÆREIENDOM$/i.test(U)) return "#264472";
+  if (/^TOMT$/i.test(U)) return "#B5CFF5";
+  if (/^EIENDOM$/i.test(U) && !/FAST/i.test(U)) return "#3B7EE3";
+  if (/^INVESTERINGER$/i.test(U)) return "#9747FF";
+  if (/^BIL\/BÅT$/i.test(U) || /^BIL\s*BÅT$/i.test(U)) return "#0A5EDC";
+  if (/^ANDRE\s*EIENDELER$/i.test(U)) return "#405A82";
 
-  // Fallback
-  return "#2C405B";
+  return "#405A82";
 }
 
 function computeAssetProjection(yearVal) {
@@ -5303,7 +5302,7 @@ function renderDebtEquityTreemap(svg, x, y, width, height, svgNS, yearVal = 2026
 var waterfallChartSelectedYear = 2025;
 
 /** Lysere grafikkpalett for øvrige utgifter (renter, avdrag, kostnader) */
-var WF_EXPENSE_PALETTE = ["#6B9CF9", "#7EB5FC", "#9BEBFA", "#B8D4FC", "#CCECF9", "#D8E4FD"];
+var WF_EXPENSE_PALETTE = ["#0A5EDC", "#3B7EE3", "#6096E8", "#84AEED", "#B5CFF5", "#EEF5FF"];
 
 /** Skattesøyler: ulike nyanser behagelig rødt */
 var WF_TAX_RED_PALETTE = ["#FFEAEA", "#FFD6D4", "#FAC5C3", "#F5B0AE", "#EF9B99", "#E88684"];
@@ -5324,7 +5323,7 @@ function wfBarLabelTextColor(hex) {
   const g = parseInt(h.slice(2, 4), 16);
   const b = parseInt(h.slice(4, 6), 16);
   const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return lum > 0.62 ? "#002359" : "#99D9F2";
+  return lum > 0.62 ? "#002359" : "#0A5EDC";
 }
 
 // --- Waterfall (Grafikk III) ---
@@ -5339,9 +5338,9 @@ function renderWaterfallModule(root) {
 
   const style = document.createElementNS(svgNS, "style");
   style.textContent = `
-    .wf-title { font: 900 24px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #002359; }
-    .wf-label { font: 500 12px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #333333; letter-spacing: 0.1em; text-transform: uppercase; }
-    .wf-value { font: 700 13px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #002359; }
+    .wf-title { font: 600 24px "Hanken Grotesk", system-ui, sans-serif; fill: #002359; }
+    .wf-label { font: 500 12px "Hanken Grotesk", system-ui, sans-serif; fill: #475467; letter-spacing: 0.04em; text-transform: uppercase; }
+    .wf-value { font: 600 13px "Hanken Grotesk", system-ui, sans-serif; fill: #002359; }
   `;
   svg.appendChild(style);
 
@@ -5383,7 +5382,7 @@ function renderWaterfallModule(root) {
   const bg = document.createElementNS(svgNS, "rect");
   bg.setAttribute("x", "0"); bg.setAttribute("y", "0");
   bg.setAttribute("width", String(vbW)); bg.setAttribute("height", String(vbH));
-  bg.setAttribute("fill", "#F5F3F3");
+  bg.setAttribute("fill", "#FFFFFF");
   svg.appendChild(bg);
 
   const container = document.createElement("div");
@@ -6124,10 +6123,10 @@ function buildCashflowForecastSVG(startYear, yearsCount) {
 
   const style = document.createElementNS(svgNS, "style");
   style.textContent = `
-    .cf-title { font: 900 24px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #002359; }
-    .cf-meta { font: 400 13px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #333333; }
-    .cf-label { font: 700 10.4px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #002359; }
-    .cf-year { font: 500 13px Whitney, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; fill: #002D72; }
+    .cf-title { font: 600 24px "Hanken Grotesk", system-ui, sans-serif; fill: #002359; }
+    .cf-meta { font: 400 13px "Hanken Grotesk", system-ui, sans-serif; fill: #475467; }
+    .cf-label { font: 600 10.4px "Hanken Grotesk", system-ui, sans-serif; fill: #002359; }
+    .cf-year { font: 500 13px "Hanken Grotesk", system-ui, sans-serif; fill: #0A5EDC; }
   `;
   svg.appendChild(style);
 
@@ -6136,7 +6135,7 @@ function buildCashflowForecastSVG(startYear, yearsCount) {
   bg.setAttribute("y", "0");
   bg.setAttribute("width", String(vbW));
   bg.setAttribute("height", String(vbH));
-  bg.setAttribute("fill", "#F5F3F3");
+  bg.setAttribute("fill", "#FFFFFF");
   svg.appendChild(bg);
 
   const padL = 80;
@@ -6285,22 +6284,20 @@ function closeCashflowForecastModal() {
 // --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) ---
 // Farger som i referansebildet for korrekt gjengivelse på skjerm og i eksport
 var TKONTO_CHART_COLORS = {
-  BANK: "#5A8BA2",
-  "BANKINNSKUDD": "#5A8BA2",
-  "FAST EIENDOM": "#85ACED",
-  "PRIMÆRBOLIG": "#85ACED",
-  FRITIDSEIENDOM: "#99D9F2",   // S&P Cyan 40
-  // "Investeringer mål og behov" skal matche nøyaktig Hovedstol-fargen (#002359) i "Mål og behov".
-  // "Sekundæreiendom" får en litt lysere variant av samme farge.
-  SEKUNDÆREIENDOM: "#334F7A",
-  "SEKUNDÆRBOLIG": "#334F7A",
-  TOMT: "#CCECF9",             // S&P Cyan 20
-  "INVESTERINGER MÅL OG BEHOV": "#002359",  // Match Hovedstol-fargen i Mål og behov
-  "INVESTERINGER": "#B4C6F4",                // Øvrige investeringslinjer
-  "BIL/BÅT": "#00ACEC",
-  "ANDRE EIENDELER": "#2C405B",
-  EGENKAPITAL: "#A7EDBD",
-  GJELD: "#F2BFB8"
+  BANK: "#597093",
+  "BANKINNSKUDD": "#597093",
+  "FAST EIENDOM": "#3B7EE3",
+  "PRIMÆRBOLIG": "#3B7EE3",
+  FRITIDSEIENDOM: "#6096E8",
+  SEKUNDÆREIENDOM: "#264472",
+  "SEKUNDÆRBOLIG": "#264472",
+  TOMT: "#B5CFF5",
+  "INVESTERINGER MÅL OG BEHOV": "#002359",
+  "INVESTERINGER": "#9747FF",
+  "BIL/BÅT": "#0A5EDC",
+  "ANDRE EIENDELER": "#405A82",
+  EGENKAPITAL: "#12B76A",
+  GJELD: "#D92D20"
 };
 
 function getTKontoColorForAsset(name, asset) {
@@ -6528,10 +6525,8 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
   var radius = 12;
 
   var bgGrad = ctx.createLinearGradient(0, 0, w, h);
-  bgGrad.addColorStop(0, "#002359");
-  bgGrad.addColorStop(0.42, "#002D72");
-  bgGrad.addColorStop(0.78, "#CCECF9");
-  bgGrad.addColorStop(1, "#ffffff");
+  bgGrad.addColorStop(0, "#F9FAFB");
+  bgGrad.addColorStop(1, "#F9FAFB");
   ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, w, h);
 
@@ -6563,14 +6558,14 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
 
   var eqCenterX = leftX + cardW + 22;
   var eqCenterY = cardY + cardH / 2;
-  ctx.fillStyle = "#002D72";
+  ctx.fillStyle = "#0A5EDC";
   ctx.beginPath();
   ctx.arc(eqCenterX, eqCenterY, 22, 0, Math.PI * 2);
   ctx.fill();
   ctx.strokeStyle = "rgba(255,255,255,0.9)";
   ctx.lineWidth = 2;
   ctx.stroke();
-  ctx.fillStyle = "#99D9F2";
+  ctx.fillStyle = "#FFFFFF";
   ctx.font = "700 18px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
@@ -6585,8 +6580,8 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
   function drawCard(segs, cardX) {
     var totalVal = segs.reduce(function (s, seg) { return s + (seg.value || 0); }, 0) || 1;
     var y = cardY + innerPad;
-    ctx.font = "500 14px sans-serif";
-    ctx.fillStyle = "#002D72";
+    ctx.font = "500 14px \"Hanken Grotesk\", system-ui, sans-serif";
+    ctx.fillStyle = "#002359";
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
     for (var i = 0; i < segs.length; i++) {
@@ -6625,7 +6620,7 @@ function renderTKontoChartToCanvas(outWidth, outHeight) {
 
       var cy = segTop + segH / 2;
       if (segH >= 18) {
-        ctx.fillStyle = "#002D72";
+        ctx.fillStyle = "#002359";
         ctx.textAlign = "left";
         var lines = labelLines(seg.key);
         var lineHeight = 16;
@@ -8103,33 +8098,37 @@ function ensureIncomeRows() {
   if (!Array.isArray(AppState.incomes)) AppState.incomes = [];
   const incomes = AppState.incomes;
 
-  let moBRow = incomes.find(isMoBUtbetalingIncomeRow);
+  AppState.incomes = incomes.filter(
+    (x) => normalizeIncomeNameKey(x && x.name) !== "PENSJONSINNTEKT"
+  );
+
+  let moBRow = AppState.incomes.find(isMoBUtbetalingIncomeRow);
   if (!moBRow) {
     moBRow = {
       id: genId(),
       name: "Utbetalinger fra Mål og behov",
       amount: 0,
       _isMoBUtbetalingRow: true,
-      _maalOgBehovUtbetalingToggleUI: true
+      _maalOgBehovUtbetalingToggleUI: false
     };
-    incomes.push(moBRow);
+    AppState.incomes.push(moBRow);
   } else {
     moBRow._isMoBUtbetalingRow = true;
     moBRow.name = "Utbetalinger fra Mål og behov";
     if (typeof moBRow._maalOgBehovUtbetalingToggleUI !== "boolean") {
-      moBRow._maalOgBehovUtbetalingToggleUI = true;
+      moBRow._maalOgBehovUtbetalingToggleUI = false;
     }
   }
 
-  const hasManualSkattefrie = incomes.some((x) =>
+  const hasManualSkattefrie = AppState.incomes.some((x) =>
     !isMoBUtbetalingIncomeRow(x) &&
     /^SKATTEFRIE\s*INNTEKTER$/i.test(String(x && x.name ? x.name : "").normalize("NFC").trim())
   );
   if (!hasManualSkattefrie) {
     const manualRow = { id: genId(), name: "Skattefrie inntekter", amount: 0 };
-    const utbytterIndex = incomes.findIndex((x) => /^UTBYTTER$/i.test(String(x && x.name ? x.name : "").trim()));
-    if (utbytterIndex >= 0) incomes.splice(utbytterIndex + 1, 0, manualRow);
-    else incomes.push(manualRow);
+    const utbytterIndex = AppState.incomes.findIndex((x) => /^UTBYTTER$/i.test(String(x && x.name ? x.name : "").trim()));
+    if (utbytterIndex >= 0) AppState.incomes.splice(utbytterIndex + 1, 0, manualRow);
+    else AppState.incomes.push(manualRow);
   }
 }
 
@@ -8262,9 +8261,6 @@ function createItemRow(collectionName, item) {
   };
   markCostIfNeeded(item && item.name);
 
-  const isPensionIncomeRow =
-    collectionName === "incomes" &&
-    String(item.name || "").normalize("NFC").toUpperCase() === "PENSJONSINNTEKT";
   const isMoBUtbetalingDisplayNavnRow =
     collectionName === "incomes" && isMoBUtbetalingIncomeRow(item);
   const incomeNameKey = collectionName === "incomes" ? normalizeIncomeNameKey(item.name) : "";
@@ -8292,11 +8288,11 @@ function createItemRow(collectionName, item) {
   name.value = item.name || "";
   name.setAttribute("aria-label", `Navn på ${collectionName.slice(0, -1)}`);
   const isNameLocked = collectionName === "assets" && item.noRename;
-  if (isNameLocked || isIncomeStandardReadonly) {
+  if (isMaalOgBehovRow) {
+    name.title = "Beløpet her hentes fra den investeringsporteføljen som er lagt inn i fanen: mål og behov";
+  } else if (isNameLocked || isIncomeStandardReadonly) {
     name.readOnly = true;
-    name.title = isPensionIncomeRow
-      ? "Årlig pensjon i prognose hentes fra Pensjon-fanen når bryteren er på"
-      : isMoBUtbetalingDisplayNavnRow
+    name.title = isMoBUtbetalingDisplayNavnRow
       ? "Visningsnavn for raden Skattefrie inntekter. Logisk rad er uendret i modellen."
       : collectionName === "incomes"
       ? "Standard inntekt: navn kan ikke endres"
@@ -8463,13 +8459,18 @@ function createItemRow(collectionName, item) {
       updateTopSummaries();
     });
     top.appendChild(del);
+  } else if (collectionName === "assets") {
+    const deleteSpacer = document.createElement("span");
+    deleteSpacer.className = "asset-top-delete-spacer";
+    deleteSpacer.setAttribute("aria-hidden", "true");
+    top.appendChild(deleteSpacer);
   }
 
   const amount = document.createElement("div");
   amount.className = "asset-amount";
   amount.textContent = formatNOK(Number(isMaalOgBehovReadOnly ? (item.amount || 0) : 0));
 
-  if (!isMaalOgBehovReadOnly && !isPensionIncomeRow && !isMoBUtbetalingDisplayNavnRow) {
+  if (!isMaalOgBehovReadOnly && !isMoBUtbetalingDisplayNavnRow) {
     range = document.createElement("input");
     range.className = "asset-range";
     range.type = "range";
@@ -8636,74 +8637,13 @@ function createItemRow(collectionName, item) {
     const itemNameUpper = String(item.name || "").toUpperCase();
     const shouldShowToggle = !["LØNNSINNTEKT", "PENSJONSINNTEKT", "UTBYTTER", "SKATTEFRIE INNTEKTER"].includes(itemNameUpper);
 
-    if (isPensionIncomeRow) {
-      row.classList.add("asset-row--pension-toggle-only");
-
-      function syncPensionAmountFromToggle() {
-        if (item._annualPensionEnabled) {
-          const pd = getPensjonForecastData();
-          item.amount = pd ? Math.max(0, Number(pd.annualPension) || 0) : 0;
-        } else {
-          item.amount = 0;
-        }
-      }
-      syncPensionAmountFromToggle();
-
-      const amountWrapper = document.createElement("div");
-      amountWrapper.className = "asset-amount-wrapper income-pension-amount-wrapper";
-
-      const pensionToggleGroup = document.createElement("div");
-      pensionToggleGroup.className = "income-pension-toggle-group";
-
-      const pensionToggleLabel = document.createElement("span");
-      pensionToggleLabel.className =
-        "income-pension-toggle-label income-pension-toggle-label--has-tooltip";
-      pensionToggleLabel.textContent = "Aktivere årlig pensjon i kontanstrøm?";
-      pensionToggleLabel.title =
-        "Ved å aktivere denne, vil Lønnsinntekten bli byttet ut med pensjonsinntekt det året personen går av med pensjon. Dette året definerer du i fanen : Pensjon\n\n" +
-        "Dette vil påvirke kontantstrømmen fra det året pensjon overtar for lønn. Inntektsskatt blir også fra dette tidspunktet satt til 30% på pensjonsinntekt.";
-
-      const toggleSwitch = document.createElement("label");
-      toggleSwitch.className = "asset-toggle-switch";
-      toggleSwitch.setAttribute("aria-label", "Aktivere årlig pensjon");
-
-      const toggleInput = document.createElement("input");
-      toggleInput.type = "checkbox";
-      toggleInput.checked = item._annualPensionEnabled === true; // Default: nei
-
-      const toggleSlider = document.createElement("span");
-      toggleSlider.className = "asset-toggle-slider";
-
-      const pensionToggleState = document.createElement("span");
-      pensionToggleState.className = "income-pension-toggle-state";
-      pensionToggleState.textContent = toggleInput.checked ? "Ja" : "Nei";
-
-      toggleInput.addEventListener("change", () => {
-        item._annualPensionEnabled = toggleInput.checked;
-        pensionToggleState.textContent = toggleInput.checked ? "Ja" : "Nei";
-        syncPensionAmountFromToggle();
-        notifyCashflowRoutingChange("Inntekter");
-        updateAutoTax();
-        updateTopSummaries();
-      });
-
-      toggleSwitch.appendChild(toggleInput);
-      toggleSwitch.appendChild(toggleSlider);
-      pensionToggleGroup.appendChild(pensionToggleLabel);
-      pensionToggleGroup.appendChild(toggleSwitch);
-      pensionToggleGroup.appendChild(pensionToggleState);
-
-      amountWrapper.appendChild(pensionToggleGroup);
-
-      row.appendChild(col);
-      row.appendChild(amountWrapper);
-    } else if (isMoBUtbetalingDisplayNavnRow) {
+    if (isMoBUtbetalingDisplayNavnRow) {
       // Skattefrie inntekter vises som «Utbetalinger fra Mål og behov» – henter netto utbetaling per år fra Mål og behov når på.
       row.classList.add("asset-row--pension-toggle-only");
 
-      // Default skal være "Ja" med mindre bruker eksplisitt har slått den av.
+      // Default skal være "Nei" med mindre bruker eksplisitt har slått den på.
       if (typeof item._maalOgBehovUtbetalingToggleUI !== "boolean") {
-        item._maalOgBehovUtbetalingToggleUI = true;
+        item._maalOgBehovUtbetalingToggleUI = false;
       }
 
       if (item._maalOgBehovUtbetalingToggleUI === true) {
@@ -9305,12 +9245,11 @@ const INCOME_DISPLAY_ORDER = new Map([
   ["LØNNSINNTEKT", 0],
   ["UTBYTTER", 1],
   ["SKATTEFRIE INNTEKTER", 2],
-  ["PENSJONSINNTEKT", 3],
-  ["UTBETALINGER FRA MÅL OG BEHOV", 4],
-  ["INNTEKTSSKATT", 5],
-  ["UTBYTTESKATT", 6],
-  ["FORMUESSKATT", 7],
-  ["ÅRLIGE KOSTNADER", 8]
+  ["UTBETALINGER FRA MÅL OG BEHOV", 3],
+  ["INNTEKTSSKATT", 4],
+  ["UTBYTTESKATT", 5],
+  ["FORMUESSKATT", 6],
+  ["ÅRLIGE KOSTNADER", 7]
 ]);
 
 function reorderIncomesForDisplay() {

@@ -1,0 +1,228 @@
+/* ============================================================================
+   Söderberg & Partners — Wealth Management
+   Foundations: Color + Type + Spacing + Elevation tokens
+   ----------------------------------------------------------------------------
+   Source of truth: "Designsystem.fig" (Foundations / Colors / Typography pages)
+   Product font is Whitney (Hoefler&Co). Whitney is NOT free; this file
+   substitutes Hanken Grotesk from Google Fonts as the closest humanist match.
+   SoderbergSans (italic weights only, uploaded by the client) is wired up as an
+   italic display family — see @font-face block below.
+   ============================================================================ */
+
+/* --- Whitney substitute: Hanken Grotesk (humanist, tall x-height, clean) --- */
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+
+/* --- SoderbergSans (client-supplied; ITALIC weights only) ---
+   Use for italic emphasis / editorial display accents. Upright weights were
+   not supplied — do not rely on this family for body copy. */
+@font-face {
+  font-family: "SoderbergSans";
+  src: url("fonts/SoderbergSans-LightItalic.otf") format("opentype");
+  font-weight: 300; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "SoderbergSans";
+  src: url("fonts/SoderbergSans-RegularItalic.otf") format("opentype");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "SoderbergSans";
+  src: url("fonts/SoderbergSans-MediumItalic.otf") format("opentype");
+  font-weight: 500; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "SoderbergSans";
+  src: url("fonts/SoderbergSans-BoldItalic.otf") format("opentype");
+  font-weight: 700; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "SoderbergSans";
+  src: url("fonts/SoderbergSans-BlackItalic.otf") format("opentype");
+  font-weight: 900; font-style: italic; font-display: swap;
+}
+
+:root {
+  /* ========================================================================
+     COLOR — BRAND
+     ======================================================================== */
+
+  /* Söderberg navy — THE signature brand color (logo, headings, primary text).
+     The single most-used color across the system. */
+  --sp-navy:            #002359;
+  --sp-navy-ink:        #12326E;   /* logo divider / deep accents */
+  --sp-navy-pressed:    #074EB9;   /* deep interactive blue */
+
+  /* Brand primary — Blue scale (actions, links, focus) */
+  --blue-25:   #F9FBFE;
+  --blue-50:   #F3F7FD;
+  --blue-100:  #EEF5FF;
+  --blue-200:  #E6EFFB;
+  --blue-300:  #B5CFF5;
+  --blue-400:  #99BEF5;
+  --blue-500:  #84AEED;
+  --blue-600:  #6096E8;
+  --blue-700:  #3B7EE3;
+  --blue-800:  #0A5EDC;   /* MAIN — primary action */
+  --blue-main: #0A5EDC;
+
+  /* Secondary — Navy-gray scale (supporting surfaces, muted brand) */
+  --secondary-25:  #F6F7F9;
+  --secondary-50:  #F2F4F7;
+  --secondary-100: #ECEFF3;
+  --secondary-200: #E5E9EE;
+  --secondary-300: #CCD3DE;
+  --secondary-400: #A0AEC4;
+  --secondary-500: #8091AC;
+  --secondary-600: #597093;
+  --secondary-700: #405A82;
+  --secondary-800: #264472;
+
+  /* ========================================================================
+     COLOR — NEUTRALS (gray ramp)
+     ======================================================================== */
+  --gray-25:   #FCFCFD;
+  --gray-50:   #F9FAFB;
+  --gray-100:  #F2F4F7;
+  --gray-200:  #EAECF0;
+  --gray-300:  #D0D5DD;
+  --gray-400:  #98A2B3;
+  --gray-500:  #667085;
+  --gray-600:  #475467;
+  --gray-700:  #344054;
+  --gray-800:  #1D2939;
+  --gray-900:  #101828;
+  --white:     #FFFFFF;
+  --black:     #161616;
+
+  /* ========================================================================
+     COLOR — SEMANTIC
+     ======================================================================== */
+  --error-bg:      #FEF3F2;
+  --error-bg-soft: #FFFBFA;
+  --error-border:  #FDA29B;
+  --error-500:     #F04438;
+  --error-600:     #D92D20;
+  --error-700:     #B42318;   /* destructive action / error text */
+
+  --warning-bg:    #FFFAEB;
+  --warning-bg-soft:#FFFCF5;
+  --warning-border:#FEC84B;
+  --warning-500:   #F79009;
+  --warning-600:   #DC6803;
+  --warning-700:   #B54708;
+
+  --success-bg:    #ECFDF3;
+  --success-bg-soft:#F6FEF9;
+  --success-border:#A6F4C5;
+  --success-500:   #12B76A;
+  --success-600:   #079455;
+  --success-700:   #067647;
+
+  /* Data-visualization accents */
+  --chart-blue:    #0A5EDC;
+  --chart-violet:  #9747FF;   /* investments line */
+  --chart-navy:    #002359;
+  --chart-positive:#079455;
+  --chart-negative:#D92D20;
+  --chart-grid:    #EAECF0;
+
+  /* ========================================================================
+     SEMANTIC ROLES (foreground / background / border)
+     ======================================================================== */
+  --fg:            var(--sp-navy);     /* default heading/ink */
+  --fg-strong:     var(--gray-900);
+  --fg-muted:      var(--gray-600);
+  --fg-subtle:     var(--gray-500);
+  --fg-on-brand:   var(--white);
+  --fg-link:       var(--blue-main);
+
+  --bg:            var(--white);
+  --bg-subtle:     var(--gray-50);     /* app canvas */
+  --bg-muted:      var(--gray-100);
+  --bg-brand-soft: var(--blue-100);    /* active nav, soft chips */
+
+  --border:        var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-brand:  var(--blue-main);
+  --ring:          rgba(10,94,220,0.24);   /* focus ring */
+
+  /* ========================================================================
+     TYPOGRAPHY
+     ======================================================================== */
+  --font-sans:    "Hanken Grotesk", "Whitney", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Hanken Grotesk", "Whitney", system-ui, sans-serif;
+  --font-italic:  "SoderbergSans", "Hanken Grotesk", sans-serif; /* editorial italic accents */
+
+  /* Weights (Whitney: Book/Medium/Semibold/Bold) */
+  --fw-book:     400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  /* Type scale — size / line-height / tracking (from Typography page) */
+  --display-xl-size: 60px;  --display-xl-lh: 72px;  --display-xl-track: -0.02em;
+  --display-lg-size: 48px;  --display-lg-lh: 60px;  --display-lg-track: -0.02em;
+  --display-md-size: 36px;  --display-md-lh: 44px;  --display-md-track: -0.02em;
+  --display-sm-size: 30px;  --display-sm-lh: 38px;  --display-sm-track: 0;
+  --display-xs-size: 24px;  --display-xs-lh: 32px;  --display-xs-track: 0;
+  --text-xl-size: 20px;     --text-xl-lh: 30px;
+  --text-lg-size: 18px;     --text-lg-lh: 28px;
+  --text-md-size: 16px;     --text-md-lh: 24px;
+  --text-sm-size: 14px;     --text-sm-lh: 20px;
+  --text-xs-size: 12px;     --text-xs-lh: 18px;
+
+  /* ========================================================================
+     SPACING (4px base grid)
+     ======================================================================== */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* ========================================================================
+     RADIUS
+     ======================================================================== */
+  --radius-xs:   4px;
+  --radius-sm:   5px;   /* button-group container */
+  --radius-md:   8px;   /* buttons, inputs */
+  --radius-lg:   12px;  /* cards */
+  --radius-xl:   16px;
+  --radius-2xl:  24px;  /* app main container (top-left) */
+  --radius-pill: 100px; /* icon buttons, badges, avatars */
+
+  /* ========================================================================
+     ELEVATION (Untitled-UI style soft shadows)
+     ======================================================================== */
+  --shadow-xs: 0 1px 2px rgba(16,24,40,0.05);
+  --shadow-sm: 0 1px 3px rgba(16,24,40,0.10), 0 1px 2px rgba(16,24,40,0.06);
+  --shadow-md: 0 4px 8px -2px rgba(16,24,40,0.10), 0 2px 4px -2px rgba(16,24,40,0.06);
+  --shadow-lg: 0 12px 16px -4px rgba(16,24,40,0.08), 0 4px 6px -2px rgba(16,24,40,0.03);
+  --shadow-xl: 0 20px 24px -4px rgba(16,24,40,0.08), 0 8px 8px -4px rgba(16,24,40,0.03);
+}
+
+/* ============================================================================
+   SEMANTIC TYPE CLASSES  (apply directly, or copy the rules)
+   ============================================================================ */
+.sp-display-xl { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--display-xl-size); line-height: var(--display-xl-lh); letter-spacing: var(--display-xl-track); color: var(--fg); }
+.sp-display-lg { font-family: var(--font-display); font-weight: var(--fw-medium);   font-size: var(--display-lg-size); line-height: var(--display-lg-lh); letter-spacing: var(--display-lg-track); color: var(--fg); }
+.sp-display-md { font-family: var(--font-display); font-weight: var(--fw-medium);   font-size: var(--display-md-size); line-height: var(--display-md-lh); letter-spacing: var(--display-md-track); color: var(--fg); }
+.sp-display-sm { font-family: var(--font-display); font-weight: var(--fw-medium);   font-size: var(--display-sm-size); line-height: var(--display-sm-lh); color: var(--fg); }
+.sp-display-xs { font-family: var(--font-display); font-weight: var(--fw-medium);   font-size: var(--display-xs-size); line-height: var(--display-xs-lh); color: var(--fg); }
+
+.sp-text-xl  { font-family: var(--font-sans); font-size: var(--text-xl-size); line-height: var(--text-xl-lh); }
+.sp-text-lg  { font-family: var(--font-sans); font-size: var(--text-lg-size); line-height: var(--text-lg-lh); }
+.sp-text-md  { font-family: var(--font-sans); font-size: var(--text-md-size); line-height: var(--text-md-lh); }
+.sp-text-sm  { font-family: var(--font-sans); font-size: var(--text-sm-size); line-height: var(--text-sm-lh); }
+.sp-text-xs  { font-family: var(--font-sans); font-size: var(--text-xs-size); line-height: var(--text-xs-lh); }
+
+.sp-w-book { font-weight: var(--fw-book); }
+.sp-w-medium { font-weight: var(--fw-medium); }
+.sp-w-semibold { font-weight: var(--fw-semibold); }
+.sp-w-bold { font-weight: var(--fw-bold); }

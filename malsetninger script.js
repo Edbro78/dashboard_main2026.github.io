@@ -206,23 +206,37 @@ function parseMalsetningerExportLines(raw) {
   return data;
 }
 
+const GOAL_IMPORTANCE_CLASS = {
+  0: 'mbh-goal-idle',
+  1: 'mbh-goal-i1',
+  2: 'mbh-goal-i2',
+  3: 'mbh-goal-i3',
+};
+
+const PRODUCT_TIER_CLASS = {
+  0: 'mbh-tier-0',
+  1: 'mbh-tier-1',
+  2: 'mbh-tier-2',
+  3: 'mbh-tier-3',
+};
+
 const SectionLabel = ({ children, light = false, className = '' }) => (
-  <span className={`block text-[11px] font-medium tracking-[0.1em] uppercase mb-3 ${light ? 'text-[oklch(0.85_0.08_235.3)]' : 'text-[oklch(0.29_0.12_274.6)]'} ${className}`}>
+  <span className={`mbh-section-label ${light ? 'mbh-section-label--light' : ''} ${className}`}>
     {children}
   </span>
 );
 
 const Card = ({ children, className = '' }) => (
-  <div className={`bg-white border border-[oklch(0.96_0.00_0.0)] p-10 shadow-sm transition-all duration-300 hover:shadow-md ${className}`}>
+  <div className={`mbh-card ${className}`}>
     {children}
   </div>
 );
 
 const LevelIndicator = ({ label, value, onChange }) => (
-  <div className="flex flex-col space-y-[0.41826375rem]">
+  <div className="flex flex-col space-y-[0.376437375rem]">
     <div className="flex justify-between items-center">
       <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">{label}</span>
-      <span className="text-[11px] font-medium text-[oklch(0.29_0.12_274.6)] uppercase tracking-[0.1em]">{`Nivå ${value} / 5`}</span>
+      <span className="mbh-level-nivaa">{`Nivå ${value} / 5`}</span>
     </div>
     <div className="flex gap-1.5">
       {[1, 2, 3, 4, 5].map((level) => (
@@ -230,11 +244,9 @@ const LevelIndicator = ({ label, value, onChange }) => (
           key={level}
           type="button"
           onClick={() => onChange(level)}
-          className={`h-2 flex-1 transition-all duration-200 ${
-            value >= level
-              ? 'bg-[oklch(0.29_0.12_274.6)]'
-              : 'bg-[oklch(0.96_0.00_0.0)]'
-          } hover:ring-1 hover:ring-[oklch(0.29_0.12_274.6)]`}
+          className={`h-[7.2px] flex-1 transition-all duration-200 mbh-level-btn ${
+            value >= level ? 'mbh-level-active' : 'mbh-level-inactive'
+          }`}
           aria-label={`Sett nivå til ${level}`}
         />
       ))}
@@ -252,23 +264,23 @@ function computeExperienceLevel({ type, volume, period }) {
 }
 
 const ExperienceRow = ({ title, data, updateFn }) => (
-  <div className="space-y-[0.8365275rem] pt-[0.8365275rem] first:pt-0 border-t first:border-none border-[oklch(0.96_0.00_0.0)]">
+  <div className="space-y-[0.75287475rem] pt-[0.75287475rem] first:pt-0 border-t first:border-none mbh-divider">
     <div className="flex justify-between items-center">
-      <h4 className="text-sm font-bold uppercase tracking-tight text-[oklch(0.24_0.08_273.1)]">{title}</h4>
+      <h4 className="text-sm font-bold uppercase tracking-tight mbh-subheading">{title}</h4>
       <div className="flex gap-1">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className={`w-3.5 h-1.5 ${computeExperienceLevel(data) >= i ? 'bg-[oklch(0.29_0.12_274.6)]' : 'bg-[oklch(0.96_0.00_0.0)]'}`} />
+          <div key={i} className={`w-3.5 h-[5.4px] ${computeExperienceLevel(data) >= i ? 'mbh-exp-bar-active' : 'mbh-exp-bar-inactive'}`} />
         ))}
       </div>
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-[0.8365275rem]">
-      <div className="space-y-[0.2788425rem]">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-[0.75287475rem]">
+      <div className="space-y-[0.25095825rem]">
         <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <Layers size={10} /> Transaksjonstype
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="mbh-select"
           value={data.type}
           onChange={(e) => updateFn('type', e.target.value)}
         >
@@ -279,12 +291,12 @@ const ExperienceRow = ({ title, data, updateFn }) => (
         </select>
       </div>
 
-      <div className="space-y-[0.2788425rem]">
+      <div className="space-y-[0.25095825rem]">
         <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <Activity size={10} /> Volum & Frekvens
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="mbh-select"
           value={data.volume}
           onChange={(e) => updateFn('volume', e.target.value)}
         >
@@ -293,12 +305,12 @@ const ExperienceRow = ({ title, data, updateFn }) => (
           <option value="hoy">Høy (Ukentlig+)</option>
         </select>
       </div>
-      <div className="space-y-[0.2788425rem]">
+      <div className="space-y-[0.25095825rem]">
         <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <History size={10} /> Tidsperiode
         </label>
         <select
-          className="w-full bg-[oklch(0.96_0.00_0.0)] p-[0.30491427375rem] text-[12.1px] font-normal outline-none border-none focus:ring-1 focus:ring-[oklch(0.29_0.12_274.6)] text-[oklch(0.27_0.00_0.0)]"
+          className="mbh-select"
           value={data.period}
           onChange={(e) => updateFn('period', e.target.value)}
         >
@@ -557,29 +569,25 @@ function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[oklch(0.92_0.05_234.1)] font-sans text-[oklch(0.27_0.00_0.0)]">
+    <div className="malsetninger-app font-sans">
 
       <main className="max-w-[88rem] mx-auto pt-3 md:pt-5 pb-6 md:pb-10 px-[1.35rem] md:px-[2.25rem] space-y-3">
 
-        <Card className="!px-[1.25479125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
-          <h3 className="text-lg font-bold tracking-tight text-[oklch(0.24_0.08_273.1)] mb-[0.376437375rem]">
+        <Card className="!px-[1.129312125rem] !pb-[1.129312125rem] !pt-[0.5646560625rem]">
+          <h3 className="text-lg font-bold tracking-tight mbh-heading mb-[0.3387936375rem]">
             {'Målsetninger'}
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-[0.5019165rem] mt-[0.75287475rem]">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-[0.45172485rem] mt-[0.677587275rem]">
             {goalOptions.map((goal) => {
               const importance = selectedGoals[goal.id] || 0;
 
-              const style =
-                importance === 1 ? 'bg-[oklch(0.85_0.08_235.3)] text-[oklch(0.24_0.08_273.1)] border-[oklch(0.85_0.08_235.3)] shadow-lg' :
-                  importance === 2 ? 'bg-[oklch(0.29_0.12_274.6)] text-white border-[oklch(0.29_0.12_274.6)] shadow-xl' :
-                    importance === 3 ? 'bg-[oklch(0.24_0.08_273.1)] text-white border-[oklch(0.24_0.08_273.1)] shadow-2xl' :
-                      'bg-white border-[#CECCCC] text-[oklch(0.27_0.00_0.0)] opacity-60 shadow-lg hover:shadow-xl';
+              const style = GOAL_IMPORTANCE_CLASS[importance] || GOAL_IMPORTANCE_CLASS[0];
               return (
                 <button
                   key={goal.id}
                   type="button"
                   onClick={() => cycleGoalImportance(goal.id)}
-                  className={`flex flex-col items-center justify-center p-[0.6022998rem] border transition-all duration-300 gap-[0.3011499rem] min-h-[56.214648px] ${style}`}
+                  className={`flex flex-col items-center justify-center p-[0.54206982rem] border transition-all duration-200 gap-[0.27103491rem] min-h-[50.5931832px] rounded-md ${style}`}
                 >
                   <div className="transition-transform group-hover:scale-110">
                     {goal.icon}
@@ -597,41 +605,37 @@ function App() {
             })}
           </div>
         </Card>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.6885rem]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.61965rem]">
 
-          <Card className="!px-[1.72125rem] !pb-[1.3942125rem] !pt-[0.69710625rem]">
-            <div className="mb-[1.11537rem] border-b border-[oklch(0.96_0.00_0.0)] pb-[0.557685rem]">
-              <h3 className="text-lg font-bold tracking-tight text-[oklch(0.24_0.08_273.1)]">Erfaring</h3>
+          <Card className="!px-[1.549125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
+            <div className="mb-[1.003833rem] border-b mbh-divider pb-[0.5019165rem]">
+              <h3 className="text-lg font-bold tracking-tight mbh-heading">Erfaring</h3>
             </div>
-            <div className="space-y-[1.3942125rem]">
+            <div className="space-y-[1.25479125rem]">
               <ExperienceRow title="Aksjer" data={experience.aksjer} updateFn={(f, v) => updateExperience('aksjer', f, v)} />
               <ExperienceRow title="Renter" data={experience.renter} updateFn={(f, v) => updateExperience('renter', f, v)} />
               <ExperienceRow title="Alternative investeringer" data={experience.alternativt} updateFn={(f, v) => updateExperience('alternativt', f, v)} />
             </div>
           </Card>
-          <div className="space-y-[0.6885rem]">
-            <Card className="!px-[1.72125rem] !pb-[1.3942125rem] !pt-[0.69710625rem]">
-              <div className="mb-[1.11537rem] border-b border-[oklch(0.96_0.00_0.0)] pb-[0.557685rem]">
-                <h3 className="text-lg font-bold tracking-tight text-[oklch(0.24_0.08_273.1)]">Kunnskap</h3>
+          <div className="space-y-[0.61965rem]">
+            <Card className="!px-[1.549125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
+              <div className="mb-[1.003833rem] border-b mbh-divider pb-[0.5019165rem]">
+                <h3 className="text-lg font-bold tracking-tight mbh-heading">Kunnskap</h3>
               </div>
-              <div className="space-y-[1.3942125rem]">
-                <div className="space-y-[0.41826375rem]">
+              <div className="space-y-[1.25479125rem]">
+                <div className="space-y-[0.376437375rem]">
                   <span className="text-[12.1px] font-medium uppercase tracking-[0.1em] opacity-70">{'Type Produkter (Trykk for kunnskapsnivå)'}</span>
-                  <div className="grid grid-cols-3 gap-[0.34425rem]">
+                  <div className="grid grid-cols-3 gap-[0.309825rem]">
                     {['aksjer', 'renter', 'alternativt'].map((prod) => {
                       const level = knowledge.produkter[prod];
-                      const tierStyle =
-                        level === 1 ? 'bg-[oklch(0.92_0.05_234.1)] text-[oklch(0.29_0.12_274.6)] border-[oklch(0.85_0.08_235.3)] shadow-lg' :
-                          level === 2 ? 'bg-[oklch(0.85_0.08_235.3)] text-[oklch(0.24_0.08_273.1)] border-[oklch(0.55_0.10_250)] shadow-xl' :
-                            level === 3 ? 'bg-[oklch(0.29_0.12_274.6)] text-white border-[oklch(0.24_0.08_273.1)] shadow-2xl' :
-                              'bg-white border-[#CECCCC] text-[oklch(0.27_0.00_0.0)] opacity-60 shadow-lg hover:shadow-xl';
+                      const tierStyle = PRODUCT_TIER_CLASS[level] || PRODUCT_TIER_CLASS[0];
 
                       return (
                         <button
                           key={prod}
                           type="button"
                           onClick={() => cycleProductKnowledge(prod)}
-                          className={`py-[0.557685rem] px-[0.34425rem] text-[11px] font-bold uppercase tracking-[0.1em] border transition-all duration-300 ${tierStyle}`}
+                          className={`py-[0.5019165rem] px-[0.309825rem] text-[11px] font-bold uppercase tracking-[0.1em] border transition-all duration-200 rounded-md ${tierStyle}`}
                         >
                           {prod === 'alternativt' ? 'Alternative' : prod}
                         </button>
@@ -651,11 +655,11 @@ function App() {
                 />
               </div>
             </Card>
-            <Card className="!px-[1.72125rem] !pb-[1.3942125rem] !pt-[0.69710625rem]">
-              <div className="mb-[1.11537rem] border-b border-[oklch(0.96_0.00_0.0)] pb-[0.557685rem]">
-                <h3 className="text-lg font-bold tracking-tight text-[oklch(0.24_0.08_273.1)]">Utdanning</h3>
+            <Card className="!px-[1.549125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
+              <div className="mb-[1.003833rem] border-b mbh-divider pb-[0.5019165rem]">
+                <h3 className="text-lg font-bold tracking-tight mbh-heading">Utdanning</h3>
               </div>
-              <div className="grid grid-cols-1 gap-[0.30491427375rem]">
+              <div className="grid grid-cols-1 gap-[0.274422846375rem]">
                 {[
                   { id: 'ingen', label: 'Ikke relevant utdanning' },
                   { id: 'relevant', label: 'Relevant utdanning (Finans/Øk.)' },
@@ -665,36 +669,36 @@ function App() {
                     key={edu.id}
                     type="button"
                     onClick={() => setEducationLevel(edu.id)}
-                    className={`p-[0.406552365rem] text-left border flex justify-between items-center transition-all ${
-                      educationLevel === edu.id ? 'bg-[oklch(0.24_0.08_273.1)] border-[oklch(0.24_0.08_273.1)] text-white' : 'bg-white border-[#CECCCC] text-[oklch(0.27_0.00_0.0)]'
+                    className={`p-[0.3658971285rem] text-left border flex justify-between items-center transition-all rounded-md ${
+                      educationLevel === edu.id ? 'mbh-edu-active' : 'mbh-edu-inactive'
                     }`}
                   >
                     <span className="text-[11px] font-bold uppercase tracking-[0.1em]">{edu.label}</span>
-                    {educationLevel === edu.id && <CheckCircle2 size={14} className="text-[oklch(0.85_0.08_235.3)]" />}
+                    {educationLevel === edu.id && <CheckCircle2 size={14} className="mbh-edu-check" />}
                   </button>
                 ))}
               </div>
             </Card>
           </div>
         </div>
-        <div className="bg-[oklch(0.24_0.08_273.1)] text-white shadow-2xl relative overflow-hidden">
-          <div className="py-[0.69950921625rem] md:py-[0.9795737025rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[0.86093442rem]">
+        <div className="mbh-summary-panel">
+          <div className="py-[0.629558294625rem] md:py-[0.88161633225rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[0.774840978rem]">
 
-            <div className="lg:col-span-4 flex flex-col gap-[0.492075rem] lg:self-start">
+            <div className="lg:col-span-4 flex flex-col gap-[0.4428675rem] lg:self-start">
               <SectionLabel light className="!mb-0 leading-tight">{'Målsetninger'}</SectionLabel>
-              <div className="flex flex-col gap-[0.215233605rem]">
+              <div className="flex flex-col gap-[0.1937102445rem]">
                 {totals.sortedGoals.map((goal, i) => (
-                  <div key={i} className={`px-4 py-[0.3228504075rem] border flex items-baseline justify-between gap-3 transition-all ${
-                    goal.importance === 3 ? 'bg-white/15 border-white/20' :
-                      goal.importance === 2 ? 'bg-white/10 border-white/10' :
-                        'bg-white/5 border-white/5 opacity-70'
+                  <div key={i} className={`px-4 py-[0.29056536675rem] border flex items-baseline justify-between gap-3 transition-all rounded-sm ${
+                    goal.importance === 3 ? 'mbh-summary-goal-high' :
+                      goal.importance === 2 ? 'mbh-summary-goal-mid' :
+                        'mbh-summary-goal-low'
                   }`}
                   >
                     <div className="flex items-baseline gap-2 min-w-0">
                       <span className={`mt-[0.35em] shrink-0 w-1.5 h-1.5 rounded-full inline-block ${
-                        goal.importance === 3 ? 'bg-[oklch(0.85_0.08_235.3)]' :
-                          goal.importance === 2 ? 'bg-white/60' :
-                            'bg-white/30'
+                        goal.importance === 3 ? 'mbh-summary-dot-high' :
+                          goal.importance === 2 ? 'mbh-summary-dot-mid' :
+                            'mbh-summary-dot-low'
                       }`}
                       />
                       <span className="text-[11px] font-bold uppercase tracking-[0.1em] leading-none">
@@ -709,21 +713,21 @@ function App() {
                 {totals.sortedGoals.length === 0 && <span className="text-[11px] font-normal opacity-30 italic">{'Ingen mål valgt'}</span>}
               </div>
             </div>
-            <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x border-white/5 py-[0.69950921625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.492075rem] justify-start lg:self-start">
+            <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x mbh-summary-mid-col py-[0.629558294625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.4428675rem] justify-start lg:self-start">
               <div className="grid grid-cols-2 gap-x-[1.9683rem]">
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Erfaring</SectionLabel>
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Kunnskap</SectionLabel>
               </div>
-              <div className="grid grid-cols-2 gap-x-[1.9683rem] gap-y-[0.13122rem]">
-                <div className="min-h-[1.0253124018rem] flex items-end">
+              <div className="grid grid-cols-2 gap-x-[1.9683rem] gap-y-[0.118098rem]">
+                <div className="min-h-[0.92278116162rem] flex items-end">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[1.476225rem] leading-none font-black text-white">{totals.expScore}</span>
+                    <span className="text-[1.3286025rem] leading-none font-black text-white">{totals.expScore}</span>
                     <span className="text-[11px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
                   </div>
                 </div>
-                <div className="min-h-[1.0253124018rem] flex items-end">
+                <div className="min-h-[0.92278116162rem] flex items-end">
                   <div className="flex items-baseline gap-1">
-                    <span className="text-[1.476225rem] leading-none font-black text-white">{totals.knwScore}</span>
+                    <span className="text-[1.3286025rem] leading-none font-black text-white">{totals.knwScore}</span>
                     <span className="text-[11px] font-medium opacity-30 uppercase tracking-[0.1em] leading-none">/ 5.0</span>
                   </div>
                 </div>
@@ -735,11 +739,11 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="lg:col-span-3 flex flex-col justify-start items-center text-center bg-white/5 px-[1.3122rem] pb-[0.86093442rem] pt-0 border border-white/5 lg:self-start w-full">
+            <div className="lg:col-span-3 flex flex-col justify-start items-center text-center mbh-summary-score-box px-[1.3122rem] pb-[0.774840978rem] pt-0 rounded-md lg:self-start w-full">
               <SectionLabel light className="!mb-0 leading-tight w-full">Samlet Score</SectionLabel>
-              <div className="relative inline-flex items-center justify-center mt-[0.492075rem]">
-                <svg className="w-[4.476858984rem] h-[4.476858984rem] transform -rotate-90" viewBox="0 0 128 128" aria-hidden="true">
-                  <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-white/5" />
+              <div className="relative inline-flex items-center justify-center mt-[0.4428675rem]">
+                <svg className="w-[4.0291730856rem] h-[4.0291730856rem] transform -rotate-90" viewBox="0 0 128 128" aria-hidden="true">
+                  <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="4" fill="transparent" className="mbh-score-ring-track" />
                   <circle
                     cx="64"
                     cy="64"
@@ -749,18 +753,17 @@ function App() {
                     fill="transparent"
                     strokeDasharray={2 * Math.PI * 58}
                     strokeDashoffset={2 * Math.PI * 58 * (1 - totals.total / 10)}
-                    className="text-[oklch(0.85_0.08_235.3)] transition-all duration-1000"
+                    className="mbh-score-ring-fill transition-all duration-1000"
                   />
                 </svg>
-                <span className="absolute text-[1.59924375rem] font-black text-white">{totals.total}</span>
+                <span className="absolute text-[1.439319375rem] font-black text-white">{totals.total}</span>
               </div>
-              <div className="mt-[0.645700815rem] flex items-center gap-2 opacity-30">
+              <div className="mt-[0.5811307335rem] flex items-center gap-2 opacity-30">
                 <ClipboardCheck size={12} />
                 <span className="text-[8.8px] font-medium uppercase tracking-[0.1em]">Objektiv Profilering</span>
               </div>
             </div>
           </div>
-          <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/[0.02] to-transparent pointer-events-none" />
         </div>
       </main>
     </div>

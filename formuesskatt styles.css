@@ -1,15 +1,15 @@
 
-/* --- Generelle Stiler (Mål og behov-design) --- */
+/* --- Generelle stiler — SPWM wealth portal --- */
 html {
     margin: 0;
 }
 body {
     margin: 0;
-    font-family: 'Whitney', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    font-weight: 400;
+    font-family: var(--font-sans);
+    font-weight: var(--fw-book);
     line-height: 1.5;
-    background-color: #F5F3F3;
-    color: #333333;
+    background-color: var(--gray-50);
+    color: var(--gray-700);
 }
 
 /* --- Sidenavigasjon --- */
@@ -21,33 +21,30 @@ body {
     display: block;
 }
 
-/* --- CSS Variabler: S&P Wealth Management --- */
+/* Legacy aliases → SPWM tokens */
 :root {
-    --sp-background: #F5F3F3;
-    --sp-foreground: #333333;
-    --sp-dark-blue: #002359;
-    --sp-blue: #002D72;
-    --sp-cyan-40: #99D9F2;
-    --sp-cyan-20: #CCECF9;
-    --sp-border: #CECCCC;
-    --accent-teal: #99D9F2;
-    --accent-blue-light: #002D72;
-    --primary-btn: #002D72;
-    --primary-btn-hover: #002359;
-    --active-tab-start: #002D72;
-    --active-tab-end: #002359;
-    --text-primary: #333333;
-    --text-secondary: rgba(51, 51, 51, 0.8);
-    --text-muted: #666666;
-    --text-tabs: #4a5568;
-    --bg-white: #ffffff;
-    --bg-light: #f9f9f9;
-    --bg-page: #F5F3F3;
-    --border-color: #CECCCC;
+    --sp-background: var(--gray-50);
+    --sp-foreground: var(--gray-700);
+    --sp-dark-blue: var(--sp-navy);
+    --sp-blue: var(--blue-main);
+    --sp-cyan-40: var(--blue-400);
+    --sp-cyan-20: var(--blue-100);
+    --sp-border: var(--gray-200);
+    --accent-teal: var(--blue-main);
+    --accent-blue-light: var(--blue-main);
+    --primary-btn: var(--blue-main);
+    --primary-btn-hover: var(--sp-navy-pressed);
+    --text-primary: var(--gray-700);
+    --text-secondary: var(--gray-600);
+    --text-muted: var(--gray-500);
+    --text-tabs: var(--gray-600);
+    --bg-white: var(--white);
+    --bg-light: var(--gray-50);
+    --bg-page: var(--gray-50);
+    --border-color: var(--gray-200);
     --heading-scale: 0.42;
-    --panel-shadow: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
-    --panel-shadow-hover: 0 2px 16px rgba(0,0,0,0.08), 0 6px 32px rgba(0,0,0,0.06);
-    --tab-active-shadow: 0 -2px 0 0 #002359, 0 4px 20px -4px rgba(0, 45, 114, 0.45), 0 8px 32px -8px rgba(0, 35, 89, 0.25), inset 0 1px 0 rgba(255,255,255,0.2);
+    --panel-shadow: var(--shadow-sm);
+    --panel-shadow-hover: var(--shadow-sm);
 }
 
 /* --- Dashboard Spesifikke Stiler --- */
@@ -104,8 +101,8 @@ input[type="text"].asset-input {
 }
 input[type="text"].asset-input:focus {
     outline: none;
-    border-color: var(--sp-cyan-40);
-    box-shadow: 0 0 0 2px rgba(153, 217, 242, 0.35);
+    border-color: var(--blue-main);
+    box-shadow: 0 0 0 3px var(--ring);
 }
 input[type="text"].asset-input::placeholder {
     color: var(--text-muted);
@@ -129,21 +126,21 @@ input[type="range"]::-webkit-slider-thumb {
     appearance: none;
     width: 20px;
     height: 20px;
-    background: var(--sp-cyan-40);
+    background: var(--blue-main);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
     margin-top: -6px;
-    box-shadow: var(--panel-shadow);
+    box-shadow: var(--shadow-xs);
 }
 input[type="range"]::-moz-range-thumb {
     width: 20px;
     height: 20px;
-    background: var(--sp-cyan-40);
+    background: var(--blue-main);
     cursor: pointer;
     border-radius: 50%;
     border: 2px solid white;
-    box-shadow: var(--panel-shadow);
+    box-shadow: var(--shadow-xs);
 }
 
 /* Side 2 Tabellstiler (event-rader: bg #f9f9f9, kant #DDDDDD, border-radius 8px) */
@@ -332,19 +329,19 @@ header.text-center.mb-1.relative {
 }
 /* Overskrifter: Tekst #333333 (hoved) iflg design-prompt */
 .formuesskatt-title {
-    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif;
-    font-weight: 900;
+    font-family: var(--font-display);
+    font-weight: var(--fw-semibold);
     font-size: clamp(calc(3rem * var(--heading-scale)), calc(6vw * var(--heading-scale)), calc(6.8rem * var(--heading-scale)));
     line-height: 1.1;
     letter-spacing: 0;
-    color: #002D72;
+    color: var(--sp-navy);
     margin-bottom: 0.43rem !important;
 }
 .formuesskatt-dashboard .heading-m,
 .formuesskatt-dashboard .heading-s,
 .formuesskatt-panel .heading-m,
 .formuesskatt-panel .heading-s {
-    color: #333333 !important;
+    color: var(--sp-navy) !important;
 }
 .formuesskatt-grid {
     gap: 24px !important;
@@ -378,7 +375,7 @@ header.text-center.mb-1.relative {
 .formuesskatt-panel {
     background-color: var(--bg-white) !important;
     border: 1px solid var(--border-color) !important;
-    border-radius: 12px !important;
+    border-radius: var(--radius-lg) !important;
     padding: 24px !important;
     box-shadow: var(--panel-shadow);
 }
@@ -386,14 +383,14 @@ header.text-center.mb-1.relative {
     padding-bottom: 0.78rem !important;
     margin-bottom: 0.78rem !important;
     border-color: var(--border-color) !important;
-    color: #333333 !important;
+    color: var(--sp-navy) !important;
 }
 .formuesskatt-h3 {
     padding-bottom: 0.78rem !important;
     margin-top: 0.78rem !important;
     margin-bottom: 0.65rem !important;
     border-color: var(--border-color) !important;
-    color: #333333 !important;
+    color: var(--sp-navy) !important;
 }
 /* Samme avstand mellom felt som Pensjonsgapet (0.65rem mellom slidere) */
 .formuesskatt-input-group > * + * {
@@ -427,21 +424,21 @@ header.text-center.mb-1.relative {
     text-align: center !important;
 }
 .formuesskatt-summary .output-value {
-    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
-    font-weight: 900 !important;
+    font-family: var(--font-display) !important;
+    font-weight: var(--fw-semibold) !important;
     font-size: 2rem !important;
-    color: #99D9F2 !important;
-    background-color: #002359 !important;
+    color: var(--white) !important;
+    background-color: var(--sp-navy) !important;
     padding: 16px 24px !important;
-    border-radius: 8px !important;
+    border-radius: var(--radius-md) !important;
     line-height: 1.2 !important;
     margin-bottom: 0.5rem !important;
 }
 .formuesskatt-summary .output-label {
-    font-family: 'Whitney', system-ui, Segoe UI, Arial, sans-serif !important;
-    font-weight: 700 !important;
+    font-family: var(--font-sans) !important;
+    font-weight: var(--fw-semibold) !important;
     font-size: 1rem !important;
-    color: #333333 !important;
+    color: var(--gray-700) !important;
     letter-spacing: 0.02em !important;
     margin-top: 0 !important;
 }
@@ -535,17 +532,19 @@ header.text-center.mb-1.relative {
 .formuesskatt-input-group > .formuesskatt-field .label-ui {
     font-size: inherit;
 }
-/* Primær knapp: S&P Blue, Cyan 40 tekst */
 .formuesskatt-panel .person-btn {
-    background-color: var(--primary-btn) !important;
-    color: #99D9F2 !important;
-    border: none !important;
-    box-shadow: var(--panel-shadow);
-    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
+    border-radius: var(--radius-md) !important;
+    box-shadow: none;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .formuesskatt-panel .person-btn:hover {
-    background-color: var(--primary-btn-hover) !important;
-    transform: translateY(-2px);
+    transform: none;
+}
+/* Primær knapp — kun for enkeltstående primærhandlinger */
+.formuesskatt-panel .person-btn.person-btn--primary {
+    background-color: var(--primary-btn) !important;
+    color: var(--white) !important;
+    border: none !important;
 }
 /* Hent fra T-konto: default hvit, ved trykk (tkonto-active) grønn, toggle av/på */
 #hent-fra-tkonto-btn {
@@ -556,29 +555,32 @@ header.text-center.mb-1.relative {
     transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s, border-color 0.2s;
 }
 #hent-fra-tkonto-btn:hover {
-    border-color: var(--text-muted) !important;
-    transform: translateY(-2px);
+    border-color: var(--gray-400) !important;
+    transform: none;
 }
 #hent-fra-tkonto-btn.tkonto-active {
-    background-color: #16a34a !important;
-    color: white !important;
+    background-color: var(--success-600) !important;
+    color: var(--white) !important;
     border: none !important;
-    box-shadow: 0 4px 20px -4px rgba(22, 163, 74, 0.45);
+    box-shadow: var(--shadow-xs);
 }
 #hent-fra-tkonto-btn.tkonto-active:hover {
-    background-color: #15803d !important;
+    background-color: var(--success-700) !important;
 }
-/* Sekundær/valg person-knapper: uvalgt hvit, valgt primær blå */
-.formuesskatt-panel .person-btn.bg-slate-700 {
+/* Person-knapper: uvalgt hvit, valgt blue-100 */
+.formuesskatt-panel .person-btn.bg-slate-700,
+.formuesskatt-panel .person-btn:not(.bg-blue-600) {
     background-color: var(--bg-white) !important;
     color: var(--text-primary) !important;
     border: 1px solid var(--border-color) !important;
+    box-shadow: none;
 }
 .formuesskatt-panel .person-btn.bg-blue-600 {
-    background-color: var(--primary-btn) !important;
-    color: #99D9F2 !important;
-    border: none !important;
-    box-shadow: 0 4px 20px -4px rgba(0, 45, 114, 0.45);
+    background-color: var(--blue-100) !important;
+    color: var(--sp-navy) !important;
+    border: 1px solid var(--blue-200) !important;
+    box-shadow: none;
+    font-weight: var(--fw-semibold);
 }
 /* Nullstill: sekundær stil */
 .formuesskatt-reset-btn {
@@ -588,8 +590,9 @@ header.text-center.mb-1.relative {
     box-shadow: var(--panel-shadow);
 }
 .formuesskatt-reset-btn:hover {
-    border-color: var(--primary-btn) !important;
-    transform: translateY(-2px);
+    border-color: var(--blue-main) !important;
+    background: var(--gray-50) !important;
+    transform: none;
 }
 #page1 {
     background-color: var(--bg-page) !important;
@@ -624,14 +627,14 @@ header.text-center.mb-1.relative {
     border: 1px solid var(--border-color);
     color: var(--text-primary);
 }
-/* Tilbake-knapp: S&P Blue, Cyan 40 tekst */
 #goToPage1Btn {
     background-color: var(--primary-btn) !important;
-    color: #99D9F2 !important;
+    color: var(--white) !important;
     border: none !important;
-    box-shadow: var(--panel-shadow);
+    box-shadow: var(--shadow-xs);
+    border-radius: var(--radius-md) !important;
 }
 #goToPage1Btn:hover {
     background-color: var(--primary-btn-hover) !important;
-    transform: translateY(-2px);
+    transform: none;
 }

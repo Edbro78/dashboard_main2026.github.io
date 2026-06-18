@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Colors" name="Semantic colors" subtitle="Error / Warning / Success" viewport="700x180" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:26px 28px;box-sizing:border-box;display:flex;gap:16px;}
+  .col{flex:1;border-radius:var(--radius-lg);border:1px solid;padding:14px 16px;box-sizing:border-box;}
+  .dot{width:14px;height:14px;border-radius:50%;display:inline-block;vertical-align:-1px;margin-right:8px;}
+  .lbl{font-size:14px;font-weight:600;}
+  .hx{font-size:12px;color:var(--gray-500);margin-top:10px;font-variant-numeric:tabular-nums;line-height:1.5;}
+  .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px;margin-top:8px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="col" style="background:var(--error-bg);border-color:var(--error-border);">
+    <div class="lbl" style="color:var(--error-700)"><span class="dot" style="background:var(--error-600)"></span>Error</div>
+    <span class="pill" style="background:#fff;color:var(--error-700)">Slett</span>
+    <div class="hx">700 #B42318<br>600 #D92D20<br>bg #FEF3F2</div>
+  </div>
+  <div class="col" style="background:var(--warning-bg);border-color:var(--warning-border);">
+    <div class="lbl" style="color:var(--warning-700)"><span class="dot" style="background:var(--warning-600)"></span>Warning</div>
+    <span class="pill" style="background:#fff;color:var(--warning-700)">Til vurdering</span>
+    <div class="hx">700 #B54708<br>600 #DC6803<br>bg #FFFAEB</div>
+  </div>
+  <div class="col" style="background:var(--success-bg);border-color:var(--success-border);">
+    <div class="lbl" style="color:var(--success-700)"><span class="dot" style="background:var(--success-600)"></span>Success</div>
+    <span class="pill" style="background:#fff;color:var(--success-700)">+26,12 %</span>
+    <div class="hx">700 #067647<br>600 #079455<br>bg #ECFDF3</div>
+  </div>
+</div>
+</body>
+</html>

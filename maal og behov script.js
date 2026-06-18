@@ -47,6 +47,28 @@ const Bar = ({ data, options }) => {
     return React.createElement('canvas', { ref: canvasRef });
 };
 
+// Avrunding kun på oversiden av hele stolpen (øverste synlige segment i stacken)
+const STACKED_BAR_TOP_RADIUS = 8;
+function withStackedTopBorderRadius(datasets) {
+    return datasets.map((ds, datasetIndex) => ({
+        ...ds,
+        borderRadius: (ds.data || []).map((_, dataIndex) => {
+            let topDatasetIndex = -1;
+            for (let i = datasets.length - 1; i >= 0; i--) {
+                const candidate = datasets[i];
+                if (candidate.stack !== ds.stack) continue;
+                const value = Number(candidate.data?.[dataIndex]);
+                if (Number.isFinite(value) && value > 0.01) {
+                    topDatasetIndex = i;
+                    break;
+                }
+            }
+            return datasetIndex === topDatasetIndex ? STACKED_BAR_TOP_RADIUS : 0;
+        }),
+        borderSkipped: 'bottom',
+    }));
+}
+
 const Line = ({ data, options }) => {
     const canvasRef = React.useRef(null);
     const chartRef = React.useRef(null);
@@ -129,28 +151,33 @@ const Doughnut = ({ data, options, type = 'pie' }) => {
 // --- From constants.ts ---
 const START_YEAR = 2026;
 
-// Farger for Forutsetning «Vis grafikk» – aksjeandel i portefølje I/II og renteportefølje (Likviditetsfond)
-const FORUTSETNING_AKSJE_P1 = '#4b6a8a';   // Aksjeandel Portefølje I
-const FORUTSETNING_AKSJE_P2 = '#87CEEB';   // Aksjeandel Portefølje II
-const FORUTSETNING_RENTEPORTEFOLJE = '#DDE6F0'; // Renteportefølje (Likviditetsfond, 100 % renter)
+// Farger for Forutsetning «Vis grafikk» — SPWM blåskala
+const FORUTSETNING_AKSJE_P1 = '#405A82';
+const FORUTSETNING_AKSJE_P2 = '#6096E8';
+const FORUTSETNING_RENTEPORTEFOLJE = '#EEF5FF';
 
 const CHART_COLORS = {
-    hovedstol: '#002359',             // Dark Blue – hovedstol
-    avkastning: '#99D9F2',            // Cyan 40 – avkastning
-    sparing: '#4B6A8A',               // Harmonisk blågrå – årlig sparing
-    utbetaling_netto: '#002D72',      // Blue – netto utbetaling
-    utbetaling_skatt: '#CC4B4B',      // Rød for løpende skatt
-    event_total_color: '#CCECF9',     // Cyan 20 – hendelser
-    renteskatt: '#B14444',            // Renteskatt
-    skatt2: '#E06B6B',                // Skatt på hendelser
-    aksjeandel: '#99D9F2',            // Aksjeandel – Cyan 40
-    renteandel: '#CCECF9',            // Renteandel – Cyan 20
-    innskutt_kapital: '#002D72',      // Innskutt kapital – Blue
-    aksjer_principal: '#99D9F2',      // Aksjer (hovedstol)
-    aksjer_avkastning: '#CCECF9',     // Aksjeavkastning
-    renter_principal: '#A9BCCD',      // Renter (hovedstol) – grå-blå
-    renter_avkastning: '#D1DCE7'      // Renteavkastning – lys grå-blå
+    hovedstol: '#002359',
+    avkastning: '#99BEF5',
+    sparing: '#405A82',
+    utbetaling_netto: '#0A5EDC',
+    utbetaling_skatt: '#D92D20',
+    event_total_color: '#EEF5FF',
+    renteskatt: '#B42318',
+    skatt2: '#D92D20',
+    aksjeandel: '#99BEF5',
+    renteandel: '#EEF5FF',
+    innskutt_kapital: '#0A5EDC',
+    aksjer_principal: '#99BEF5',
+    aksjer_avkastning: '#EEF5FF',
+    renter_principal: '#A0AEC4',
+    renter_avkastning: '#CCD3DE'
 };
+
+const SPWM_INK = '#344054';
+const SPWM_NAVY = '#002359';
+const SPWM_BLUE = '#0A5EDC';
+const SPWM_GRID = 'rgba(234, 236, 240, 0.8)';
 
 // Helper function to adjust color brightness
 const adjustColorBrightness = (hex, percent) => {
@@ -269,7 +296,6 @@ const MaalOgBehovState = {
     savedSimulatedReturns: { stockReturns: [], bondReturns: [] },
     advisoryInputValue: INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','),
     waterfallMode: false,
-    henteAltFraPensionActive: false,
     spToolButtonMarked: false,
     utbToolButtonMarked: false,
     portToolButtonMarked: false
@@ -278,6 +304,21 @@ if (typeof window !== 'undefined') { window.MaalOgBehovState = MaalOgBehovState;
 
 /** Samme som h1 i Mål og behov; brukes også som overskrift på første panel i Fremtidige verdier. */
 const MAAL_PANEL_TITLE_DEFAULT = 'Samlet forvaltning - fremtidige verdier';
+
+function getMaalPanelTitle() {
+    const t = MaalOgBehovState.panelTitle;
+    const trimmed = t != null ? String(t).trim() : '';
+    return trimmed || MAAL_PANEL_TITLE_DEFAULT;
+}
+
+function notifyMaalPanelTitleChanged(title) {
+    const next = (title != null && String(title).trim()) ? String(title).trim() : MAAL_PANEL_TITLE_DEFAULT;
+    MaalOgBehovState.panelTitle = next;
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('maal-og-behov-panel-title-changed', { detail: { title: next } }));
+    }
+    return next;
+}
 const PORTFOLIO1_NAME_DEFAULT = 'Portefølje I';
 const PORTFOLIO2_NAME_DEFAULT = 'Portefølje II';
 
@@ -1161,18 +1202,18 @@ const EyeToggle = ({ visible, onToggle, className, title }) => (
     <button
         onClick={onToggle}
         title={title || (visible ? 'Skjul' : 'Vis')}
-        className={`absolute -top-4 -left-4 bg-white border border-[#DDDDDD] rounded-full p-1.5 shadow hover:bg-gray-50 ${className || ''}`}
+        className={`absolute -top-4 -left-4 bg-white border border-[#DDDDDD] rounded-full p-1.5 shadow hover:bg-gray-50 text-[#002359] ${className || ''}`}
         aria-label={visible ? 'Skjul' : 'Vis'}
     >
         {visible ? (
             // Open eye
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A6D8C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
             </svg>
         ) : (
             // Slashed eye
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4A6D8C" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.8 21.8 0 0 1 5.06-5.94"></path>
                 <path d="M1 1l22 22"></path>
                 <path d="M10.58 10.58a3 3 0 0 0 4.24 4.24"></path>
@@ -1280,9 +1321,6 @@ function TKontoDashboard() {
         <div ref={containerRef} id="tkonto-dashboard-root" style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
             <div className="app" style={{ height: '100%', minHeight: '100%' }}>
                 <aside className="sidebar" aria-label="Hovednavigasjon">
-                    <div className="brand">
-                        <h1 className="brand-title">Kartlegging</h1>
-                    </div>
                     <nav className="nav" role="navigation">
                         <button className="nav-item is-active" data-section="Forside">
                             <span className="nav-icon" aria-hidden="true">
@@ -1338,19 +1376,6 @@ function TKontoDashboard() {
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 14l4-4 4 4 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                             </span>
                             <span className="nav-label">Forventet avkastning</span>
-                        </button>
-                        <button className="nav-item" data-section="Analyse">
-                            <span className="nav-icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 20V10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M10 20V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M16 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M22 20v-9" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                            </span>
-                            <span className="nav-label">Analyse</span>
-                        </button>
-                        <div className="nav-sep" aria-hidden="true"></div>
-                        <button id="reset-all" className="nav-item">
-                            <span className="nav-icon" aria-hidden="true">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12a9 9 0 1 1-3-6.7" stroke="currentColor" strokeWidth="2"/><path d="M21 3v6h-6" stroke="currentColor" strokeWidth="2"/></svg>
-                            </span>
-                            <span className="nav-label">Nullstill</span>
                         </button>
                     </nav>
                 </aside>
@@ -1516,13 +1541,12 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
 
     const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
     const [tkontoDataRefreshKey, setTkontoDataRefreshKey] = useState(0);
-    const [reportMaalPanelTitle, setReportMaalPanelTitle] = useState(
-        () => MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT
-    );
+    const [reportMaalPanelTitle, setReportMaalPanelTitle] = useState(getMaalPanelTitle);
 
     useEffect(() => {
-        const syncMaalPanelTitle = () => {
-            setReportMaalPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
+        const syncMaalPanelTitle = (e) => {
+            const fromEvent = e && e.detail && e.detail.title != null ? String(e.detail.title).trim() : '';
+            setReportMaalPanelTitle(fromEvent || getMaalPanelTitle());
         };
         if (typeof window !== 'undefined') {
             window.addEventListener('maal-og-behov-panel-title-changed', syncMaalPanelTitle);
@@ -1536,7 +1560,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
 
     useEffect(() => {
         if (activeTab === oppsummeringsrapportTabIndex) {
-            setReportMaalPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
+            setReportMaalPanelTitle(getMaalPanelTitle());
         }
     }, [activeTab, oppsummeringsrapportTabIndex]);
 
@@ -1577,12 +1601,12 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
         interaction: { mode: 'index', intersect: false },
         plugins: { legend: { display: false } },
         scales: {
-            x: { stacked: true, grid: { display: false }, ticks: { color: '#333333', font: { size: 12 } } },
+            x: { stacked: true, grid: { display: false }, ticks: { color: SPWM_INK, font: { size: 12 } } },
             y: {
                 stacked: true,
-                grid: { color: 'rgba(221, 221, 221, 0.3)' },
+                grid: { color: SPWM_GRID },
                 ticks: {
-                    color: '#333333',
+                    color: SPWM_INK,
                     callback: (value) => `${(value / 1000000).toLocaleString('nb-NO')} MNOK`,
                     font: { size: 12 }
                 }
@@ -1725,7 +1749,7 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
             datasets: [{
                 label: 'Kontantstrøm',
                 data,
-                backgroundColor: data.map((v) => v >= 0 ? 'rgba(0, 45, 114, 0.8)' : 'rgba(204, 75, 75, 0.8)'),
+                backgroundColor: data.map((v) => v >= 0 ? 'rgba(10, 94, 220, 0.85)' : 'rgba(217, 45, 32, 0.85)'),
                 borderRadius: 4,
                 borderSkipped: false
             }]
@@ -1748,55 +1772,57 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     }), [chartOptionsBase]);
 
     return (
-        <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ width: '100%', height: '100%', minHeight: 0, paddingRight: '2rem' }}>
+        <div className="fremtidige-verdier-tab w-full h-full min-h-0 overflow-auto box-border">
+        <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ paddingRight: '2rem' }}>
             <div className="relative">
-                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">{reportMaalPanelTitle}</h3>
+                <div className="panel flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="fv-panel-heading">{reportMaalPanelTitle}</h3>
                     <div className="relative h-[280px]">
                         {maalOgBehovChartDataForReport && latestOptions ? (
                             <Bar data={maalOgBehovChartDataForReport} options={{ ...latestOptions, maintainAspectRatio: false }} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-[#999] text-sm">Ingen data. Åpne Mål og behov først.</div>
+                            <div className="flex items-center justify-center h-full fv-empty">Ingen data. Åpne Mål og behov først.</div>
                         )}
                     </div>
                 </div>
             </div>
             <div className="relative">
-                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Eiendeler - fremtidige verdier</h3>
+                <div className="panel flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="fv-panel-heading">Eiendeler - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {assetsChartData ? (
                             <Bar data={assetsChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen eiendeler' : 'Last T-konto for data'}</div>
+                            <div className="flex items-center justify-center h-full fv-empty">{tkontoLoaded ? 'Ingen eiendeler' : 'Last T-konto for data'}</div>
                         )}
                     </div>
                 </div>
             </div>
             <div className="relative">
-                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Finansiering - fremtidige verdier</h3>
+                <div className="panel flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="fv-panel-heading">Finansiering - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {financingChartData ? (
                             <Bar data={financingChartData} options={{ ...assetsAndFinancingOptions, maintainAspectRatio: false }} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen finansiering' : 'Last T-konto for data'}</div>
+                            <div className="flex items-center justify-center h-full fv-empty">{tkontoLoaded ? 'Ingen finansiering' : 'Last T-konto for data'}</div>
                         )}
                     </div>
                 </div>
             </div>
             <div className="relative">
-                <div className="panel bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col overflow-hidden w-full min-h-[368px]">
-                    <h3 className="text-center text-lg font-semibold text-[#4A6D8C] mb-4">Kontantstrøm - fremtidige verdier</h3>
+                <div className="panel flex flex-col overflow-hidden w-full min-h-[368px]">
+                    <h3 className="fv-panel-heading">Kontantstrøm - fremtidige verdier</h3>
                     <div className="relative h-[280px]">
                         {cashflowChartData ? (
                             <Bar data={cashflowChartData} options={{ ...cashflowOptions, maintainAspectRatio: false }} />
                         ) : (
-                            <div className="flex items-center justify-center h-full text-[#999] text-sm">{tkontoLoaded ? 'Ingen kontantstrøm' : 'Last T-konto for data'}</div>
+                            <div className="flex items-center justify-center h-full fv-empty">{tkontoLoaded ? 'Ingen kontantstrøm' : 'Last T-konto for data'}</div>
                         )}
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     );
 }
@@ -1913,7 +1939,7 @@ function StrategiMalsetningerStrip({ goals }) {
                 <div className="strategi-malsetninger-strip__inner">
                     {goals.length === 0 ? (
                         <p className="strategi-malsetninger-strip__empty">
-                            Ingen mål er markert ennå. Åpne fanen «Målsetninger, kunnskap og erfaring» og trykk på målkortene du vil prioritere – de vises her automatisk.
+                            Ingen mål er markert ennå. Åpne fanen «Målsetninger» og trykk på målkortene du vil prioritere – de vises her automatisk.
                         </p>
                     ) : (
                         goals.map((g, i) => <StrategiGoalChip key={g.id} goal={g} index={i} />)
@@ -1929,8 +1955,19 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
     const titleText = String(panelTitleLabel || '').trim();
     return (
         <div className="tab-bar-header">
+            <div className="tab-bar-brand" aria-hidden="true">
+                <img
+                    className="tab-bar-brand-logo"
+                    src="SPWM mal/assets/spwm-logo.svg"
+                    alt=""
+                    width="178"
+                    height="34"
+                />
+            </div>
             <div className="tab-bar">
-                {tabs.map((tab, index) => (
+                {tabs.map((tab, index) => {
+                    if (tab.name === 'Pensjon') return null;
+                    return (
                     <div
                         key={index}
                         className={`tab ${activeTab === index ? 'active' : ''}`}
@@ -1939,7 +1976,8 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
                     >
                         <span>{tab.name}</span>
                     </div>
-                ))}
+                    );
+                })}
             </div>
             {titleText ? (
                 <div className="tab-bar-panel-title-slot">
@@ -1951,7 +1989,10 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
                         <span>{titleText}</span>
                     </div>
                 </div>
-            ) : null}
+            ) : (
+                <div className="tab-bar-panel-title-slot" aria-hidden="true" />
+            )}
+            <div className="tab-bar-header-end-spacer" aria-hidden="true" />
         </div>
     );
 }
@@ -2065,8 +2106,8 @@ function splitStrategiExportIntoSections(fullRaw) {
 
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefolge: 0 malsetninger iframe (malsetninger index.html), 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Strategi, 6 Pensjon, 7 Formuesskatt
-    const STRATEGI_TAB_INDEX = 5;
+    // Fanerekkefolge: 0 malsetninger, 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Formuesskatt, 6 Strategi, 7 Pensjon
+    const STRATEGI_TAB_INDEX = 6;
     const [activeTab, setActiveTab] = useState(1);
     const [showOutputModal, setShowOutputModal] = useState(false);
     const [outputText, setOutputText] = useState('');
@@ -2081,18 +2122,11 @@ function TabContainer() {
     const pensjonsgapetIframeRef = React.useRef(null);
     const formuesskattIframeRef = React.useRef(null);
     const [strategiMalsetningerGoals, setStrategiMalsetningerGoals] = useState([]);
-    const [headerPanelTitle, setHeaderPanelTitle] = useState(
-        () => MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT
-    );
+    const [panelTitle, setPanelTitle] = useState(getMaalPanelTitle);
 
     useEffect(() => {
-        const syncHeaderPanelTitle = () => {
-            setHeaderPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
-        };
-        syncHeaderPanelTitle();
-        window.addEventListener('maal-og-behov-panel-title-changed', syncHeaderPanelTitle);
-        return () => window.removeEventListener('maal-og-behov-panel-title-changed', syncHeaderPanelTitle);
-    }, []);
+        notifyMaalPanelTitleChanged(panelTitle);
+    }, [panelTitle]);
 
     useEffect(() => {
         const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
@@ -2177,7 +2211,7 @@ function TabContainer() {
 
     const tabs = [
         {
-            name: 'Målsetninger, kunnskap og erfaring',
+            name: 'Målsetninger',
             content: (
                 <div style={{ width: '100%', height: '100%', minHeight: 0 }}>
                     <iframe
@@ -2191,9 +2225,10 @@ function TabContainer() {
             ),
         },
         { name: 'T-konto', content: <TKontoDashboard /> },
-        { name: 'Mål og behov', content: <App /> },
+        { name: 'Mål og behov', content: <App panelTitle={panelTitle} onPanelTitleChange={setPanelTitle} /> },
         { name: 'Fremtidige verdier', content: <OppsummeringsrapportContent activeTab={activeTab} oppsummeringsrapportTabIndex={3} /> },
         { name: 'Risikoprofil', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={risikoIframeRef} src="risikosimulering%20index.html" title="Risikoprofil" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
+        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html?v=primar-innslag-14mnok" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
         {
             name: 'Strategi',
             content: (
@@ -2204,7 +2239,7 @@ function TabContainer() {
                         minHeight: 0,
                         display: 'flex',
                         flexDirection: 'column',
-                        background: 'var(--strategi-page-bg)',
+                        background: 'var(--gray-50)',
                     }}
                 >
                     <StrategiMalsetningerStrip goals={strategiMalsetningerGoals} />
@@ -2223,7 +2258,6 @@ function TabContainer() {
             ),
         },
         { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
-        { name: 'Formuesskatt', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={formuesskattIframeRef} src="formuesskatt%20index.html?v=primar-innslag-14mnok" title="Formuesskatt" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> }
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -2490,7 +2524,7 @@ function TabContainer() {
                 tabs={tabs}
                 activeTab={activeTab}
                 onTabClick={setActiveTab}
-                panelTitleLabel={headerPanelTitle}
+                panelTitleLabel={panelTitle}
             />
             <div className="tab-content" style={{ position: 'relative' }}>
                 {tabs.map((tab, index) => (
@@ -2571,7 +2605,13 @@ function TabContainer() {
     );
 }
 
-function App() {
+function App({ panelTitle, onPanelTitleChange }) {
+    const resolvedPanelTitle = panelTitle != null ? panelTitle : getMaalPanelTitle();
+    const setPanelTitle = (next) => {
+        if (typeof onPanelTitleChange === 'function') {
+            onPanelTitleChange(next);
+        }
+    };
     // Bruk lagret state hvis den finnes, ellers bruk initial state
     const [state, setState] = useState(() => {
         return MaalOgBehovState.appState ? { ...INITIAL_APP_STATE, ...MaalOgBehovState.appState } : INITIAL_APP_STATE;
@@ -2582,9 +2622,9 @@ function App() {
     const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
     // Disclaimer er fjernet fra UI. Vi holder den alltid av for å hindre modal-rendering.
     const [showDisclaimer, setShowDisclaimer] = useState(false);
-    const [panelTitle, setPanelTitle] = useState(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT);
     const [editingTitle, setEditingTitle] = useState(false);
     const titleInputRef = React.useRef(null);
+    const titleBeforeEditRef = React.useRef(resolvedPanelTitle);
     const [showOutputModal, setShowOutputModal] = useState(MaalOgBehovState.showOutputModal);
     const [outputText, setOutputText] = useState(MaalOgBehovState.outputText);
     const [copied, setCopied] = useState(MaalOgBehovState.copied);
@@ -2607,8 +2647,6 @@ function App() {
     const [savedSimulatedReturns, setSavedSimulatedReturns] = useState(MaalOgBehovState.savedSimulatedReturns);
     const [advisoryInputValue, setAdvisoryInputValue] = useState(MaalOgBehovState.advisoryInputValue);
     const [waterfallMode, setWaterfallMode] = useState(MaalOgBehovState.waterfallMode);
-    const [henteAltFraPensionActive, setHenteAltFraPensionActive] = useState(MaalOgBehovState.henteAltFraPensionActive ?? false);
-    const savedStateBeforePensionRef = React.useRef(null);
     const portBeforeGoalSeekRef = React.useRef(null);
     /** Lagrer uttak/målsøk-felt før første «Utb.»-trykk; gjenopprettes ved av. */
     const utbBeforeGoalSeekRef = React.useRef(null);
@@ -2655,11 +2693,8 @@ function App() {
     }, [showGoalSeek]);
 
     useEffect(() => {
-        MaalOgBehovState.panelTitle = panelTitle;
-        if (typeof window !== 'undefined') {
-            window.dispatchEvent(new CustomEvent('maal-og-behov-panel-title-changed'));
-        }
-    }, [panelTitle]);
+        titleBeforeEditRef.current = resolvedPanelTitle;
+    }, [resolvedPanelTitle]);
 
     useEffect(() => {
         if (editingTitle && titleInputRef.current) {
@@ -2743,10 +2778,6 @@ function App() {
     useEffect(() => {
         MaalOgBehovState.waterfallMode = waterfallMode;
     }, [waterfallMode]);
-
-    useEffect(() => {
-        MaalOgBehovState.henteAltFraPensionActive = henteAltFraPensionActive;
-    }, [henteAltFraPensionActive]);
 
     useEffect(() => {
         MaalOgBehovState.spToolButtonMarked = spToolButtonMarked;
@@ -2836,77 +2867,6 @@ function App() {
             goalSeekPortfolio1Result: null, // Nullstiller målsøk Portefølje I resultat
         });
     }, []);
-
-    // Toggle for "Hent fra T-konto" under formuesskatt-slideren
-    const handleToggleWealthTaxFromTKonto = useCallback(() => {
-        setState(prev => {
-            const nextFlag = !prev.wealthTaxFromTKonto;
-            let nextWealthTax = prev.desiredAnnualWealthTaxPayout;
-
-            if (nextFlag) {
-                // Hent totalen fra Formuesskatt-fanen (cellen "Total Formuesskatt" i output)
-                try {
-                    const iframe = document.querySelector('iframe[src*="formuesskatt"]');
-                    if (iframe?.contentWindow && typeof iframe.contentWindow.getFormuesskattTotal === 'function') {
-                        nextWealthTax = iframe.contentWindow.getFormuesskattTotal();
-                    } else {
-                        nextWealthTax = 0;
-                    }
-                } catch (e) {
-                    nextWealthTax = 0;
-                }
-            }
-
-            return {
-                ...prev,
-                wealthTaxFromTKonto: nextFlag,
-                desiredAnnualWealthTaxPayout: nextWealthTax,
-            };
-        });
-    }, []);
-
-    // Toggle for "Hent alt fra pensjon" – henter data fra pensjonsgapet-fanen
-    // Ved aktivering: kun Portefølje I, Aksjeandel portefølje I, Årlig sparing, Antall år investeringsperiode, Antall år utbetaling er aktive; Skatteberegning av; hendelser nullstilles; resten default. Ved deaktivering: alt gjenopprettes.
-    const handleHenteAltFraPension = useCallback(() => {
-        if (henteAltFraPensionActive) {
-            // Skru av: gjenopprett opprinnelige verdier inkl. hendelser
-            if (savedStateBeforePensionRef.current) {
-                setState(savedStateBeforePensionRef.current);
-                savedStateBeforePensionRef.current = null;
-            }
-            setHenteAltFraPensionActive(false);
-        } else {
-            // Skru på: lagre full state (inkl. hendelser), sett alt til default, overstyr kun de tillatte feltene fra pensjon
-            try {
-                const raw = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('pensjonsgapetHentAltFraPension') : null;
-                const data = raw ? JSON.parse(raw) : null;
-                if (!data || typeof data.engangsinnskudd !== 'number') return;
-                // Dykkopi av state slik at hendelser og resten gjenopprettes ved deaktivering
-                savedStateBeforePensionRef.current = {
-                    ...state,
-                    events: state.events && state.events.length ? state.events.map(e => ({ ...e })) : [],
-                };
-                const engangs = Math.max(0, data.engangsinnskudd || 0);
-                const aksjeandel = [0, 20, 45, 55, 65, 85, 100].includes(data.aksjeandel) ? data.aksjeandel : INITIAL_APP_STATE.row1StockAllocation;
-                const bruttoArligUtbetaling = Math.max(0, data.bruttoArligUtbetaling ?? 0);
-                // Start med alle defaultverdier, nullstill hendelser, overstyr kun de tillatte feltene
-                setState({
-                    ...INITIAL_APP_STATE,
-                    events: [],
-                    initialPortfolioSize: engangs,
-                    row1StockAllocation: aksjeandel,
-                    initialStockAllocation: aksjeandel,
-                    annualSavings: Math.max(0, data.aarligSparing || 0),
-                    investmentYears: Math.max(1, Math.min(60, data.yearsToRetirement ?? INITIAL_APP_STATE.investmentYears)),
-                    payoutYears: Math.max(0, Math.min(30, data.payoutYears ?? INITIAL_APP_STATE.payoutYears)),
-                    desiredAnnualConsumptionPayout: bruttoArligUtbetaling, // Brutto årlig utbetaling utover pensjon → Ønsket årlig uttak til forbruk
-                    taxCalculationEnabled: false,
-                    investedCapital: 0,
-                });
-                setHenteAltFraPensionActive(true);
-            } catch (e) {}
-        }
-    }, [henteAltFraPensionActive, state]);
 
     const handleAddEvent = useCallback(() => {
         setState(s => {
@@ -4091,7 +4051,7 @@ lines.push(`25 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goa
 lines.push(`26 Investortype : ${orIngenData(state.investorType)}`);
 lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
 lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
-lines.push(`29 Overskrift : ${panelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
+lines.push(`29 Overskrift : ${resolvedPanelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
 // Ekstra felt som tidligere lå bare i JSON-snapshot (ingen lang JSON-linje i Output).
 lines.push(`30 Aksjeandel likviditetsfond/rad 3 : ${formatNumberRaw(state.row3StockAllocation)}`);
 lines.push(`31 Standardavvik aksjer : ${state.stockStdDev.toFixed(1)}`);
@@ -4104,7 +4064,7 @@ lines.push(`37 Målsøk utbetaling tøm siste år : ${state.goalSeekPayoutDrainF
 lines.push(`38 Portefølje I navn : ${orIngenData(resolvePortfolio1Name(state.portfolio1Name))}`);
 lines.push(`39 Portefølje II navn : ${orIngenData(resolvePortfolio2Name(state.portfolio2Name))}`);
 return lines.join('\n');
-}, [state, prognosis, panelTitle]);
+}, [state, prognosis, resolvedPanelTitle]);
 
 const copyTextToClipboard = useCallback(async (text) => {
 try {
@@ -4400,7 +4360,6 @@ bondReturns: Array.isArray(ui.savedSimulatedReturns.bondReturns) ? ui.savedSimul
 });
 }
 if (ui.waterfallMode !== undefined) setWaterfallMode(b(ui.waterfallMode));
-if (ui.henteAltFraPensionActive !== undefined) setHenteAltFraPensionActive(b(ui.henteAltFraPensionActive));
 if (ui.spToolButtonMarked !== undefined) setSpToolButtonMarked(b(ui.spToolButtonMarked));
 if (ui.utbToolButtonMarked !== undefined) setUtbToolButtonMarked(b(ui.utbToolButtonMarked));
 if (ui.portToolButtonMarked !== undefined) setPortToolButtonMarked(b(ui.portToolButtonMarked));
@@ -4766,38 +4725,9 @@ return () => document.removeEventListener('keydown', onKey);
         });
     }, [goalSeekPortfolio1, setState, state.initialPortfolioSize, state.goalSeekPortfolio1Result]);
 
-    // Helper function for rounded corners on stacked bars
-    // ALL segments get the EXACT SAME rounded corners on both top and bottom
-    // Works the same for both positive and negative values, regardless of segment size
-    const getStackedBarRadius = (context) => {
-        const chart = context.chart;
-        const datasetIndex = context.datasetIndex;
-        const dataIndex = context.dataIndex;
-        const meta = chart.getDatasetMeta(datasetIndex);
-        const stack = meta.stack;
-       
-        if (!stack) {
-            // Not stacked, round all corners
-            return 4;
-        }
-       
-        const parsed = meta.data[dataIndex];
-        if (!parsed) {
-            return { topLeft: 4, topRight: 4, bottomLeft: 4, bottomRight: 4 };
-        }
-       
-        // Check if this segment has zero or near-zero height
-        const segmentHeight = Math.abs(parsed.y - parsed.base);
-        if (segmentHeight < 0.01) {
-            return 0; // No rounding for zero-height segments
-        }
-       
-        // ALL segments get the EXACT SAME borderRadius value - no exceptions, no proportional scaling
-        return { topLeft: 4, topRight: 4, bottomLeft: 4, bottomRight: 4 };
-    };
-   
     const chartOptions = {
         responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+        elements: { bar: { borderSkipped: 'bottom' } },
         plugins: {
             legend: { display: false },
             tooltip: {
@@ -4825,7 +4755,7 @@ return () => document.removeEventListener('keydown', onKey);
                 stacked: true, 
                 grid: { display: false }, 
                 ticks: { 
-                    color: '#333333',
+                    color: SPWM_INK,
                     font: {
                         size: 12 // Økt med 20% fra 10 (10 * 1.2 = 12)
                     }
@@ -4833,9 +4763,9 @@ return () => document.removeEventListener('keydown', onKey);
             },
             y: {
                 stacked: true, 
-                grid: { color: 'rgba(221, 221, 221, 0.3)' },
+                grid: { color: SPWM_GRID },
                 ticks: { 
-                    color: '#333333', 
+                    color: SPWM_INK, 
                     callback: (value) => `${(value / 1000000).toLocaleString('nb-NO')} MNOK`,
                     font: {
                         size: 12 // Økt med 20% fra 10 (10 * 1.2 = 12)
@@ -4847,17 +4777,17 @@ return () => document.removeEventListener('keydown', onKey);
    
     const investmentChartData = {
         labels: prognosis.labels,
-        datasets: [
-            { label: 'Avkastning', data: prognosis.data.avkastning, backgroundColor: CHART_COLORS.avkastning, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Årlig sparing', data: prognosis.data.sparing, backgroundColor: CHART_COLORS.sparing, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Hovedstol', data: prognosis.data.hovedstol, backgroundColor: CHART_COLORS.hovedstol, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Hendelser', data: prognosis.data.event_total, backgroundColor: CHART_COLORS.event_total_color, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Netto utbetaling', data: prognosis.data.nettoUtbetaling, backgroundColor: CHART_COLORS.utbetaling_netto, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
+        datasets: withStackedTopBorderRadius([
+            { label: 'Avkastning', data: prognosis.data.avkastning, backgroundColor: CHART_COLORS.avkastning, stack: 'portfolio' },
+            { label: 'Årlig sparing', data: prognosis.data.sparing, backgroundColor: CHART_COLORS.sparing, stack: 'portfolio' },
+            { label: 'Hovedstol', data: prognosis.data.hovedstol, backgroundColor: CHART_COLORS.hovedstol, stack: 'portfolio' },
+            { label: 'Hendelser', data: prognosis.data.event_total, backgroundColor: CHART_COLORS.event_total_color, stack: 'portfolio' },
+            { label: 'Netto utbetaling', data: prognosis.data.nettoUtbetaling, backgroundColor: CHART_COLORS.utbetaling_netto, stack: 'portfolio' },
             ...(state.taxCalculationEnabled ? [
-                { label: 'Skatt på hendelser', data: prognosis.data.skatt2, backgroundColor: CHART_COLORS.skatt2, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
-                { label: 'Løpende renteskatt', data: prognosis.data.renteskatt, backgroundColor: CHART_COLORS.renteskatt, stack: 'portfolio', borderRadius: getStackedBarRadius, borderSkipped: false },
+                { label: 'Skatt på hendelser', data: prognosis.data.skatt2, backgroundColor: CHART_COLORS.skatt2, stack: 'portfolio' },
+                { label: 'Løpende renteskatt', data: prognosis.data.renteskatt, backgroundColor: CHART_COLORS.renteskatt, stack: 'portfolio' },
             ] : [])
-        ],
+        ]),
     };
 
     // Persist for Oppsummeringsrapport-fanen (samme tidsakse og søylediagram)
@@ -4885,9 +4815,9 @@ return () => document.removeEventListener('keydown', onKey);
                     tooltip: { enabled: false },
                     title: {
                         display: true,
-                        text: panelTitle,
+                        text: resolvedPanelTitle,
                         font: { size: 48, weight: 'bold' },
-                        color: '#4A6D8C',
+                        color: SPWM_NAVY,
                         padding: { top: 10, bottom: 20 }
                     }
                 },
@@ -4939,7 +4869,7 @@ return () => document.removeEventListener('keydown', onKey);
         },
         plugins: {
             ...chartOptions.plugins,
-            legend: { display: true, labels: { color: '#333333' } },
+            legend: { display: true, labels: { color: SPWM_INK } },
             tooltip: {
                 ...chartOptions.plugins.tooltip,
                 callbacks: {
@@ -5244,17 +5174,17 @@ return () => document.removeEventListener('keydown', onKey);
 
     const stackedAllYearsData = useMemo(() => ({
         labels: labelsAllYears,
-        datasets: [
-            { label: 'Aksjer', data: principalStockSeries, backgroundColor: CHART_COLORS.aksjer_principal, stack: 'allYears', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Aksjeavkastning', data: stockReturnSeries, backgroundColor: CHART_COLORS.aksjer_avkastning, stack: 'allYears', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Renter', data: principalBondSeries, backgroundColor: CHART_COLORS.renter_principal, stack: 'allYears', borderRadius: getStackedBarRadius, borderSkipped: false },
-            { label: 'Renteavkastning', data: bondReturnSeries, backgroundColor: CHART_COLORS.renter_avkastning, stack: 'allYears', borderRadius: getStackedBarRadius, borderSkipped: false },
-        ],
+        datasets: withStackedTopBorderRadius([
+            { label: 'Aksjer', data: principalStockSeries, backgroundColor: CHART_COLORS.aksjer_principal, stack: 'allYears' },
+            { label: 'Aksjeavkastning', data: stockReturnSeries, backgroundColor: CHART_COLORS.aksjer_avkastning, stack: 'allYears' },
+            { label: 'Renter', data: principalBondSeries, backgroundColor: CHART_COLORS.renter_principal, stack: 'allYears' },
+            { label: 'Renteavkastning', data: bondReturnSeries, backgroundColor: CHART_COLORS.renter_avkastning, stack: 'allYears' },
+        ]),
     }), [labelsAllYears, principalStockSeries, stockReturnSeries, principalBondSeries, bondReturnSeries]);
 
     const stackedAllYearsOptions = useMemo(() => ({
         ...chartOptions,
-        plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: '#333333' } } },
+        plugins: { ...chartOptions.plugins, legend: { display: true, labels: { color: SPWM_INK } } },
         scales: {
             x: { ...chartOptions.scales.x, stacked: true },
             y: { ...chartOptions.scales.y, stacked: true },
@@ -5352,7 +5282,7 @@ return () => document.removeEventListener('keydown', onKey);
             legend: { 
                 display: true, 
                 labels: { 
-                    color: '#333333',
+                    color: SPWM_INK,
                     font: {
                         size: 13,
                         weight: '500'
@@ -5485,7 +5415,7 @@ return () => document.removeEventListener('keydown', onKey);
     }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation, state.portfolio1Name, state.portfolio2Name]);
 
     return (
-        <div className="maal-og-behov-tab font-sans text-[#333333] bg-white p-4 sm:p-6 pr-8 sm:pr-12 min-h-screen w-full box-border">
+        <div className="maal-og-behov-tab font-sans min-h-full w-full box-border">
             <div className="w-full max-w-[1600px] mx-auto flex flex-col gap-6" style={{ paddingRight: '2rem' }}>
 
                 <div className="relative">
@@ -5494,18 +5424,27 @@ return () => document.removeEventListener('keydown', onKey);
                         <input
                             ref={titleInputRef}
                             type="text"
-                            value={panelTitle}
+                            value={resolvedPanelTitle}
                             onChange={e => setPanelTitle(e.target.value)}
                             onBlur={() => setEditingTitle(false)}
-                            onKeyDown={e => { if (e.key === 'Enter') setEditingTitle(false); if (e.key === 'Escape') { setPanelTitle(MaalOgBehovState.panelTitle || MAAL_PANEL_TITLE_DEFAULT); setEditingTitle(false); } }}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter') setEditingTitle(false);
+                                if (e.key === 'Escape') {
+                                    setPanelTitle(titleBeforeEditRef.current || MAAL_PANEL_TITLE_DEFAULT);
+                                    setEditingTitle(false);
+                                }
+                            }}
                             className="typo-h1 text-center maal-panel-title maal-panel-title-editable mb-4 w-full bg-transparent border-b-2 outline-none"
                         />
                     ) : (
                         <h1
                             className="typo-h1 text-center maal-panel-title mb-4 cursor-pointer hover:opacity-70 transition-opacity"
-                            onDoubleClick={() => setEditingTitle(true)}
+                            onDoubleClick={() => {
+                                titleBeforeEditRef.current = resolvedPanelTitle;
+                                setEditingTitle(true);
+                            }}
                             title="Dobbelklikk for å endre tittel"
-                        >{panelTitle}</h1>
+                        >{resolvedPanelTitle}</h1>
                     )}
                     <div className="relative h-[500px]" style={{ paddingRight: '0.5rem' }}>
                         <Bar options={chartOptions} data={investmentChartData} />
@@ -5567,7 +5506,7 @@ return () => document.removeEventListener('keydown', onKey);
                 <div className="relative w-full">
                     <div className="absolute inset-0 z-0 bg-white border border-[#DDDDDD] rounded-xl pointer-events-none"></div>
                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative z-10">
-<div className="p-6 flex flex-col gap-6 relative" style={{ minHeight: '350px' }}>
+<div className="p-6 flex flex-col relative" style={{ minHeight: '350px' }}>
                             <h2 className="typo-h2 text-[#4A6D8C]">Samlet forvaltning</h2>
                         <button
                             onClick={() => setShowAssumptionsGraphic(true)}
@@ -5582,13 +5521,23 @@ return () => document.removeEventListener('keydown', onKey);
                                 <path d="M14 14h6v6h-6z"></path>
                             </svg>
                         </button>
-                            <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#4A6D8C" />
-                            <div className="mt-3">
-                                <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3388CC" />
+                            <div className="flex flex-col gap-3 mt-8">
+                                <div className="h-20 flex items-center w-full">
+                                    <div className="w-full">
+                                        <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#0A5EDC" />
+                                    </div>
+                                </div>
+                                <div className="h-20 flex items-center w-full">
+                                    <div className="w-full">
+                                        <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3B7EE3" />
+                                    </div>
+                                </div>
+                                <div className="h-20 flex items-center w-full">
+                                    <div className="w-full">
+                                        <SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#99BEF5" />
+                                    </div>
+                                </div>
                             </div>
-<div className="mt-3">
-<SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#88CCEE" />
-</div>
                     </div>
                     <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
                         <div>
@@ -5637,18 +5586,6 @@ return () => document.removeEventListener('keydown', onKey);
                                 <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px', marginLeft: '10px' }}>Simuleringer/grafikk</h2>
                             </div>
                             <h2 className="xl:hidden typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
-                            <div className="hidden xl:flex justify-start items-center gap-3 w-full mb-3">
-                                <button
-                                    type="button"
-                                    onClick={handleHenteAltFraPension}
-                                    title="Ved å trykke her, vil mål og behov endre seg og bli identisk med tidslinjen som er lagt inn i fanen: Pensjon. Om det er ti år til pensjonsutbetalingene starter, vil antall år med investering være 10. Skal du ha utbetalt pensjonen over 15år vil antall år med utbetaling være 15. Aksjeandel blir også satt til det samme. Dette i portefølje I"
-                                    aria-label="Ved å trykke her, vil mål og behov endre seg og bli identisk med tidslinjen som er lagt inn i fanen: Pensjon. Om det er ti år til pensjonsutbetalingene starter, vil antall år med investering være 10. Skal du ha utbetalt pensjonen over 15år vil antall år med utbetaling være 15. Aksjeandel blir også satt til det samme. Dette i portefølje I"
-                                    className={`border border-[#DDDDDD] h-16 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 shadow-md flex-shrink-0 ${henteAltFraPensionActive ? 'bg-[#22C55E] text-white hover:bg-[#16A34A] border-[#22C55E]' : 'bg-[#1A2A47] text-white hover:bg-[#2A3A5A]'}`}
-                                    style={{ width: '112px', height: '64px', flex: '0 0 auto' }}
-                                >
-                                    Hent alt fra pensjon
-                                </button>
-                            </div>
                     <button
                         type="button"
                         onClick={toggleGoalSeekAnnualSavings}
@@ -6210,7 +6147,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                             legend: {
                                                 display: true,
                                                 labels: {
-                                                    color: '#333333',
+                                                    color: SPWM_INK,
                                                     font: {
                                                         size: 13,
                                                         weight: '500'
@@ -6345,7 +6282,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                             legend: {
                                                 display: true,
                                                 labels: {
-                                                    color: '#333333',
+                                                    color: SPWM_INK,
                                                     font: {
                                                         size: 14,
                                                         weight: '600'
@@ -6422,7 +6359,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                 ticks: {
                                                     ...chartOptions.scales.y.ticks,
                                                     callback: (value) => `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`,
-                                                    color: '#4A6D8C',
+                                                    color: SPWM_NAVY,
                                                     font: {
                                                         size: 14.4,
                                                         weight: '500'
@@ -6602,7 +6539,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                 legend: {
                                                     display: true,
                                                     labels: {
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -6641,7 +6578,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     title: {
                                                         display: true,
                                                         text: 'Total sum av utbetalinger (kr)',
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -6654,7 +6591,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     title: {
                                                         display: true,
                                                         text: 'Antall simuleringer',
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -6829,7 +6766,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                 legend: {
                                                     display: true,
                                                     labels: {
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -6868,7 +6805,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     title: {
                                                         display: true,
                                                         text: 'Porteføljens totale verdi (kr)',
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -6881,7 +6818,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                                     title: {
                                                         display: true,
                                                         text: 'Antall simuleringer',
-                                                        color: '#333333',
+                                                        color: SPWM_INK,
                                                         font: {
                                                             size: 14,
                                                             weight: '600'
@@ -7065,20 +7002,6 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                     allowDirectInput
                                     thumbColor="#4A6D8C"
                                 />
-                                {/* Hent fra T‑konto knapp under formuesskatt-slideren */}
-                                <div className="flex justify-center mt-3">
-                                    <button
-                                        type="button"
-                                        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                                            state.wealthTaxFromTKonto
-                                                ? 'bg-[#0C8F4A] border-[#0C8F4A] text-white'
-                                                : 'bg-gray-200 border-gray-300 text-gray-600'
-                                        }`}
-                                        onClick={handleToggleWealthTaxFromTKonto}
-                                    >
-                                        Hent Formuesskatt
-                                    </button>
-                                </div>
                                  <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
                                      <div className="typo-label text-[#333333]/70 mb-1">Sum ønsket årlig utbetaling (etter skatt):</div>
                                      <div className="text-lg font-semibold text-[#4A6D8C]">

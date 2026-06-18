@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Components" name="KPI cards" subtitle="Investments & pension value cards" viewport="700x320" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  html,body{margin:0;background:var(--gray-50);font-family:var(--font-sans);}
+  .card{padding:24px 30px;box-sizing:border-box;display:flex;gap:18px;}
+  .kpi{background:#fff;border:1px solid var(--gray-200);border-radius:12px;padding:18px 20px;width:300px;box-sizing:border-box;}
+  .kt{font-size:16px;font-weight:600;color:var(--sp-navy);margin-bottom:14px;}
+  .klab{font-size:13px;color:var(--gray-500);}
+  .kval{font-size:28px;font-weight:600;color:var(--sp-navy);font-variant-numeric:tabular-nums;margin:2px 0 12px;}
+  .kret{font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;}
+  .link{font-size:14px;font-weight:600;color:var(--blue-main);margin-top:16px;display:inline-flex;gap:6px;align-items:center;}
+  .spark{height:48px;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="kpi">
+    <div class="kt">Investeringer</div>
+    <div class="klab">Totalverdi</div>
+    <div class="kval">6 002 474 kr</div>
+    <div class="klab">Avkastning siden start</div>
+    <div class="kret" style="color:var(--blue-main)">+1 928 156 kr&nbsp;<span style="background:var(--blue-100);padding:2px 8px;border-radius:100px;font-size:12px">+26,12 %</span></div>
+    <svg class="spark" viewBox="0 0 260 48" preserveAspectRatio="none" width="100%">
+      <path fill="none" stroke="#0A5EDC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M 0,38 C 4.3,37.3 17.3,34.3 26,34 C 34.7,33.7 43.3,37.0 52,36 C 60.7,35.0 69.3,29.0 78,28 C 86.7,27.0 95.3,31.0 104,30 C 112.7,29.0 121.3,23.0 130,22 C 138.7,21.0 147.3,25.0 156,24 C 164.7,23.0 173.3,17.0 182,16 C 190.7,15.0 199.3,19.2 208,18 C 216.7,16.8 225.3,11.0 234,9 C 242.7,7.0 255.7,6.5 260,6"/>
+    </svg>
+    <a class="link">Se detaljer om investeringer <i class='bx bx-right-arrow-alt'></i></a>
+  </div>
+  <div class="kpi">
+    <div class="kt">Pensjon</div>
+    <div class="klab">Totalverdi</div>
+    <div class="kval">1 200 234 kr</div>
+    <div class="klab">Avkastning siden start</div>
+    <div class="kret" style="color:var(--gray-500)">−142 928 kr&nbsp;<span style="background:var(--gray-100);padding:2px 8px;border-radius:100px;font-size:12px">−14,51 %</span></div>
+    <svg class="spark" viewBox="0 0 260 48" preserveAspectRatio="none" width="100%">
+      <path fill="none" stroke="#0A5EDC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M 0,8 C 4.3,8.7 17.3,11.7 26,12 C 34.7,12.3 43.3,9.0 52,10 C 60.7,11.0 69.3,17.0 78,18 C 86.7,19.0 95.3,15.0 104,16 C 112.7,17.0 121.3,23.0 130,24 C 138.7,25.0 147.3,21.0 156,22 C 164.7,23.0 173.3,28.2 182,30 C 190.7,31.8 199.3,31.7 208,33 C 216.7,34.3 225.3,36.8 234,38 C 242.7,39.2 255.7,39.7 260,40"/>
+    </svg>
+    <a class="link">Se detaljer om pensjon <i class='bx bx-right-arrow-alt'></i></a>
+  </div>
+</div>
+</body>
+</html>

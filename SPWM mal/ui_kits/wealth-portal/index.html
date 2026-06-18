@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<!-- @dsCard group="UI Kit — Wealth Portal" name="Wealth Portal UI Kit" subtitle="Click-through client portal — login → dashboard → investments → pension" viewport="1280x760" -->
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Söderberg & Partners — Wealth Management Portal</title>
+<link rel="stylesheet" href="../../colors_and_type.css">
+<link rel="stylesheet" href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css">
+<style>
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#fff;font-family:var(--font-sans);color:var(--sp-navy);-webkit-font-smoothing:antialiased;}
+  #root{height:100vh;}
+  button{font-family:var(--font-sans);}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:10px;border:2px solid var(--gray-50);}
+  /* responsive: hide desktop sidebar / mobile bar */
+  .wp-mobilebar{display:none;}
+  @media (max-width: 900px){
+    .wp-sidebar{display:none;}
+    .wp-mobilebar{display:block;}
+    .wp-main{border-radius:0 !important;padding:18px 16px 40px !important;}
+    #root > div > div{padding:0 !important;}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="charts.jsx"></script>
+<script type="text/babel" src="shell.jsx"></script>
+<script type="text/babel" src="cards.jsx"></script>
+<script type="text/babel" src="tables.jsx"></script>
+<script type="text/babel" src="data.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+</body>
+</html>

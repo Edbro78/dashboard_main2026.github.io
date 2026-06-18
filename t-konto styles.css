@@ -1,88 +1,82 @@
-/* Typography: Whitney (Mål og behov-design) */
-@font-face { font-family: 'Whitney'; src: local('Whitney Black'), local('Whitney-Black'), local('Whitney Black Regular'); font-style: normal; font-weight: 900; font-display: swap; }
-@font-face { font-family: 'Whitney'; src: local('Whitney Bold'), local('Whitney-Bold'); font-style: normal; font-weight: 700; font-display: swap; }
-@font-face { font-family: 'Whitney'; src: local('Whitney Medium'), local('Whitney-Medium'); font-style: normal; font-weight: 500; font-display: swap; }
-@font-face { font-family: 'Whitney'; src: local('Whitney Book'), local('Whitney-Book'), local('Whitney Light'); font-style: normal; font-weight: 400; font-display: swap; }
-@font-face { font-family: 'Whitney'; src: local('Whitney Medium Italic'), local('Whitney-MediumItalic'); font-style: italic; font-weight: 500; font-display: swap; }
+/* ============================================================================
+   T-konto — styled with SPWM design tokens (colors_and_type.css)
+   ============================================================================ */
 
 :root {
-  /* S&P Wealth Management fargepalett (offisiell) */
-  --sp-background: #F5F3F3;       /* Light Grey */
-  --sp-foreground: #333333;       /* Coal */
-  --sp-dark-blue: #002359;        /* Dark Blue */
-  --sp-blue: #002D72;             /* Blue */
-  --sp-cyan-40: #99D9F2;          /* Cyan 40 */
-  --sp-cyan-20: #CCECF9;          /* Cyan 20 */
-  --sp-border: #CECCCC;           /* Outline/ramme */
+  /* Legacy aliases → SPWM tokens */
+  --sp-background: var(--gray-50);
+  --sp-foreground: var(--gray-700);
+  --sp-dark-blue: var(--sp-navy);
+  --sp-blue: var(--blue-main);
+  --sp-cyan-40: var(--blue-400);
+  --sp-cyan-20: var(--blue-100);
+  --sp-border: var(--gray-200);
 
-  --P_ACCENT: var(--sp-cyan-40);
-  --P_LIGHT_BG: var(--sp-cyan-20);
-  --P_SELECTED_BG: rgba(153, 217, 242, 0.25);
-  --BLUE_100: #f9f9f9;
-  --BLUE_200: var(--sp-cyan-20);
-  --BLUE_300: #b8e8ee;
-  --BLUE_400: var(--sp-cyan-40);
-  --BLUE_500: var(--sp-cyan-40);
-  --GRAY_TEXT_DARK: var(--sp-foreground);
-  --GRAY_TEXT_SECONDARY: #666666;
-  --BG_OUTER: var(--sp-background);
-  --BG_CARD: #ffffff;
-  --BORDER_LIGHT: var(--sp-border);
-  /* Gjeld / advarselsflater: blå palett (S&P) — ikke rødt */
-  --ERROR_DEBT: #002D72;
-  --ERROR_LIGHT_BG: #CCECF9;
+  --P_ACCENT: var(--blue-main);
+  --P_LIGHT_BG: var(--blue-100);
+  --P_SELECTED_BG: var(--blue-100);
+  --BLUE_100: var(--gray-50);
+  --BLUE_200: var(--blue-100);
+  --BLUE_300: var(--blue-200);
+  --BLUE_400: var(--blue-300);
+  --BLUE_500: var(--blue-400);
+  --GRAY_TEXT_DARK: var(--sp-navy);
+  --GRAY_TEXT_SECONDARY: var(--gray-600);
+  --BG_OUTER: var(--gray-50);
+  --BG_CARD: var(--white);
+  --BORDER_LIGHT: var(--gray-200);
+  --ERROR_DEBT: var(--error-700);
+  --ERROR_LIGHT_BG: var(--error-bg);
 
-  --color-dark-blue: var(--sp-dark-blue);
-  --color-blue: var(--sp-blue);
-  --accent-light-blue: var(--P_SELECTED_BG);
-  --accent-cyan: var(--sp-cyan-40);
-  --text-primary: var(--sp-foreground);
-  --text-secondary: var(--GRAY_TEXT_SECONDARY);
-  --text-label: #666666;
-  --border-color: var(--sp-border);
-  --success-green: #0C8F4A;
+  --color-dark-blue: var(--sp-navy);
+  --color-blue: var(--blue-main);
+  --accent-light-blue: var(--blue-100);
+  --accent-cyan: var(--blue-400);
+  --text-primary: var(--gray-700);
+  --text-secondary: var(--gray-600);
+  --text-label: var(--gray-500);
+  --border-color: var(--gray-200);
+  --success-green: var(--success-600);
 
-  --FORSIDE_BLUE: var(--sp-blue);
+  --FORSIDE_BLUE: var(--blue-main);
 
-  --surface-navy-1: #f9f9f9;
-  --surface-navy-2: var(--sp-cyan-20);
+  /* Gjeld — lyse røde flater (SPWM error-skala) */
+  --chart-debt-surface: var(--error-bg-soft);
+  --chart-debt-border: #FEE4E2;
+  --chart-debt-accent: var(--error-500);
 
-  --font-sans: "Whitney", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-  --weight-book: 400;
-  --weight-medium: 500;
-  --weight-semibold: 600;
-  --weight-bold: 700;
-  --weight-black: 900;
+  --surface-navy-1: var(--gray-50);
+  --surface-navy-2: var(--blue-50);
 
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
+  --weight-book: var(--fw-book);
+  --weight-medium: var(--fw-medium);
+  --weight-semibold: var(--fw-semibold);
+  --weight-bold: var(--fw-bold);
+  --weight-black: 800;
+
+  /* Behold t-konto-layout spacing (unngå sirkulær overskriving av SPWM-tokens) */
   --space-5: 24px;
   --space-6: 32px;
 
-  --shadow-button: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-panel: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-focus: 0 0 0 2px rgba(153, 217, 242, 0.35);
-  /* Standard designmanual – kort, lister, progress */
-  --shadow-card: 0 4px 10px rgba(0, 0, 0, 0.06);
-  --shadow-list: 0 1px 3px rgba(0, 0, 0, 0.03);
-  --shadow-progress: 0 1px 3px rgba(0, 0, 0, 0.05);
-  --radius-lg: 8px;
-  --radius-sm: 4px;
-  /* Inntekter – de fem øverste radene (diskret, ikke cyan som eiendeler) */
-  --income-primary-bg: #F8F7F5;
-  --income-primary-border: rgba(51, 51, 51, 0.06);
-  --income-primary-row-bg: #FDFCFB;
-  /* Datavisualisering (Standard designmanual) */
-  --chart-dark-blue: #002359;
-  --chart-yale-blue: #12337E;
-  --chart-violet-blue: #1E4B8B;
-  --chart-crayola-blue: #447DF7;
-  --chart-jordy-blue: #9BEBFA;
-  --chart-lavender: #D8E4FD;
-  --chart-income-green: #0C8F4A;
-  --chart-income-green-light: #B5ECD0;
+  --shadow-button: var(--shadow-xs);
+  --shadow-panel: var(--shadow-sm);
+  --shadow-focus: 0 0 0 3px var(--ring);
+  --shadow-card: var(--shadow-sm);
+  --shadow-list: var(--shadow-xs);
+  --shadow-progress: var(--shadow-xs);
+
+  --income-primary-bg: var(--gray-50);
+  --income-primary-border: var(--gray-200);
+  --income-primary-row-bg: var(--white);
+
+  --chart-dark-blue: var(--chart-navy);
+  --chart-yale-blue: var(--secondary-800);
+  --chart-violet-blue: var(--secondary-700);
+  --chart-crayola-blue: var(--blue-main);
+  --chart-jordy-blue: var(--blue-300);
+  --chart-lavender: var(--blue-100);
+  --chart-income-green: var(--success-600);
+  --chart-income-green-light: var(--success-border);
 }
 
 /* Grunnoppsett */
@@ -100,115 +94,131 @@ body {
 .app {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 260px 1fr;
-  background: var(--BG_OUTER);
+  grid-template-columns: 280px 1fr;
+  background: var(--white);
 }
 
-/* Sidebar */
+/* Sidebar — SPWM wealth portal shell */
 .sidebar {
-  background: var(--BG_CARD);
-  color: var(--text-primary);
+  background: var(--white);
+  color: var(--sp-navy);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--BORDER_LIGHT);
-  margin-top: 16px;
-  margin-bottom: 24px;
-  height: calc(100% - 40px);
-  border-top: 1px solid var(--BORDER_LIGHT);
-  border-bottom: 1px solid var(--BORDER_LIGHT);
-  border-radius: 12px;
-  box-shadow: var(--shadow-panel);
+  border-right: none;
+  margin: 0;
+  height: 100%;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
   overflow: hidden;
+  padding: var(--space-8) var(--space-6);
+  box-sizing: border-box;
 }
 
 .brand {
-  margin-top: 16px;
-  height: 64px;
-  padding: 0 var(--space-4);
-  border-bottom: 1px solid var(--BORDER_LIGHT);
+  margin: 0 0 var(--space-10) 0;
+  height: auto;
+  padding: 0 var(--space-1);
+  border-bottom: none;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   justify-content: center;
-  text-align: center;
+  text-align: left;
+  gap: var(--space-3);
 }
 
-.brand-title {
+.brand-logo {
+  display: block;
+  height: 34px;
+  width: auto;
+  max-width: 100%;
+}
+
+.brand-subtitle {
   margin: 0;
   font-family: var(--font-sans);
-  font-weight: 900;
-  font-size: clamp(1.07rem, 2.14vw, 2.43rem);
-  line-height: 1.1;
+  font-weight: var(--fw-medium);
+  font-size: var(--text-sm-size);
+  line-height: var(--text-sm-lh);
+  color: var(--gray-500);
   letter-spacing: 0;
-  color: var(--sp-blue);
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
+  gap: var(--space-3);
+  padding: 0;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
 }
 .nav-sep {
   height: 1px;
-  background: var(--BORDER_LIGHT);
-  margin: 8px 8px;
+  background: var(--gray-200);
+  margin: var(--space-2) var(--space-1);
   border-radius: 1px;
 }
 
 .nav-item {
   appearance: none;
   background: transparent;
-  color: var(--GRAY_TEXT_SECONDARY);
+  color: var(--sp-navy);
   border: none;
-  border-radius: 10px;
+  border-radius: var(--radius-md);
   text-align: left;
-  padding: 12px var(--space-3);
-  font-size: 18px;
-  font-weight: var(--weight-semibold);
+  padding: 0 var(--space-3);
+  height: 44px;
+  font-size: var(--text-md-size);
+  font-weight: var(--fw-medium);
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
+  transition: background 0.15s ease;
 }
 
 .nav-item:hover,
 .nav-item:focus-visible {
   outline: none;
-  background: var(--BLUE_100);
-  color: var(--GRAY_TEXT_DARK);
+  background: var(--gray-50);
+  color: var(--sp-navy);
 }
 
 .nav-item.is-active {
-  background: var(--sp-cyan-20);
-  color: var(--GRAY_TEXT_DARK);
+  background: var(--blue-100);
+  color: var(--sp-navy);
 }
 
 .nav-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px; height: 32px;
-  border-radius: 9999px;
-  background: var(--BLUE_100);
-  color: var(--sp-blue);
+  width: 20px;
+  height: 20px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--sp-navy);
   flex: 0 0 auto;
+}
+.nav-item.is-active .nav-icon {
+  color: var(--blue-main);
 }
 .nav-label { flex: 1 1 auto; }
 
-/* Innholdsområde – scroll her slik at stepper og innhold får samme bredde ved zoom (én scrollbar) */
+/* Innholdsområde — SPWM main canvas */
 .content {
-  background: var(--BG_OUTER);
-  padding: var(--space-6);
+  background: var(--gray-50);
+  padding: var(--space-8) var(--space-10) var(--space-12);
   color: var(--text-primary);
   display: flex;
   flex-direction: column;
-  min-height: 0; /* tillat at innholdet krymper i grid-celle */
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-2xl) 0 0 0;
 }
 
 .content-header {
@@ -217,28 +227,35 @@ body {
 
 /* Typografi i henhold til retningslinjer (tilnærmet webversjon) */
 h1 {
-  font-weight: var(--weight-black);
-  font-size: clamp(48px, 6vw, 80px); /* H1 over 80pt når mulig */
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  font-size: var(--display-sm-size);
+  line-height: var(--display-sm-lh);
+  color: var(--sp-navy);
   margin: 0 0 var(--space-3) 0;
 }
 
-h2 { /* Seksjonstittel */
-  font-weight: var(--weight-black);
-  font-size: 24px;
+h2 {
+  font-family: var(--font-display);
+  font-weight: var(--fw-medium);
+  font-size: var(--display-xs-size);
+  line-height: var(--display-xs-lh);
   margin: 0 0 var(--space-2) 0;
-  color: var(--GRAY_TEXT_DARK);
+  color: var(--sp-navy);
 }
 
 h3 {
-  font-weight: var(--weight-bold);
-  font-size: 18px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-lg-size);
   margin: var(--space-4) 0 var(--space-2) 0;
+  color: var(--sp-navy);
 }
 
 h4 {
-  font-weight: var(--weight-bold);
-  font-size: 16px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-md-size);
   margin: var(--space-3) 0 var(--space-1) 0;
+  color: var(--sp-navy);
 }
 
 .preamble { /* Innledning */
@@ -255,9 +272,9 @@ p { /* Avsnitt */
   margin: 0 0 var(--space-4) 0;
 }
 
-/* Fokus – S&P Cyan 40 */
+/* Fokus — SPWM blue ring */
 :focus-visible {
-  outline: 2px solid var(--sp-cyan-40);
+  outline: 2px solid var(--blue-main);
   outline-offset: 2px;
 }
 
@@ -274,11 +291,17 @@ p { /* Avsnitt */
     top: 0;
     z-index: 20;
     border-right: none;
-    border-bottom: 1px solid var(--BORDER_LIGHT);
+    border-bottom: 1px solid var(--gray-200);
+    padding: var(--space-4);
   }
-  .nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding: 8px; gap: 8px; }
-  .nav-item { white-space: nowrap; font-size: 16px; padding: 10px 12px; }
+  .content {
+    border-radius: 0;
+    padding: var(--space-4);
+  }
+  .nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding: 0; gap: var(--space-2); }
+  .nav-item { white-space: nowrap; font-size: var(--text-sm-size); padding: 0 var(--space-3); height: 40px; }
   .nav-sep { display: none; }
+  .brand { margin-bottom: var(--space-4); }
 }
 
 
@@ -288,34 +311,36 @@ p { /* Avsnitt */
   left: 16px;
   bottom: 16px;
   z-index: 50;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 9999px;
-  background: #ffffff;
-  color: var(--GRAY_TEXT_DARK);
-  border: 1px solid var(--BORDER_LIGHT);
-  box-shadow: var(--shadow-button);
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  padding: 8px 14px;
+  font-size: var(--text-xs-size);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-sans);
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  color: var(--sp-navy);
+  border: 1px solid var(--gray-300);
+  box-shadow: var(--shadow-sm);
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-#input-fab:hover { background: var(--BLUE_100); border-color: var(--BORDER_LIGHT); }
+#input-fab:hover { background: var(--gray-50); border-color: var(--gray-300); }
 
 #output-fab {
   position: fixed;
   right: 16px;
   bottom: 16px;
   z-index: 50;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border-radius: 9999px;
-  background: #ffffff;
-  color: var(--GRAY_TEXT_DARK);
-  border: 1px solid var(--BORDER_LIGHT);
-  box-shadow: var(--shadow-button);
-  transition: background-color .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  padding: 8px 14px;
+  font-size: var(--text-xs-size);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-sans);
+  border-radius: var(--radius-pill);
+  background: var(--white);
+  color: var(--sp-navy);
+  border: 1px solid var(--gray-300);
+  box-shadow: var(--shadow-sm);
+  transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
-#output-fab:hover { background: var(--BLUE_100); border-color: var(--BORDER_LIGHT); }
+#output-fab:hover { background: var(--gray-50); border-color: var(--gray-300); }
 
 /* --- Modal base (reuses disclaimer modal structure) --- */
 .modal[hidden] { display: none !important; }
@@ -327,19 +352,19 @@ p { /* Avsnitt */
 .modal-backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(0,0,0,0.6); /* bg-black/60 */
+  background: rgba(16, 24, 40, 0.4);
 }
 .modal-panel {
   position: relative;
   margin: 48px auto;
   width: calc(100% - 32px);
   max-width: 672px;
-  background: #ffffff;
-  color: var(--GRAY_TEXT_DARK);
-  border-radius: 12px;
-  box-shadow: 0 20px 48px rgba(0,0,0,0.2);
-  border: 1px solid var(--BORDER_LIGHT);
-  padding: 20px 20px 24px 20px;
+  background: var(--white);
+  color: var(--sp-navy);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  border: 1px solid var(--gray-200);
+  padding: var(--space-6);
 }
 .modal-panel h3 {
   margin-top: 0;
@@ -395,26 +420,26 @@ p { /* Avsnitt */
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  font-weight: 700;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  border-radius: 9999px;
+  padding: 10px 16px;
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm-size);
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: 0;
+  border-radius: var(--radius-md);
   border: none;
-  background: var(--sp-blue);
-  color: var(--sp-cyan-40);
+  background: var(--blue-main);
+  color: var(--white);
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-  transition: transform .12s ease, background-color .2s ease, box-shadow .2s ease;
+  box-shadow: var(--shadow-xs);
+  transition: background-color .15s ease;
 }
-.copy-btn:hover { transform: translateY(-1px); background: var(--sp-dark-blue); }
-.copy-btn:active { transform: translateY(0); }
+.copy-btn:hover { background: var(--sp-navy-pressed); transform: none; }
+.copy-btn:active { transform: none; }
 
 /* Success state */
 .copy-btn.is-success {
-  background: var(--success-green);
-  border-color: #7AD9A9;
+  background: var(--success-600);
 }
 
 /* simple icon text */
@@ -431,15 +456,15 @@ p { /* Avsnitt */
   overflow-y: visible; /* scroll skjer i .content – så stepper og år-boks får samme bredde ved zoom */
 }
 
-/* Stepper øverst */
+/* Stepper — SPWM progress indicator */
 .stepper {
-  background: var(--BG_CARD);
-  border: 1px solid var(--BORDER_LIGHT);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-panel);
-  margin-top: -16px;
-  margin-bottom: 24px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  margin-top: 0;
+  margin-bottom: var(--space-6);
   flex-shrink: 0;
 }
 .stepper-list {
@@ -476,22 +501,22 @@ p { /* Avsnitt */
 .step-dot {
   width: 20px; height: 20px;
   border-radius: 50%;
-  border: 2px solid var(--BORDER_LIGHT);
-  background: #ffffff;
-  box-shadow: 0 0 0 6px var(--P_LIGHT_BG);
+  border: 2px solid var(--gray-300);
+  background: var(--white);
+  box-shadow: none;
   position: relative;
   z-index: 1;
 }
-.step-label { text-align: center; }
+.step-label { text-align: center; font-size: var(--text-sm-size); }
 .step.is-reached .step-dot {
-  background: var(--sp-blue);
-  border-color: var(--sp-blue);
-  box-shadow: 0 0 0 6px rgba(0, 45, 114, 0.2);
+  background: var(--blue-main);
+  border-color: var(--blue-main);
+  box-shadow: 0 0 0 4px var(--blue-100);
 }
-.step.is-reached:not(.is-current)::after { background: var(--sp-blue); }
-.step.is-current::after { background: var(--BORDER_LIGHT); }
-.step.is-reached { color: var(--GRAY_TEXT_DARK); }
-.step.is-current .step-label { color: var(--sp-blue); }
+.step.is-reached:not(.is-current)::after { background: var(--blue-main); }
+.step.is-current::after { background: var(--gray-200); }
+.step.is-reached { color: var(--sp-navy); }
+.step.is-current .step-label { color: var(--blue-main); font-weight: var(--fw-semibold); }
 
 @media (max-width: 768px) {
   .stepper { padding: 16px; }
@@ -499,12 +524,12 @@ p { /* Avsnitt */
 }
 
 .panel {
-  background: var(--BG_CARD);
-  border: 1px solid var(--BORDER_LIGHT);
-  border-radius: 12px;
-  padding: 24px;
-  color: var(--GRAY_TEXT_DARK);
-  box-shadow: var(--shadow-panel);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  color: var(--sp-navy);
+  box-shadow: var(--shadow-sm);
   max-width: none;
   overflow: hidden;
   grid-column: 1 / -1;
@@ -558,23 +583,21 @@ p { /* Avsnitt */
   flex-direction: column;
   justify-content: flex-start;
   align-items: flex-start;
-  padding: 12px;
-  gap: 6px;
+  padding: var(--space-4) var(--space-5);
+  gap: var(--space-2);
   height: 100%;
-  border-radius: 12px;
-  box-shadow: var(--shadow-panel);
-  border: 1px solid var(--BORDER_LIGHT);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
   position: relative;
   overflow: hidden;
+  transition: box-shadow 0.15s ease;
 }
 .summary-card::before {
-  content: "";
-  position: absolute;
-  inset: -110px auto auto -110px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 70%);
-  pointer-events: none;
+  display: none;
+}
+.summary-card:hover {
+  box-shadow: var(--shadow-md);
 }
 .summary-card.is-forside { justify-content: center; align-items: center; text-align: center; gap: 10px; }
 .summary-card.is-forside .summary-title { text-align: center; }
@@ -599,17 +622,18 @@ p { /* Avsnitt */
 .summary-card.is-tkonto .summary-title.success-dark {
   color: var(--sp-cyan-40);
 }
-.summary-title { font-weight: var(--weight-semibold); color: var(--GRAY_TEXT_DARK); text-align: left; }
-.summary-title.danger { color: var(--ERROR_DEBT); }
-.summary-title.success { color: var(--success-green); }
-.summary-title.success-dark { color: #06603a; }
-/* Topp-rad: samme farger som .forside-card-* */
+.summary-title { font-weight: var(--fw-semibold); font-size: var(--text-sm-size); color: var(--gray-500); text-align: left; }
+.summary-title.danger { color: var(--gray-500); }
+.summary-title.success { color: var(--gray-500); }
+.summary-title.success-dark { color: var(--blue-200); }
+/* Topp-rad KPI-kort — SPWM: ulike blå og grå nyanser */
 .summary-assets {
-  background: var(--sp-background);
-  border-color: rgba(206, 204, 204, 0.95);
+  background: var(--blue-50);
+  border-color: var(--blue-200);
+  border-left: 3px solid var(--blue-main);
 }
-.summary-assets .summary-title { color: var(--sp-foreground); }
-.summary-assets .summary-value { color: var(--GRAY_TEXT_SECONDARY); }
+.summary-assets .summary-title { color: var(--sp-navy); }
+.summary-assets .summary-value { color: var(--sp-navy); font-size: var(--text-xl-size); font-weight: var(--fw-semibold); }
 #summary-assets-button,
 #summary-assets-button *,
 #summary-assets-button:hover,
@@ -626,8 +650,8 @@ p { /* Avsnitt */
 #summary-assets-button .summary-card:hover,
 #summary-assets-button .summary-assets,
 #summary-assets-button .summary-assets:hover {
-  background: var(--sp-background) !important;
-  background-color: var(--sp-background) !important;
+  background: var(--blue-50) !important;
+  background-color: var(--blue-50) !important;
   transform: none !important;
   opacity: 1 !important;
   filter: none !important;
@@ -645,42 +669,50 @@ p { /* Avsnitt */
 }
 
 .summary-debts {
-  background: var(--sp-cyan-40);
-  border-color: rgba(0, 35, 89, 0.2);
+  background: var(--chart-debt-surface);
+  border-color: var(--chart-debt-border);
+  border-left: 3px solid var(--chart-debt-accent);
 }
 .summary-debts .summary-title,
 .summary-debts .summary-title.danger {
-  color: var(--sp-dark-blue);
+  color: var(--sp-navy);
 }
 .summary-debts .summary-value {
-  color: rgba(0, 45, 114, 0.88);
+  color: var(--sp-navy);
+  font-size: var(--text-xl-size);
+  font-weight: var(--fw-semibold);
 }
 
 .summary-equity {
-  background: linear-gradient(145deg, var(--sp-cyan-20) 0%, var(--sp-background) 72%);
-  border-color: rgba(0, 45, 114, 0.14);
+  background: var(--blue-100);
+  border-color: var(--blue-200);
+  border-left: 3px solid var(--blue-600);
 }
 .summary-equity .summary-title,
 .summary-equity .summary-title.success {
-  color: var(--sp-dark-blue);
+  color: var(--sp-navy);
 }
 .summary-equity .summary-value {
-  color: rgba(51, 51, 51, 0.76);
+  color: var(--sp-navy);
+  font-size: var(--text-xl-size);
+  font-weight: var(--fw-semibold);
 }
 
 .summary-cash {
-  background: var(--sp-dark-blue);
-  border-color: rgba(153, 217, 242, 0.35);
-  box-shadow: 0 8px 28px rgba(0, 35, 89, 0.35);
+  background: var(--sp-navy);
+  border-color: var(--secondary-700);
+  box-shadow: var(--shadow-sm);
 }
 .summary-cash .summary-title,
 .summary-cash .summary-title.success-dark {
-  color: var(--sp-cyan-40);
+  color: var(--blue-200);
 }
 .summary-cash .summary-value {
-  color: rgba(204, 236, 249, 0.95);
+  color: var(--white);
+  font-size: var(--text-xl-size);
+  font-weight: var(--fw-semibold);
 }
-.summary-value { font-weight: var(--weight-semibold); font-size: 1.25rem; color: var(--GRAY_TEXT_SECONDARY); text-align: left; }
+.summary-value { font-weight: var(--fw-semibold); font-size: var(--text-lg-size); color: var(--sp-navy); text-align: left; font-variant-numeric: tabular-nums; }
 
 /* Sentrer innholdet i de fire toppboksene (panelet over innholdet, inkl. T‑konto) */
 .panel-empty .summary-card {
@@ -700,144 +732,128 @@ p { /* Avsnitt */
 }
 
 .forside-card {
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   padding: calc(20px * 1.21 * 1.1);
   display: flex;
   flex-direction: column;
   gap: calc(12px * 1.21 * 1.1);
-  border: 1px solid var(--BORDER_LIGHT);
-  box-shadow: var(--shadow-panel);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
   position: relative;
   overflow: hidden;
+  transition: box-shadow 0.15s ease;
+}
+.forside-card:hover {
+  box-shadow: var(--shadow-md);
 }
 .forside-card::before {
-  content: "";
-  position: absolute;
-  inset: -120px auto auto -120px;
-  width: 240px;
-  height: 240px;
-  background: radial-gradient(circle, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0) 65%);
-  opacity: 0.8;
-  pointer-events: none;
+  display: none;
 }
 
-/* Forside: ett uttrykk per kort — alle S&P-nyanser (grå, mørkeblå, blå, cyan 20/40, hvit) */
+/* Forside — SPWM kort med ulike blå og grå flater */
 .forside-card-assets {
-  background: var(--sp-background);
-  color: var(--sp-foreground);
-  border-color: rgba(206, 204, 204, 0.95);
+  background: var(--blue-50);
+  color: var(--gray-700);
+  border-color: var(--blue-200);
+  border-left: 4px solid var(--blue-main);
 }
 .forside-card-assets .forside-card-title {
-  color: var(--sp-foreground);
+  color: var(--sp-navy);
 }
 .forside-card-assets .forside-card-text {
-  color: rgba(51, 51, 51, 0.78);
+  color: var(--gray-600);
 }
 .forside-card-assets .forside-card-illustration {
-  color: var(--sp-blue);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(0, 45, 114, 0.12);
+  color: var(--blue-main);
 }
 
-/* Gjeld: lys cyanflate (tidligere Kontantstrøm) */
 .forside-card-debt {
-  background: var(--sp-cyan-40);
-  color: var(--sp-dark-blue);
-  border-color: rgba(0, 35, 89, 0.2);
+  background: var(--chart-debt-surface);
+  color: var(--gray-700);
+  border-color: var(--chart-debt-border);
+  border-left: 4px solid var(--chart-debt-accent);
 }
 .forside-card-debt .forside-card-title {
-  color: var(--sp-dark-blue);
+  color: var(--sp-navy);
 }
 .forside-card-debt .forside-card-text {
-  color: rgba(0, 45, 114, 0.88);
+  color: var(--gray-600);
 }
 .forside-card-debt .forside-card-illustration {
-  color: var(--sp-dark-blue);
-  background: rgba(255, 255, 255, 0.65);
-  box-shadow: inset 0 0 0 1px rgba(0, 35, 89, 0.15);
+  color: var(--chart-debt-accent);
 }
 
 .forside-card-equity {
-  background: linear-gradient(145deg, var(--sp-cyan-20) 0%, var(--sp-background) 72%);
-  color: var(--sp-foreground);
-  border-color: rgba(0, 45, 114, 0.14);
+  background: var(--blue-100);
+  color: var(--gray-700);
+  border-color: var(--blue-200);
+  border-left: 4px solid var(--blue-600);
 }
 .forside-card-equity .forside-card-title {
-  color: var(--sp-dark-blue);
+  color: var(--sp-navy);
 }
 .forside-card-equity .forside-card-text {
-  color: rgba(51, 51, 51, 0.76);
+  color: var(--gray-600);
 }
 .forside-card-equity .forside-card-illustration {
-  color: var(--sp-blue);
-  background: rgba(255, 255, 255, 0.75);
-  box-shadow: inset 0 0 0 1px rgba(0, 45, 114, 0.1);
+  color: var(--blue-700);
 }
 
-/* Kontantstrøm: mørkest (Dark Blue) med lys tekst */
 .forside-card-cashflow {
-  background: var(--sp-dark-blue);
-  color: var(--sp-cyan-40);
-  border-color: rgba(153, 217, 242, 0.35);
-  box-shadow: 0 8px 28px rgba(0, 35, 89, 0.35);
+  background: var(--sp-navy);
+  color: var(--blue-200);
+  border-color: var(--secondary-700);
+  box-shadow: var(--shadow-sm);
 }
 .forside-card-cashflow::before {
-  background: radial-gradient(circle at 80% 20%, rgba(153, 217, 242, 0.18) 0%, transparent 55%);
-  opacity: 1;
+  display: none;
 }
 .forside-card-cashflow .forside-card-title {
-  color: var(--sp-cyan-40);
+  color: var(--blue-200);
 }
 .forside-card-cashflow .forside-card-text {
-  color: rgba(204, 236, 249, 0.95);
+  color: rgba(255, 255, 255, 0.88);
   white-space: normal;
   line-height: 1.35;
 }
 .forside-card-cashflow .forside-card-illustration {
-  color: var(--sp-cyan-40);
-  background: rgba(255, 255, 255, 0.1);
-  box-shadow: inset 0 0 0 1px rgba(153, 217, 242, 0.35);
+  color: var(--blue-200);
 }
 
 .forside-card-tbe {
-  background: linear-gradient(155deg, var(--sp-blue) 0%, var(--sp-dark-blue) 92%);
-  color: var(--sp-cyan-40);
-  border-color: rgba(153, 217, 242, 0.28);
-  box-shadow: 0 10px 32px rgba(0, 35, 89, 0.28);
+  background: var(--sp-navy);
+  color: var(--blue-200);
+  border-color: var(--secondary-700);
+  box-shadow: var(--shadow-sm);
 }
 .forside-card-tbe::before {
-  background: radial-gradient(circle at 15% 85%, rgba(153, 217, 242, 0.22) 0%, transparent 50%);
-  opacity: 1;
+  display: none;
 }
 .forside-card-tbe .forside-card-title {
-  color: #ffffff;
+  color: var(--white);
 }
 .forside-card-tbe .forside-card-illustration {
-  color: var(--sp-cyan-40);
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+  color: var(--blue-200);
 }
 .forside-card-tbe .forside-card-text {
-  color: rgba(204, 236, 249, 0.92);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .forside-card-analysis {
-  background: #ffffff;
-  color: var(--sp-foreground);
-  border: 1px solid var(--sp-border);
-  border-left: 5px solid var(--sp-blue);
-  box-shadow: 0 6px 20px rgba(0, 35, 89, 0.08), 0 0 0 1px rgba(0, 45, 114, 0.06);
+  background: var(--white);
+  color: var(--gray-700);
+  border: 1px solid var(--gray-200);
+  border-left: 4px solid var(--blue-main);
+  box-shadow: var(--shadow-sm);
 }
 .forside-card-analysis .forside-card-title {
-  color: var(--sp-dark-blue);
+  color: var(--sp-navy);
 }
 .forside-card-analysis .forside-card-text {
-  color: var(--sp-blue);
+  color: var(--gray-600);
 }
 .forside-card-analysis .forside-card-illustration {
-  color: var(--sp-blue);
-  background: var(--sp-cyan-20);
-  box-shadow: inset 0 0 0 1px rgba(0, 45, 114, 0.1);
+  color: var(--blue-main);
 }
 
 .forside-card-illustration {
@@ -847,9 +863,9 @@ p { /* Avsnitt */
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
+  background: inherit;
   color: currentColor;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.3);
+  box-shadow: none;
 }
 .forside-card-illustration svg {
   width: 28px;
@@ -869,9 +885,9 @@ p { /* Avsnitt */
   max-width: 100%;
 }
 /* TBE på mørkt kort — status med lysere nyanser */
-.forside-card-tbe .forside-card-text.status-high { color: #ffffff; }
-.forside-card-tbe .forside-card-text.status-mid { color: var(--sp-cyan-40); }
-.forside-card-tbe .forside-card-text.status-low { color: rgba(204, 236, 249, 0.95); }
+.forside-card-tbe .forside-card-text.status-high { color: var(--white); }
+.forside-card-tbe .forside-card-text.status-mid { color: var(--blue-200); }
+.forside-card-tbe .forside-card-text.status-low { color: rgba(255, 255, 255, 0.85); }
 
 @media (max-width: 900px) {
   .forside-grid {
@@ -887,27 +903,28 @@ p { /* Avsnitt */
 .forside-cta {
   appearance: none;
   border: none;
-  border-radius: 9999px;
-  padding: 12px 28px;
-  font-size: 19.2px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  background: var(--sp-blue);
-  color: var(--sp-cyan-40);
-  box-shadow: var(--shadow-button);
+  border-radius: var(--radius-md);
+  padding: 12px 20px;
+  font-size: var(--text-md-size);
+  font-weight: var(--fw-semibold);
+  font-family: var(--font-sans);
+  text-transform: none;
+  letter-spacing: 0;
+  background: var(--blue-main);
+  color: var(--white);
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  transition: background-color 0.15s ease;
 }
 .forside-cta:hover,
 .forside-cta:focus-visible {
-  transform: translateY(-2px);
-  background: var(--sp-dark-blue);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+  background: var(--sp-navy-pressed);
+  transform: none;
+  box-shadow: var(--shadow-xs);
   outline: none;
 }
 .forside-cta:active {
-  transform: translateY(0);
+  transform: none;
 }
 
 /* Struktur modul styling (Familieforhold – organisering / innebygd dashboard) */
@@ -1470,7 +1487,7 @@ p { /* Avsnitt */
 .asset-entity-select {
   border: 1px solid var(--sp-border);
   background: #ffffff;
-  color: var(--sp-blue);
+  color: var(--gray-900);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-family: var(--font-sans);
@@ -1495,6 +1512,11 @@ p { /* Avsnitt */
 
 /* Kostnadsrader: cyan/blå palett (S&P) */
 .is-cost .asset-name { background: var(--sp-cyan-20); border-color: rgba(153, 217, 242, 0.85); }
+.is-cost .asset-name.asset-name-readonly {
+  color: var(--gray-900);
+  -webkit-text-fill-color: var(--gray-900);
+  opacity: 1;
+}
 .is-cost .asset-amount { color: var(--sp-dark-blue); }
 .is-cost .asset-range::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 55%, var(--sp-cyan-40) 100%);
@@ -1613,7 +1635,7 @@ p { /* Avsnitt */
 }
 
 .asset-toggle-switch input:checked + .asset-toggle-slider {
-  background-color: var(--sp-blue);
+  background-color: var(--blue-main);
 }
 
 .asset-toggle-switch input:checked + .asset-toggle-slider:before {
@@ -1771,36 +1793,69 @@ input.asset-amount:focus {
   transform: translateX(22.8px); /* 24 * 0.95 */
 }
 
-/* Inntekter: de fem øverste radene – diskret varm nøytral (skiller seg fra cyan eiendeler) */
-.panel-income .assets .asset-row:nth-child(-n+5) {
+/* Inntekter: de fire øverste radene (lønn, utbytte, skattefrie, Mål og behov) – diskret varm nøytral */
+.panel-income .assets .asset-row:nth-child(-n+4) {
   background: var(--income-primary-row-bg);
   border-color: var(--income-primary-border);
   box-shadow: var(--shadow-list);
 }
 
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-name,
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-name-readonly {
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-name,
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-name-readonly {
   background: var(--income-primary-bg);
   border-color: var(--income-primary-border);
   box-shadow: none;
 }
 
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-amount {
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-amount {
   border-color: var(--income-primary-border);
   background: #ffffff;
 }
 
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-webkit-slider-runnable-track {
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-range::-webkit-slider-runnable-track {
   background: linear-gradient(90deg, #f2f1ef 0%, #ebeae8 100%);
 }
 
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-moz-range-track {
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-range::-moz-range-track {
   background: linear-gradient(90deg, #f2f1ef 0%, #ebeae8 100%);
 }
 
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-webkit-slider-thumb,
-.panel-income .assets .asset-row:nth-child(-n+5) .asset-range::-moz-range-thumb {
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-range::-webkit-slider-thumb,
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-range::-moz-range-thumb {
   background: var(--sp-blue);
+}
+
+/* Kostnadsrader (skatt/kostnad): samme readonly-navndesign uavhengig av radnummer */
+.panel-income .assets .asset-row.is-cost {
+  background: #ffffff;
+  border-color: rgba(0, 45, 114, 0.08);
+  box-shadow: var(--shadow-list);
+}
+
+.panel-income .assets .asset-row.is-cost .asset-name,
+.panel-income .assets .asset-row.is-cost .asset-name-readonly {
+  background: var(--sp-cyan-20);
+  border-color: rgba(153, 217, 242, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: var(--gray-900);
+  -webkit-text-fill-color: var(--gray-900);
+  opacity: 1;
+}
+
+.panel-income .assets .asset-row.is-cost .asset-amount {
+  color: var(--sp-dark-blue);
+  border-color: rgba(153, 217, 242, 0.85);
+  background: #ffffff;
+}
+
+.panel-income .assets .asset-row.is-cost .asset-range::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 55%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
+}
+
+.panel-income .assets .asset-row.is-cost .asset-range::-moz-range-track {
+  background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 55%, var(--sp-cyan-40) 100%);
+  box-shadow: var(--shadow-progress);
 }
 
 /* Fjern liten overskrift i Gjeld-fanen og juster toppmarg */
@@ -1832,7 +1887,35 @@ input.asset-amount:focus {
 }
 
 .panel-assets .asset-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 205px) 28px;
   gap: calc(7px * 0.855);
+  align-items: center;
+}
+
+.panel-assets .asset-top .asset-name {
+  flex: unset;
+  width: 100%;
+  min-width: 0;
+}
+
+.panel-assets .asset-top .asset-entity-select {
+  width: 100%;
+  min-width: 0;
+  max-width: 205px;
+  justify-self: stretch;
+}
+
+.panel-assets .asset-top .asset-delete,
+.panel-assets .asset-top .asset-top-delete-spacer {
+  width: 28px;
+  height: 28px;
+  justify-self: end;
+}
+
+.panel-assets .asset-top-delete-spacer {
+  display: block;
+  flex-shrink: 0;
 }
 
 /* Typografi felles: Eiendeler er fasit — Inntekter og Gjeld arver samme font/størrelse/farge */
@@ -1860,12 +1943,23 @@ input.asset-amount:focus {
 
 .panel-assets .asset-name-readonly,
 .panel-income .asset-name-readonly,
-.panel-debt .asset-name-readonly {
+.panel-debt .asset-name-readonly,
+.asset-name.asset-name-readonly {
   cursor: default;
-  color: var(--sp-blue);
+  color: var(--gray-900);
+  -webkit-text-fill-color: var(--gray-900);
+  opacity: 1;
   background: var(--sp-cyan-20);
   border: 1px solid rgba(153, 217, 242, 0.9);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.panel-income .assets .asset-row:nth-child(-n+4) .asset-name-readonly,
+.panel-income .asset-row.is-cost .asset-name-readonly,
+.panel-income .asset-row.asset-row--pension-toggle-only .asset-name-readonly {
+  color: var(--gray-900);
+  -webkit-text-fill-color: var(--gray-900);
+  opacity: 1;
 }
 
 .panel-assets .asset-name:not(.asset-name-readonly),
@@ -1885,7 +1979,7 @@ input.asset-amount:focus {
   font-weight: var(--weight-medium);
   font-size: 0.8125rem;
   letter-spacing: 0.04em;
-  color: var(--sp-blue);
+  color: var(--gray-900);
 }
 
 .panel-debt .select select {
@@ -2154,17 +2248,17 @@ input.asset-amount {
 }
 
 .year-button.is-active {
-  background: var(--sp-blue);
-  color: #ffffff;
-  border-color: var(--sp-blue);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: var(--blue-main);
+  color: var(--white);
+  border-color: var(--blue-main);
+  box-shadow: var(--shadow-xs);
 }
 
 .year-button.is-active:hover {
-  background: var(--sp-dark-blue);
-  border-color: var(--sp-dark-blue);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: var(--sp-navy-pressed);
+  border-color: var(--sp-navy-pressed);
+  transform: none;
+  box-shadow: var(--shadow-xs);
 }
 
 /* Fremtidig utvikling – År-slider kort og tydeligere stil (beholdt for bakoverkompatibilitet) */
@@ -2271,24 +2365,24 @@ input.asset-amount {
 .btn-add {
   margin-top: 10px;
   width: 100%;
-  background: var(--sp-blue);
-  color: var(--sp-cyan-40);
+  background: var(--blue-main);
+  color: var(--white);
   border: none;
-  padding: 14px 18px;
-  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
   font-family: var(--font-sans);
-  font-weight: var(--weight-bold);
-  font-size: 0.8125rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-sm-size);
+  text-transform: none;
+  letter-spacing: 0;
   cursor: pointer;
-  box-shadow: var(--shadow-button);
-  transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-xs);
+  transition: background-color 0.15s ease;
 }
 .btn-add:hover {
-  background: var(--sp-dark-blue);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  background: var(--sp-navy-pressed);
+  transform: none;
+  box-shadow: var(--shadow-xs);
 }
 
 /* --- Gjeld modul --- */
@@ -2569,7 +2663,7 @@ input.asset-amount {
 .waterfall-chart-card {
   overflow: visible;
   max-width: none;
-  background: var(--sp-background);
+  background: var(--white);
   border: 1px solid rgba(0, 45, 114, 0.07);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
@@ -2890,16 +2984,16 @@ input.asset-amount {
 .t-konto-graphic-placeholder {
   width: 100%;
   min-height: 620px;
-  height: 620px; /* stor høyde slik at søylediagrammet bruker mest mulig av boksen */
+  height: 620px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  background: var(--BG_CARD);
-  border: 1px solid var(--BORDER_LIGHT);
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: var(--shadow-panel);
-  margin-bottom: 12px;
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-3);
   flex-shrink: 0;
 }
 
@@ -2929,47 +3023,43 @@ input.asset-amount {
 }
 
 .t-konto-year-btn {
-  min-width: 0; /* la grid-celle bestemme bredde, som stepper-steg */
+  min-width: 0;
   width: 100%;
   padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--BORDER_LIGHT);
-  background: #ffffff;
-  color: var(--sp-blue);
-  font-weight: var(--weight-semibold);
-  font-size: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--gray-200);
+  background: var(--white);
+  color: var(--sp-navy);
+  font-weight: var(--fw-semibold);
+  font-size: var(--text-xs-size);
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-button);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  box-shadow: none;
   box-sizing: border-box;
-  white-space: nowrap; /* unngå wrap for 'start' */
+  white-space: nowrap;
 }
 
 .t-konto-year-btn:hover {
-  background: var(--sp-cyan-20);
-  border-color: var(--sp-cyan-40);
-  color: var(--sp-dark-blue);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  background: var(--blue-50);
+  border-color: var(--blue-300);
+  color: var(--sp-navy);
+  transform: none;
+  box-shadow: none;
 }
 
 .t-konto-year-btn.is-active {
-  background: var(--sp-cyan-40);
-  color: var(--sp-dark-blue);
-  border-color: var(--sp-blue);
-  box-shadow:
-    0 0 0 1px var(--sp-blue),
-    0 2px 8px rgba(0, 45, 114, 0.16);
+  background: var(--blue-main);
+  color: var(--white);
+  border-color: var(--blue-main);
+  box-shadow: var(--shadow-xs);
 }
 
 .t-konto-year-btn.is-active:hover {
-  background: var(--BLUE_300);
-  border-color: var(--sp-cyan-40);
-  color: var(--sp-dark-blue);
-  transform: translateY(-1px);
-  box-shadow:
-    0 0 0 1px var(--sp-blue),
-    0 4px 8px rgba(0, 0, 0, 0.12);
+  background: var(--sp-navy-pressed);
+  border-color: var(--sp-navy-pressed);
+  color: var(--white);
+  transform: none;
+  box-shadow: var(--shadow-xs);
 }
 
 .t-konto-year-strip-scroll-hint {
@@ -2979,12 +3069,9 @@ input.asset-amount {
 /* --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) --- */
 /* Søyle-segmentfarger (.tkonto-bar-segment) settes inline fra script — ikke overstyre her */
 #t-konto-graphic-placeholder.t-konto-graphic-placeholder {
-  background:
-    linear-gradient(165deg, var(--sp-dark-blue) 0%, var(--sp-blue) 42%, var(--sp-cyan-20) 78%, #ffffff 100%);
-  border: 1px solid rgba(0, 35, 89, 0.35);
-  box-shadow:
-    0 4px 24px rgba(0, 35, 89, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  box-shadow: var(--shadow-sm);
 }
 
 .tkonto-chart-wrap {
@@ -3004,17 +3091,15 @@ input.asset-amount {
   flex: 1;
   min-width: 0;
   min-height: 0;
-  max-width: 554px; /* 504px + 10% (eiendeler + egenkapital/gjeld) */
+  max-width: 554px;
   display: flex;
   flex-direction: column;
   gap: 0;
-  background: #ffffff;
-  border-radius: 14px;
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 8px 28px rgba(0, 35, 89, 0.12),
-    0 0 0 1px rgba(0, 45, 114, 0.12);
-  padding: 20px;
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--gray-200);
+  padding: var(--space-5);
   box-sizing: border-box;
   position: relative;
 }
@@ -3028,20 +3113,20 @@ input.asset-amount {
 }
 
 .tkonto-segment-row .tkonto-label {
-  flex: 0 0 120px; /* fast bredde slik at søylen blir like bred i alle rader */
+  flex: 0 0 120px;
   width: 120px;
   min-width: 0;
   display: flex;
   align-items: center;
   font-family: var(--font-sans);
-  font-size: 14px; /* 12px + 20% */
-  font-weight: 500;
-  color: var(--sp-blue);
-  letter-spacing: 0.02em;
+  font-size: var(--text-sm-size);
+  font-weight: var(--fw-medium);
+  color: var(--sp-navy);
+  letter-spacing: 0;
   white-space: normal;
-  overflow-wrap: break-word; /* bryt kun når nødvendig */
-  word-break: normal; /* unngå brytning midt i ord – bruk myk bindestrek (­) i teksten i stedet */
-  hyphens: manual; /* respekter ­ slik at "Sekundæreiendom" brytes som "Sekundær-eiendom" */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
   line-height: 1.3;
 }
 
@@ -3087,16 +3172,14 @@ input.asset-amount {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--sp-blue);
-  color: var(--sp-cyan-40);
-  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: var(--blue-main);
+  color: var(--white);
+  border: 2px solid var(--white);
   font-size: 20px;
-  font-weight: 700;
+  font-weight: var(--fw-bold);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow:
-    0 2px 8px rgba(0, 35, 89, 0.35),
-    0 0 0 1px rgba(0, 35, 89, 0.2);
+  box-shadow: var(--shadow-sm);
   align-self: center;
 }

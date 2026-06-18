@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<!-- @dsCard group="Colors" name="Brand colors" subtitle="Söderberg navy + blue Main + pressed" viewport="700x180" -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../colors_and_type.css">
+<style>
+  html,body{margin:0;background:var(--white);font-family:var(--font-sans);}
+  .card{padding:26px 32px;box-sizing:border-box;display:flex;gap:18px;}
+  .sw{flex:1;border-radius:var(--radius-lg);padding:16px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;min-height:118px;border:1px solid rgba(0,0,0,.06);}
+  .nm{font-size:14px;font-weight:600;}
+  .hx{font-size:13px;opacity:.85;font-variant-numeric:tabular-nums;}
+  .role{font-size:12px;opacity:.8;margin-top:2px;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="sw" style="background:var(--sp-navy);color:#fff;">
+    <div class="nm">Söderberg navy</div>
+    <div><div class="hx">#002359</div><div class="role">Ink · logo · headings</div></div>
+  </div>
+  <div class="sw" style="background:var(--blue-main);color:#fff;">
+    <div class="nm">Blue · Main</div>
+    <div><div class="hx">#0A5EDC</div><div class="role">Primary action · links</div></div>
+  </div>
+  <div class="sw" style="background:var(--sp-navy-pressed);color:#fff;">
+    <div class="nm">Deep blue</div>
+    <div><div class="hx">#074EB9</div><div class="role">Pressed / hover</div></div>
+  </div>
+</div>
+</body>
+</html>
