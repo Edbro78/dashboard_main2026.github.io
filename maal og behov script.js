@@ -162,6 +162,7 @@ const CHART_COLORS = {
     sparing: '#405A82',
     utbetaling_netto: '#0A5EDC',
     utbetaling_skatt: '#D92D20',
+    total_utbetaling: '#6941C6',
     event_total_color: '#EEF5FF',
     renteskatt: '#B42318',
     skatt2: '#D92D20',
@@ -4727,7 +4728,24 @@ return () => document.removeEventListener('keydown', onKey);
             tooltip: {
                 callbacks: {
                     title: (items) => `År ${items[0].label}`,
-                    label: (context) => `${context.dataset.label || ''}: ${formatCurrency(context.raw)}`,
+                    label: (context) => {
+                        const label = context.dataset.label || '';
+                        if (label === 'Total utbetaling') {
+                            const yearIdx = context.dataIndex ?? 0;
+                            const nettoUtbetaling = prognosis?.data?.nettoUtbetaling?.[yearIdx] ?? 0;
+                            const skattPaHendelser = prognosis?.data?.skatt2?.[yearIdx] ?? 0;
+                            return `Total utbetaling: ${formatCurrency(nettoUtbetaling + skattPaHendelser)}`;
+                        }
+                        return `${label}: ${formatCurrency(context.raw)}`;
+                    },
+                    labelColor: (context) => {
+                        if (context.dataset.label === 'Total utbetaling') {
+                            return {
+                                borderColor: CHART_COLORS.total_utbetaling,
+                                backgroundColor: CHART_COLORS.total_utbetaling,
+                            };
+                        }
+                    },
                     footer: (tooltipItems) => {
                         const yearIdx = tooltipItems?.[0]?.dataIndex ?? 0;
                         const hovedstol = (prognosis?.data?.hovedstol?.[yearIdx] ?? 0);
@@ -4769,6 +4787,8 @@ return () => document.removeEventListener('keydown', onKey);
         }
     };
    
+    const totalUtbetalingTooltipData = prognosis.labels.map(() => 0);
+
     const investmentChartData = {
         labels: prognosis.labels,
         datasets: withStackedTopBorderRadius([
@@ -4779,8 +4799,11 @@ return () => document.removeEventListener('keydown', onKey);
             { label: 'Netto utbetaling', data: prognosis.data.nettoUtbetaling, backgroundColor: CHART_COLORS.utbetaling_netto, stack: 'portfolio' },
             ...(state.taxCalculationEnabled ? [
                 { label: 'Skatt på hendelser', data: prognosis.data.skatt2, backgroundColor: CHART_COLORS.skatt2, stack: 'portfolio' },
+                { label: 'Total utbetaling', data: totalUtbetalingTooltipData, backgroundColor: CHART_COLORS.total_utbetaling, stack: 'portfolio' },
                 { label: 'Løpende renteskatt', data: prognosis.data.renteskatt, backgroundColor: CHART_COLORS.renteskatt, stack: 'portfolio' },
-            ] : [])
+            ] : [
+                { label: 'Total utbetaling', data: totalUtbetalingTooltipData, backgroundColor: CHART_COLORS.total_utbetaling, stack: 'portfolio' },
+            ])
         ]),
     };
 
