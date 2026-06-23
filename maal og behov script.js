@@ -399,6 +399,15 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
         untaxedBondReturnPool -= realizedUntaxedBondReturn;
         return realizedUntaxedBondReturn;
     };
+    // AS: rentedel av ethvert bruttouttak kan realisere ubeskattet rentegevinster,
+    // også når utbyttet dekkes av innskutt kapital (kun utbytteskatt unngås).
+    const asBondRealizationTaxOnWithdrawal = (grossWithdrawalAmount, bondShare) => {
+        if (!(taxesEnabled && state.investorType === 'AS' && state.deferredInterestTax === true) ||
+            grossWithdrawalAmount <= 0 || bondShare <= 0) {
+            return 0;
+        }
+        return realizeDeferredBondReturn(grossWithdrawalAmount * bondShare) * bondTaxRate;
+    };
 
     const annualStockPercentages = populateAnnualStockPercentages(state);
     const extraDisplayYear = (state.payoutYears > 0) ? 1 : 0;
@@ -665,15 +674,9 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                 if (taxesEnabled) {
                     if (state.investorType === 'AS') {
                         // AS: Hele skattepliktig uttak beskattes som utbytte, uavhengig av aksje-/renteandel.
-                        const bondNet = remainingDesiredNet * bondShare;
                         const dividendTax = remainingDesiredNet * taxRate;
-                        let bondRealizationTax = 0;
-                        if (state.deferredInterestTax === true && bondShare > 0) {
-                            bondRealizationTax = realizeDeferredBondReturn(bondNet) * bondTaxRate;
-                        }
                         grossNeededFromTaxable = remainingDesiredNet;
                         deferredEventTax += dividendTax;
-                        realizedBondTaxThisYear += bondRealizationTax;
                     } else {
                         // Privat: Skatt = skattepliktig beløp × rate. Aksjedel og rentedel separert.
                         const totalStockPortionNet = desiredNet * stockShare;
@@ -694,6 +697,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                
                 grossWithdrawal += grossNeededFromTaxable;
             }
+            realizedBondTaxThisYear += asBondRealizationTaxOnWithdrawal(grossWithdrawal, bondShare);
             currentPortfolioValue -= grossWithdrawal;
             annualNetWithdrawalAmountForChart += desiredNet;
             totalUttakThisYear += grossWithdrawal;
@@ -729,12 +733,8 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                     const taxableWithdrawal = finalYearDrain - coveredAmount;
                     if (taxableWithdrawal > 0) {
                         deferredEventTax += taxableWithdrawal * taxRate;
-
-                        if (state.deferredInterestTax === true && bondShare > 0) {
-                            const taxableFromBond = taxableWithdrawal * bondShare;
-                            realizedBondTaxThisYear += realizeDeferredBondReturn(taxableFromBond) * bondTaxRate;
-                        }
                     }
+                    realizedBondTaxThisYear += asBondRealizationTaxOnWithdrawal(finalYearDrain, bondShare);
                 }
             }
 
@@ -781,15 +781,9 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
                 } else {
                     const taxableWithdrawal = withdrawalAmount - coveredAmount;
                     if (taxableWithdrawal > 0) {
-                        const dividendTax = taxableWithdrawal * taxRate;
-                        let bondRealizationTax = 0;
-                        if (state.deferredInterestTax === true && bondShare > 0) {
-                            const bondPortionOfWithdrawal = taxableWithdrawal * bondShare;
-                            bondRealizationTax = realizeDeferredBondReturn(bondPortionOfWithdrawal) * bondTaxRate;
-                        }
-                        deferredEventTax += dividendTax;
-                        realizedBondTaxThisYear += bondRealizationTax;
+                        deferredEventTax += taxableWithdrawal * taxRate;
                     }
+                    realizedBondTaxThisYear += asBondRealizationTaxOnWithdrawal(withdrawalAmount, bondShare);
                 }
             }
             currentPortfolioValue = preWithdrawalPortfolioValue - withdrawalAmount;
