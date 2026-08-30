@@ -561,6 +561,43 @@ p { /* Avsnitt */
   padding: calc(32px * 1.21 * 1.1);
 }
 
+/* Øvrige T-konto-moduler: identisk ytre boks som .panel-forside. */
+:root {
+  --tkonto-forside-panel-height: 323px;
+}
+
+.panel.panel-assets,
+.panel.panel-income,
+.panel.panel-debt,
+.panel.waterfall-chart-card,
+#t-konto-graphic-placeholder.t-konto-graphic-placeholder {
+  height: var(--tkonto-forside-panel-height);
+  min-height: var(--tkonto-forside-panel-height);
+  max-height: var(--tkonto-forside-panel-height);
+  box-sizing: border-box;
+}
+
+.panel.panel-assets,
+.panel.panel-income,
+.panel.panel-debt {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel.panel-assets .assets {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.panel.panel-income .assets,
+.panel.panel-debt .assets {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 /* Inndeling i fire responsive bokser */
 .pe-grid {
   display: grid;
@@ -601,7 +638,7 @@ p { /* Avsnitt */
 }
 .summary-card.is-forside { justify-content: center; align-items: center; text-align: center; gap: 10px; }
 .summary-card.is-forside .summary-title { text-align: center; }
-.summary-card.is-forside .summary-value { display: none; }
+.summary-card.is-forside .summary-value { display: block; text-align: center; }
 .summary-card.is-tkonto { justify-content: center; align-items: center; text-align: center; gap: 10px; }
 .summary-card.is-tkonto .summary-title { 
   text-align: center; 
@@ -684,9 +721,9 @@ p { /* Avsnitt */
 }
 
 .summary-equity {
-  background: var(--blue-100);
-  border-color: var(--blue-200);
-  border-left: 3px solid var(--blue-600);
+  background: rgba(50, 213, 131, 0.5);
+  border-color: var(--success-border);
+  border-left: 3px solid var(--success-500);
 }
 .summary-equity .summary-title,
 .summary-equity .summary-title.success {
@@ -784,10 +821,10 @@ p { /* Avsnitt */
 }
 
 .forside-card-equity {
-  background: var(--blue-100);
-  color: var(--gray-700);
-  border-color: var(--blue-200);
-  border-left: 4px solid var(--blue-600);
+  background: rgba(50, 213, 131, 0.5);
+  color: var(--sp-navy);
+  border-color: var(--success-border);
+  border-left: 4px solid var(--success-500);
 }
 .forside-card-equity .forside-card-title {
   color: var(--sp-navy);
@@ -796,7 +833,7 @@ p { /* Avsnitt */
   color: var(--gray-600);
 }
 .forside-card-equity .forside-card-illustration {
-  color: var(--blue-700);
+  color: var(--success-600);
 }
 
 .forside-card-cashflow {
@@ -1705,8 +1742,8 @@ input.asset-amount:focus {
 }
 
 .panel-debt .section-label {
-  margin-top: 14px;
-  margin-bottom: 8px;
+  margin-top: 6px;
+  margin-bottom: 4px;
 }
 
 .panel-debt .section-label .debt-startyear-hint {
@@ -1858,12 +1895,9 @@ input.asset-amount:focus {
   box-shadow: var(--shadow-progress);
 }
 
-/* Fjern liten overskrift i Gjeld-fanen og juster toppmarg */
+/* Fjern liten overskrift i Gjeld-fanen — samme kompakte høyde som Eiendeler */
 .panel-debt > h3 {
   display: none;
-}
-.panel-debt {
-  padding-top: 12px; /* mindre toppmarg når overskriften fjernes */
 }
 
 /* Redusert høyde for eiendeler-bokser (20% mindre + 10% lavere for 80% zoom) */
@@ -1871,25 +1905,88 @@ input.asset-amount:focus {
   display: none; /* fjern liten overskrift over eiendelene */
 }
 
-.panel-assets {
-  padding-top: 12px; /* mindre toppmarg når overskriften fjernes */
+.panel-assets,
+.panel-debt {
+  padding: 12px 16px 12px !important;
 }
 
-.panel-assets .assets {
-  gap: 20px; /* 24px − 10% for å se mer ved 80% zoom */
+.panel-assets .assets,
+.panel-debt .assets {
+  gap: 6px;
+  overflow-y: auto;
 }
-.panel-assets .asset-row {
-  padding: calc(14px * 0.855) calc(14px * 0.855) calc(14px * 0.855) calc(16px * 0.855);
+
+.panel-assets .asset-row,
+.panel-debt .asset-row {
+  padding: 4.5px 8px 4.5px 10px;
+  gap: 8px;
+}
+
+.panel-assets .asset-col,
+.panel-debt .asset-col {
+  gap: 3px;
+}
+
+.panel-assets .asset-top,
+.panel-debt .asset-top {
+  gap: 6px;
+}
+
+.panel-assets .asset-name,
+.panel-assets .asset-entity-select,
+.panel-assets .asset-amount,
+.panel-assets input.asset-amount,
+.panel-debt .asset-name,
+.panel-debt .select select,
+.panel-debt .asset-amount,
+.panel-debt input.asset-amount {
+  min-height: 33px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.panel-assets .asset-top .asset-delete,
+.panel-assets .asset-top .asset-top-delete-spacer,
+.panel-debt .asset-top .asset-delete {
+  width: 33px;
+  height: 33px;
+}
+
+.panel-assets .asset-range,
+.panel-debt .asset-range {
+  height: 6px;
+}
+
+.panel-assets .asset-range::-webkit-slider-runnable-track,
+.panel-assets .asset-range::-moz-range-track,
+.panel-debt .asset-range::-webkit-slider-runnable-track,
+.panel-debt .asset-range::-moz-range-track {
+  height: 6px;
+}
+
+.panel-assets .btn-add,
+.panel-debt .btn-add {
+  margin-top: 0;
+  padding: 7.5px 8px;
+  font-size: 11px;
+}
+
+.panel-assets > div:last-child,
+.panel-debt > .btn-add {
+  margin-top: 9px !important;
+  gap: 6px !important;
 }
 
 .panel-assets .asset-col {
-  gap: calc(7px * 0.855);
+  gap: 3px;
 }
 
 .panel-assets .asset-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(140px, 205px) 28px;
-  gap: calc(7px * 0.855);
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 205px) 33px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -1908,8 +2005,8 @@ input.asset-amount:focus {
 
 .panel-assets .asset-top .asset-delete,
 .panel-assets .asset-top .asset-top-delete-spacer {
-  width: 28px;
-  height: 28px;
+  width: 33px;
+  height: 33px;
   justify-self: end;
 }
 
@@ -1932,6 +2029,16 @@ input.asset-amount:focus {
   box-sizing: border-box;
   min-height: calc(2.25rem * 0.855);
   padding: calc(7px * 0.855) calc(10px * 0.855);
+}
+
+.panel-assets .asset-name,
+.panel-assets .asset-name-readonly,
+.panel-debt .asset-name,
+.panel-debt .asset-name-readonly {
+  min-height: 33px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .panel-assets .asset-name:not(.asset-name-readonly),
@@ -1982,8 +2089,19 @@ input.asset-amount:focus {
   color: var(--gray-900);
 }
 
+.panel-assets .asset-entity-select {
+  min-height: 33px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  font-size: 0.75rem;
+}
+
 .panel-debt .select select {
+  min-height: 33px;
+  padding-top: 3px;
+  padding-bottom: 3px;
   padding-right: 40px;
+  font-size: 0.75rem;
   text-transform: uppercase;
 }
 
@@ -2007,6 +2125,16 @@ input.asset-amount {
   border-radius: var(--radius-sm);
 }
 
+.panel-assets .asset-amount,
+.panel-assets input.asset-amount,
+.panel-debt .asset-amount,
+.panel-debt input.asset-amount {
+  min-height: 33px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  font-size: 0.8125rem;
+}
+
 .panel-income .income-pension-toggle-label,
 .panel-income .income-pension-toggle-state {
   font-family: var(--font-sans);
@@ -2023,8 +2151,8 @@ input.asset-amount {
 .panel-assets .asset-delete,
 .panel-income .asset-delete,
 .panel-debt .asset-delete {
-  width: calc(26px * 0.855);
-  height: calc(26px * 0.855);
+  width: 33px;
+  height: 33px;
 }
 
 /* Reduser bredden på sliderene i eiendeler-fanen med 50% */
@@ -2069,17 +2197,20 @@ input.asset-amount {
   box-shadow: 0 1px 3px rgba(0, 35, 89, 0.2);
 }
 
-/* Gjeld: kompakte rader (samme proporsjoner som før) */
-.panel-debt .asset-row {
-  padding: 12px;
-}
-
-.panel-debt .asset-col {
-  gap: calc(7px * 0.855);
-}
-
 .panel-debt .asset-top {
-  gap: calc(7px * 0.855);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 33px;
+  gap: 6px;
+  align-items: center;
+}
+
+.panel-debt .section-label {
+  margin-top: 6px;
+  margin-bottom: 4px;
+  min-height: 0;
+  padding: 0;
+  font-size: 0.75rem;
+  line-height: 1.2;
 }
 
 .panel-debt .asset-range {
@@ -2089,7 +2220,7 @@ input.asset-amount {
 /* Gjeld-slider: blå palett (ikke rød) */
 .panel-debt .asset-range::-webkit-slider-runnable-track,
 .debt .asset-range::-webkit-slider-runnable-track {
-  height: calc(7px * 0.855);
+  height: 6px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, #9bc5de 100%);
   box-shadow: var(--shadow-progress);
@@ -2097,7 +2228,7 @@ input.asset-amount {
 
 .panel-debt .asset-range::-moz-range-track,
 .debt .asset-range::-moz-range-track {
-  height: calc(7px * 0.855);
+  height: 6px;
   border-radius: 999px;
   background: linear-gradient(90deg, var(--sp-cyan-20) 0%, #bdd9ea 50%, #9bc5de 100%);
   box-shadow: var(--shadow-progress);
@@ -2106,7 +2237,7 @@ input.asset-amount {
 .panel-debt .asset-range::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  margin-top: calc(-1 * (20px - 7px * 0.855) / 2);
+  margin-top: calc(-1 * (20px - 6px) / 2);
   width: 20px;
   height: 20px;
   background: var(--sp-blue);
@@ -2661,7 +2792,7 @@ input.asset-amount {
   overflow: visible;
 }
 .waterfall-chart-card {
-  overflow: visible;
+  overflow: hidden;
   max-width: none;
   background: var(--white);
   border: 1px solid rgba(0, 45, 114, 0.07);
@@ -2671,10 +2802,23 @@ input.asset-amount {
 
 .waterfall-chart-card.panel {
   padding: 20px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.waterfall-chart-card .waterfall-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.waterfall-chart-card .waterfall-canvas > svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 .waterfall-chart-card .t-konto-year-strip {
   margin-bottom: 0;
   padding: 12px 0 0;
+  flex-shrink: 0;
 }
 .waterfall-quick-action {
   position: absolute;
@@ -2983,8 +3127,6 @@ input.asset-amount {
 /* Tom container i T-Konto-fanen – samme bredde og zoom-egenskaper som stepperen */
 .t-konto-graphic-placeholder {
   width: 100%;
-  min-height: 620px;
-  height: 620px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -2995,6 +3137,7 @@ input.asset-amount {
   box-shadow: var(--shadow-sm);
   margin-bottom: var(--space-3);
   flex-shrink: 0;
+  overflow: hidden;
 }
 
 /* Horisontal år-boks – samme oppbygning som .stepper: grid med like kolonner, ingen overflow */
@@ -3009,6 +3152,14 @@ input.asset-amount {
   margin-bottom: 24px;
   flex-shrink: 0;
   position: relative;
+}
+
+.t-konto-graphic-placeholder > .t-konto-year-strip {
+  margin-top: auto;
+  margin-bottom: calc(-1 * var(--space-6));
+  margin-left: calc(-1 * var(--space-6));
+  margin-right: calc(-1 * var(--space-6));
+  padding: 8px var(--space-6) 10px;
 }
 
 /* Som .stepper-list: grid med like kolonner (1fr) – alt får plass, ingen forsvinning ved zoom */
@@ -3067,7 +3218,11 @@ input.asset-amount {
 }
 
 /* --- T-konto søylediagram (PROMPT-T-konto-søylediagram.md) --- */
-/* Søyle-segmentfarger (.tkonto-bar-segment) settes inline fra script — ikke overstyre her */
+/* Gjeld-segment: samme rosa som .summary-debts (Gjeld-kortet) */
+.tkonto-bar-segment.tkonto-bar-debt {
+  background: var(--chart-debt-border) !important;
+  background-color: var(--chart-debt-border) !important;
+}
 #t-konto-graphic-placeholder.t-konto-graphic-placeholder {
   background: var(--white);
   border: 1px solid var(--gray-200);

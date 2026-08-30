@@ -64,6 +64,27 @@ const MALSETNINGER_MAAL_TITLE_TO_ID = {
   Annet: 'annet',
 };
 
+const MALSETNINGER_DEFAULT_GOALS = {
+  okonomisk_trygghet: 3,
+  formuesvekst: 2,
+};
+const MALSETNINGER_DEFAULT_EDUCATION = 'relevant';
+const MALSETNINGER_DEFAULT_EXPERIENCE = {
+  aksjer: { type: 'enkel', volume: 'lav', period: 'kort' },
+  renter: { type: 'enkel', volume: 'lav', period: 'kort' },
+  alternativt: { type: 'enkel', volume: 'lav', period: 'kort' },
+};
+const MALSETNINGER_DEFAULT_KNOWLEDGE = {
+  produkter: { aksjer: 1, renter: 0, alternativt: 0 },
+  risiko: 2,
+  egenskaper: 2,
+};
+
+function isMalsetningerIngenDataText(text) {
+  const t = String(text || '').replace(/^\uFEFF/, '').trim().toLowerCase();
+  return !t || t === 'ingen data';
+}
+
 /**
  * Leser nummererte linjer frå Output (utan JSON).
  * @returns {object|null} same struktur som JSON-payload, eller null
@@ -188,7 +209,7 @@ function parseMalsetningerExportLines(raw) {
         touched.goals = true;
         hasAny = true;
         const imp = parseInt(valRaw, 10);
-        if (imp >= 1 && imp <= 3) out.selectedGoals[gid] = imp;
+        if (Number.isFinite(imp) && imp >= 0 && imp <= 3) out.selectedGoals[gid] = imp;
       }
     }
   }
@@ -412,35 +433,33 @@ function App() {
 
   useEffect(() => {
     window.MalsetningerGetExportText = () => {
-      const t = totalsRef.current;
       const lines = [];
       let n = 1;
-      const push = (label, value) => {
+      const pushIf = (changed, label, value) => {
+        if (!changed) return;
         lines.push(`${n} : ${label} : ${value}`);
         n += 1;
       };
-      push('Utdanning', educationLevel || 'ingen');
+      pushIf(educationLevel !== MALSETNINGER_DEFAULT_EDUCATION, 'Utdanning', educationLevel || 'ingen');
       ['aksjer', 'renter', 'alternativt'].forEach((cat) => {
         const ex = experience[cat] || {};
-        push(`Erfaring ${cat} – type`, ex.type ?? '');
-        push(`Erfaring ${cat} – volum`, ex.volume ?? '');
-        push(`Erfaring ${cat} – horisont`, ex.period ?? '');
+        const def = MALSETNINGER_DEFAULT_EXPERIENCE[cat];
+        pushIf((ex.type ?? '') !== def.type, `Erfaring ${cat} – type`, ex.type ?? '');
+        pushIf((ex.volume ?? '') !== def.volume, `Erfaring ${cat} – volum`, ex.volume ?? '');
+        pushIf((ex.period ?? '') !== def.period, `Erfaring ${cat} – horisont`, ex.period ?? '');
       });
       const pr = knowledge.produkter || {};
-      push('Kunnskap produkt aksjer', String(pr.aksjer ?? 0));
-      push('Kunnskap produkt renter', String(pr.renter ?? 0));
-      push('Kunnskap produkt alternativt', String(pr.alternativt ?? 0));
-      push('Kunnskap risiko', String(knowledge.risiko ?? 0));
-      push('Kunnskap egenskaper', String(knowledge.egenskaper ?? 0));
+      const defPr = MALSETNINGER_DEFAULT_KNOWLEDGE.produkter;
+      pushIf(Number(pr.aksjer ?? 0) !== defPr.aksjer, 'Kunnskap produkt aksjer', String(pr.aksjer ?? 0));
+      pushIf(Number(pr.renter ?? 0) !== defPr.renter, 'Kunnskap produkt renter', String(pr.renter ?? 0));
+      pushIf(Number(pr.alternativt ?? 0) !== defPr.alternativt, 'Kunnskap produkt alternativt', String(pr.alternativt ?? 0));
+      pushIf(Number(knowledge.risiko ?? 0) !== MALSETNINGER_DEFAULT_KNOWLEDGE.risiko, 'Kunnskap risiko', String(knowledge.risiko ?? 0));
+      pushIf(Number(knowledge.egenskaper ?? 0) !== MALSETNINGER_DEFAULT_KNOWLEDGE.egenskaper, 'Kunnskap egenskaper', String(knowledge.egenskaper ?? 0));
       goalOptions.forEach((g) => {
-        const imp = selectedGoals[g.id];
-        push(`Mål ${g.title}`, imp ? String(imp) : '0');
+        const imp = selectedGoals[g.id] || 0;
+        const defImp = MALSETNINGER_DEFAULT_GOALS[g.id] || 0;
+        pushIf(imp !== defImp, `Mål ${g.title}`, String(imp));
       });
-      if (t) {
-        push('Score erfaring (snitt)', t.expScore);
-        push('Score kunnskap (snitt)', t.knwScore);
-        push('Score samlet', t.total);
-      }
       return lines.join('\n');
     };
     return () => {
@@ -484,18 +503,43 @@ function App() {
   useEffect(() => {
     window.MalsetningerApplyExportText = (sectionBody) => {
       const raw = String(sectionBody || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n').trim();
-      if (!raw) return false;
 
-      const applyFromData = (data) => {
+      const cloneDefaultExperience = () => JSON.parse(JSON.stringify(MALSETNINGER_DEFAULT_EXPERIENCE));
+      const cloneDefaultKnowledge = () => JSON.parse(JSON.stringify(MALSETNINGER_DEFAULT_KNOWLEDGE));
+      const resetMalsetningerToDefaults = () => {
+        setSelectedGoals({ ...MALSETNINGER_DEFAULT_GOALS });
+        setEducationLevel(MALSETNINGER_DEFAULT_EDUCATION);
+        setExperience(cloneDefaultExperience());
+        setKnowledge(cloneDefaultKnowledge());
+      };
+
+      if (isMalsetningerIngenDataText(raw)) {
+        resetMalsetningerToDefaults();
+        return true;
+      }
+
+      const applyFromData = (data, { mergeGoals = false } = {}) => {
         if (!data || typeof data !== 'object') return false;
         try {
           if (data.selectedGoals && typeof data.selectedGoals === 'object') {
-            const sg = {};
-            Object.keys(data.selectedGoals).forEach((k) => {
-              const v = Number(data.selectedGoals[k]);
-              if (v >= 1 && v <= 3) sg[k] = v;
-            });
-            setSelectedGoals(sg);
+            if (mergeGoals) {
+              setSelectedGoals((prev) => {
+                const sg = { ...prev };
+                Object.keys(data.selectedGoals).forEach((k) => {
+                  const v = Number(data.selectedGoals[k]);
+                  if (v >= 1 && v <= 3) sg[k] = v;
+                  else if (v === 0) delete sg[k];
+                });
+                return sg;
+              });
+            } else {
+              const sg = {};
+              Object.keys(data.selectedGoals).forEach((k) => {
+                const v = Number(data.selectedGoals[k]);
+                if (v >= 1 && v <= 3) sg[k] = v;
+              });
+              setSelectedGoals(sg);
+            }
           }
           if (['ingen', 'relevant', 'hoyere'].includes(data.educationLevel)) {
             setEducationLevel(data.educationLevel);
@@ -560,7 +604,10 @@ function App() {
         }
       }
       const fromLines = parseMalsetningerExportLines(raw);
-      if (fromLines && applyFromData(fromLines)) return true;
+      if (fromLines) {
+        resetMalsetningerToDefaults();
+        return applyFromData(fromLines, { mergeGoals: true });
+      }
       return false;
     };
     return () => {

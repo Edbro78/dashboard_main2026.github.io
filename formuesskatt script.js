@@ -497,24 +497,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 : { assets: {}, privateDebt: 0, inflationRate: 3 };
             const out = [];
             let num = 1;
-            const push = (label, val) => {
+            const pushIf = (changed, label, val) => {
+                if (!changed) return;
                 out.push(`${num} : ${label} : ${val}`);
                 num += 1;
             };
             const personCount = WealthTaxApp.state && WealthTaxApp.state.personCount ? WealthTaxApp.state.personCount : 1;
-            push('Antall personer', String(orIngenData(personCount) || 1));
+            pushIf(Number(personCount) !== 1, 'Antall personer', String(orIngenData(personCount) || 1));
+            const privGjeldNum = Number(values.privateDebt || 0);
             const privGjeld = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(values.privateDebt || 0) : (values.privateDebt ?? '0');
-            push('Privat gjeld (NOK)', String(orIngenData(privGjeld) || '0'));
+            pushIf(privGjeldNum !== 0, 'Privat gjeld (NOK)', String(orIngenData(privGjeld) || '0'));
             (WealthTaxApp.assetsConfig || []).forEach(asset => {
                 const val = (values.assets && values.assets[asset.id]) ?? asset.value ?? 0;
+                if (Number(val) === 0) return;
                 const label = orIngenData(asset.label) || 'Eiendel';
                 const formatted = WealthTaxApp.formatNumber ? WealthTaxApp.formatNumber(val) : val;
-                push(label, String(orIngenData(formatted) ?? formatted));
+                pushIf(true, label, String(orIngenData(formatted) ?? formatted));
             });
-            push('Forventet inflasjon (%)', String(orIngenData((values.inflationRate ?? 3).toString()) || '3'));
-            const totalEl = document.getElementById('total-wealth-tax');
-            const totalVal = totalEl ? totalEl.textContent : INGEN_DATA;
-            push('Total Formuesskatt', String(orIngenData(totalVal) || '0 kr'));
+            const infl = Number(values.inflationRate ?? 3);
+            pushIf(infl !== 3, 'Forventet inflasjon (%)', String(orIngenData((values.inflationRate ?? 3).toString()) || '3'));
             return out.join('\n');
         } catch (e) {
             return '1 : Merknad : Formuesskatt – kunne ikke generere eksport';
@@ -522,7 +523,19 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     window.FormuesskattApplyInputText = function(text) {
-        if (!text || !text.trim()) return;
+        const resetFormuesskattDefaults = () => {
+            if (WealthTaxApp.resetAll) WealthTaxApp.resetAll();
+            const inf = document.getElementById('inflation-rate');
+            if (inf) {
+                inf.value = '3';
+                WealthTaxApp.formatAndRecalculate && WealthTaxApp.formatAndRecalculate(inf);
+            }
+        };
+        const rawNorm = String(text || '').replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n').trim();
+        if (!rawNorm || rawNorm.toLowerCase() === 'ingen data') {
+            resetFormuesskattDefaults();
+            return;
+        }
         const FJ = 'Formuesskatt state (json):';
         const raw = String(text).replace(/^\uFEFF/, '').replace(/\u2028/g, '\n').replace(/\u2029/g, '\n');
         const idx = raw.indexOf(FJ);
@@ -574,6 +587,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (e) { console.warn('Formuesskatt state (json):', e); }
         }
+        resetFormuesskattDefaults();
         const parseNum = (s) => {
             const v = String(s).replace(/\s/g, '').replace(',', '.').replace(/[^\d.-]/g, '');
             return parseFloat(v) || 0;

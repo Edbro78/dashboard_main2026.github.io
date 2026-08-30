@@ -475,9 +475,12 @@
         border-bottom: 1px solid var(--gray-200);
         padding: var(--space-3) var(--space-6);
         padding-right: var(--space-3);
+        height: 58px;
         min-height: 58px;
+        max-height: 58px;
         box-sizing: border-box;
         box-shadow: none;
+        overflow: hidden;
     }
 
     .tab-bar-brand {
@@ -503,7 +506,14 @@
         overflow-x: auto;
         overflow-y: hidden;
         padding: 0;
-        scrollbar-width: thin;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .tab-bar::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
     }
 
     .tab-bar-panel-title-slot {
@@ -516,10 +526,10 @@
         padding: 0 var(--space-2);
     }
 
-    /* Speiler fast fullskjerm-knapp (right: 1rem, bredde 32px) */
+    /* Speiler faste toppknapper (kant-til-kant + fullskjerm: 32+8+32, right: 1rem) */
     .tab-bar-header-end-spacer {
-        flex: 0 0 calc(1rem + 32px);
-        width: calc(1rem + 32px);
+        flex: 0 0 calc(1rem + 72px);
+        width: calc(1rem + 72px);
         height: 1px;
     }
 
@@ -751,6 +761,59 @@
         display: none;
     }
 
+    .dashboard-zoom-viewport {
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .dashboard-zoom-inner {
+        transform: scale(var(--dashboard-zoom, 1));
+        transform-origin: top left;
+        width: calc(100% / var(--dashboard-zoom, 1));
+        height: calc(100% / var(--dashboard-zoom, 1));
+        min-height: calc(100% / var(--dashboard-zoom, 1));
+    }
+
+    .dashboard-zoom-inner .tab-content {
+        height: 100%;
+        min-height: 100%;
+    }
+
+    html.dashboard-edge-to-edge .dashboard-zoom-inner {
+        width: var(--dashboard-base-width, 1600px);
+        max-width: none;
+    }
+
+    html.dashboard-edge-to-edge .maal-og-behov-tab,
+    html.dashboard-edge-to-edge .fremtidige-verdier-tab {
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+
+    html.dashboard-edge-to-edge .max-w-\[1600px\] {
+        max-width: none !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    html.dashboard-fs-fallback,
+    html.dashboard-fs-fallback body,
+    html.dashboard-fs-fallback #root,
+    html.dashboard-fs-fallback .tab-container {
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        z-index: 9999;
+        overflow: hidden;
+    }
+
 /* ============================================================================
    SPWM tab canvas — Mål og behov + Fremtidige verdier
    ============================================================================ */
@@ -762,6 +825,10 @@
     padding: var(--space-6) var(--space-8) var(--space-10) !important;
     min-height: 100%;
     box-sizing: border-box;
+}
+
+.maal-og-behov-tab {
+    padding-top: calc(var(--space-6) / 2) !important;
 }
 
 .maal-og-behov-tab .typo-h1,
@@ -924,3 +991,87 @@
     outline-offset: 2px;
     z-index: 2;
 }
+
+/* Samlet forvaltning + Aksjeandel: slider-spor og knapper i samme rad */
+.mbh-forvaltning-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+        "head-l"
+        "lab1"
+        "sld1"
+        "lab2"
+        "sld2"
+        "lab3"
+        "sld3"
+        "head-r"
+        "btn1"
+        "btn2"
+        "btn3";
+    column-gap: 0.76765625rem;
+    row-gap: 0.12rem;
+    padding: 0.783rem;
+    align-items: center;
+}
+.mbh-fv-head-l { grid-area: head-l; position: relative; padding-right: 2.75rem; margin-bottom: 0.35rem; }
+.mbh-fv-head-r { grid-area: head-r; margin-top: 0.75rem; margin-bottom: 0.35rem; }
+.mbh-fv-lab1 { grid-area: lab1; }
+.mbh-fv-lab2 { grid-area: lab2; }
+.mbh-fv-lab3 { grid-area: lab3; }
+.mbh-fv-sld1 { grid-area: sld1; }
+.mbh-fv-sld2 { grid-area: sld2; }
+.mbh-fv-sld3 { grid-area: sld3; }
+.mbh-fv-btn1 { grid-area: btn1; }
+.mbh-fv-btn2 { grid-area: btn2; }
+.mbh-fv-btn3 { grid-area: btn3; }
+.mbh-fv-sld1,
+.mbh-fv-sld2,
+.mbh-fv-sld3,
+.mbh-fv-btn1,
+.mbh-fv-btn2,
+.mbh-fv-btn3 {
+    height: 41.76px;
+    min-height: 41.76px;
+    display: flex;
+    align-items: center;
+}
+.mbh-fv-sld1 > div,
+.mbh-fv-sld2 > div,
+.mbh-fv-sld3 > div {
+    width: 100%;
+}
+.mbh-fv-btn1,
+.mbh-fv-btn2,
+.mbh-fv-btn3 {
+    width: 100%;
+}
+.mbh-fv-lab1,
+.mbh-fv-lab2,
+.mbh-fv-lab3 {
+    min-height: 0;
+    line-height: 1.2;
+    align-self: end;
+}
+@media (min-width: 1280px) {
+    .mbh-forvaltning-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-rows: auto auto 41.76px auto 41.76px auto 41.76px;
+        grid-template-areas:
+            "head-l head-r"
+            "lab1   ."
+            "sld1   btn1"
+            "lab2   ."
+            "sld2   btn2"
+            "lab3   ."
+            "sld3   btn3";
+        row-gap: 0.12rem;
+        align-items: center;
+    }
+    .mbh-fv-head-l,
+    .mbh-fv-head-r {
+        margin-top: 0;
+        margin-bottom: 0.25rem;
+        align-self: end;
+    }
+}
+

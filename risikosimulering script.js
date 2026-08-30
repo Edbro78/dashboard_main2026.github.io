@@ -58,6 +58,65 @@ const state = {
     selectedAssetClass: null // Selected asset class for filtering (null = no filter)
 };
 
+const RISIKO_DEFAULTS = {
+    startCapital: 10000000,
+    currentPortfolio: {
+        stocks: 0,
+        riskFree: 80,
+        highYield: 20,
+        nordicStocks: 0,
+        emergingMarkets: 0,
+        renterIGPct: 56,
+        renterHYPct: 24
+    },
+    newPortfolio: {
+        stocks: 0,
+        riskFree: 45,
+        highYield: 55,
+        nordicStocks: 0,
+        emergingMarkets: 0,
+        renterIGPct: 31.5,
+        renterHYPct: 13.5
+    },
+    activeNurseTab: 1,
+    selectedDrawdownPortfolio: 'current',
+    selectedDrawdownView: 'percent',
+    selectedPeriod: 'max',
+    portfolioComparisonChartType: 'overview',
+    allocationRebalancing: false,
+    selectedAssetClass: null
+};
+
+function cloneRisikoPortfolio(src) {
+    return {
+        stocks: src.stocks,
+        riskFree: src.riskFree,
+        highYield: src.highYield,
+        nordicStocks: src.nordicStocks,
+        emergingMarkets: src.emergingMarkets,
+        renterIGPct: src.renterIGPct,
+        renterHYPct: src.renterHYPct
+    };
+}
+
+function resetRisikoToDefaults() {
+    state.startCapital = RISIKO_DEFAULTS.startCapital;
+    state.currentPortfolio = cloneRisikoPortfolio(RISIKO_DEFAULTS.currentPortfolio);
+    state.newPortfolio = cloneRisikoPortfolio(RISIKO_DEFAULTS.newPortfolio);
+    state.activeNurseTab = RISIKO_DEFAULTS.activeNurseTab;
+    state.selectedDrawdownPortfolio = RISIKO_DEFAULTS.selectedDrawdownPortfolio;
+    state.selectedDrawdownView = RISIKO_DEFAULTS.selectedDrawdownView;
+    state.selectedPeriod = RISIKO_DEFAULTS.selectedPeriod;
+    state.portfolioComparisonChartType = RISIKO_DEFAULTS.portfolioComparisonChartType;
+    state.allocationRebalancing = RISIKO_DEFAULTS.allocationRebalancing;
+    state.selectedAssetClass = RISIKO_DEFAULTS.selectedAssetClass;
+}
+
+function isRisikoIngenDataText(text) {
+    const t = String(text || '').replace(/^\uFEFF/, '').trim().toLowerCase();
+    return !t || t === 'ingen data';
+}
+
 // Make state globally available for testing
 window.state = state;
 
@@ -6613,33 +6672,42 @@ function buildRisikoExportText() {
     const s = getRisikoSerializableState();
     const cp = s.currentPortfolio;
     const np = s.newPortfolio;
+    const dcp = RISIKO_DEFAULTS.currentPortfolio;
+    const dnp = RISIKO_DEFAULTS.newPortfolio;
+    const sameNum = (a, b) => Number(a) === Number(b);
+    const lines = [];
+    let n = 1;
+    const pushIf = (changed, line) => {
+        if (!changed) return;
+        lines.push(line.replace(/^\d+\s*:/, n + ' :'));
+        n += 1;
+    };
     const mnok = (Number(state.startCapital) || 0) / 1e6;
-    return [
-        `1 : Startkapital : ${mnok} MNOK`,
-        `2 : Periode : ${getPeriodLabel()}`,
-        `3 : Aksjekapital i dagens portefølje : ${cp.highYield} %`,
-        `4 : Aksjekapital i ny portefølje : ${np.highYield} %`,
-        `5 : Periodevalg : ${s.selectedPeriod}`,
-        `6 : Omfordeling : ${s.allocationRebalancing ? 'Ja' : 'Nei'}`,
-        `7 : Drawdown portefølje : ${s.selectedDrawdownPortfolio}`,
-        `8 : Drawdown visning : ${s.selectedDrawdownView}`,
-        `9 : Porteføljegraf : ${s.portfolioComparisonChartType}`,
-        `10 : Aktiv fane : ${s.activeNurseTab}`,
-        `11 : Dagens - aksjer % : ${cp.stocks}`,
-        `12 : Dagens - risikofri % : ${cp.riskFree}`,
-        `13 : Dagens - high yield % : ${cp.highYield}`,
-        `14 : Dagens - nordiske aksjer % : ${cp.nordicStocks}`,
-        `15 : Dagens - emerging markets % : ${cp.emergingMarkets}`,
-        `16 : Dagens - renter IG % : ${cp.renterIGPct}`,
-        `17 : Dagens - renter HY % : ${cp.renterHYPct}`,
-        `18 : Ny - aksjer % : ${np.stocks}`,
-        `19 : Ny - risikofri % : ${np.riskFree}`,
-        `20 : Ny - high yield % : ${np.highYield}`,
-        `21 : Ny - nordiske aksjer % : ${np.nordicStocks}`,
-        `22 : Ny - emerging markets % : ${np.emergingMarkets}`,
-        `23 : Ny - renter IG % : ${np.renterIGPct}`,
-        `24 : Ny - renter HY % : ${np.renterHYPct}`
-    ].join('\n');
+    pushIf(!sameNum(state.startCapital, RISIKO_DEFAULTS.startCapital), `1 : Startkapital : ${mnok} MNOK`);
+    pushIf(s.selectedPeriod !== RISIKO_DEFAULTS.selectedPeriod, `2 : Periode : ${getPeriodLabel()}`);
+    pushIf(!sameNum(cp.highYield, dcp.highYield), `3 : Aksjekapital i dagens portefølje : ${cp.highYield} %`);
+    pushIf(!sameNum(np.highYield, dnp.highYield), `4 : Aksjekapital i ny portefølje : ${np.highYield} %`);
+    pushIf(s.selectedPeriod !== RISIKO_DEFAULTS.selectedPeriod, `5 : Periodevalg : ${s.selectedPeriod}`);
+    pushIf(!!s.allocationRebalancing !== !!RISIKO_DEFAULTS.allocationRebalancing, `6 : Omfordeling : ${s.allocationRebalancing ? 'Ja' : 'Nei'}`);
+    pushIf(s.selectedDrawdownPortfolio !== RISIKO_DEFAULTS.selectedDrawdownPortfolio, `7 : Drawdown portefølje : ${s.selectedDrawdownPortfolio}`);
+    pushIf(s.selectedDrawdownView !== RISIKO_DEFAULTS.selectedDrawdownView, `8 : Drawdown visning : ${s.selectedDrawdownView}`);
+    pushIf(s.portfolioComparisonChartType !== RISIKO_DEFAULTS.portfolioComparisonChartType, `9 : Porteføljegraf : ${s.portfolioComparisonChartType}`);
+    pushIf(Number(s.activeNurseTab) !== RISIKO_DEFAULTS.activeNurseTab, `10 : Aktiv fane : ${s.activeNurseTab}`);
+    pushIf(!sameNum(cp.stocks, dcp.stocks), `11 : Dagens - aksjer % : ${cp.stocks}`);
+    pushIf(!sameNum(cp.riskFree, dcp.riskFree), `12 : Dagens - risikofri % : ${cp.riskFree}`);
+    pushIf(!sameNum(cp.highYield, dcp.highYield), `13 : Dagens - high yield % : ${cp.highYield}`);
+    pushIf(!sameNum(cp.nordicStocks, dcp.nordicStocks), `14 : Dagens - nordiske aksjer % : ${cp.nordicStocks}`);
+    pushIf(!sameNum(cp.emergingMarkets, dcp.emergingMarkets), `15 : Dagens - emerging markets % : ${cp.emergingMarkets}`);
+    pushIf(!sameNum(cp.renterIGPct, dcp.renterIGPct), `16 : Dagens - renter IG % : ${cp.renterIGPct}`);
+    pushIf(!sameNum(cp.renterHYPct, dcp.renterHYPct), `17 : Dagens - renter HY % : ${cp.renterHYPct}`);
+    pushIf(!sameNum(np.stocks, dnp.stocks), `18 : Ny - aksjer % : ${np.stocks}`);
+    pushIf(!sameNum(np.riskFree, dnp.riskFree), `19 : Ny - risikofri % : ${np.riskFree}`);
+    pushIf(!sameNum(np.highYield, dnp.highYield), `20 : Ny - high yield % : ${np.highYield}`);
+    pushIf(!sameNum(np.nordicStocks, dnp.nordicStocks), `21 : Ny - nordiske aksjer % : ${np.nordicStocks}`);
+    pushIf(!sameNum(np.emergingMarkets, dnp.emergingMarkets), `22 : Ny - emerging markets % : ${np.emergingMarkets}`);
+    pushIf(!sameNum(np.renterIGPct, dnp.renterIGPct), `23 : Ny - renter IG % : ${np.renterIGPct}`);
+    pushIf(!sameNum(np.renterHYPct, dnp.renterHYPct), `24 : Ny - renter HY % : ${np.renterHYPct}`);
+    return lines.join('\n');
 }
 
 window.RisikoSimuleringGetExportText = buildRisikoExportText;
@@ -8077,6 +8145,11 @@ async function init() {
     window.addEventListener('message', function (event) {
         if (event.data && event.data.type === 'LOAD_INPUT' && typeof event.data.payload === 'string') {
             const text = event.data.payload.replace(/^\uFEFF/, '').trim();
+            if (isRisikoIngenDataText(text)) {
+                resetRisikoToDefaults();
+                applyRisikoSerializableState(getRisikoSerializableState());
+                return;
+            }
             let jsonApplied = false;
             const jsonStrRobust = extractJsonObjectAfterRiskMarker(text);
             if (jsonStrRobust) {
@@ -8087,7 +8160,10 @@ async function init() {
             }
             if (!jsonApplied) {
                 const plain = parseRisikoExportPlainLines(text);
-                if (plain) applyRisikoSerializableState(plain);
+                if (plain) {
+                    resetRisikoToDefaults();
+                    applyRisikoSerializableState(plain);
+                }
             }
         }
     });

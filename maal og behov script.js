@@ -866,7 +866,7 @@ const formatNumberRaw = (value) => new Intl.NumberFormat('nb-NO', { minimumFract
 const formatNOKPlain = (value) => formatNumberRaw(value);
 
 // --- HELPER & CHILD COMPONENTS --- //
-const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, noKrSuffix, displayValue, allowDirectInput, inline, thumbColor, editableLabel, labelValue, onLabelChange, labelPlaceholder }) => {
+const SliderInput = ({ id, label, value, min, max, step, onChange, unit, isCurrency, noKrSuffix, displayValue, allowDirectInput, inline, hideLabel, thumbColor, editableLabel, labelValue, onLabelChange, labelPlaceholder }) => {
 const formatSliderAmount = (v) => {
   if (!isCurrency) return `${formatNumberRaw(v)}${unit ? ` ${unit}` : ''}`;
   return noKrSuffix ? formatNOKPlain(v) : formatCurrency(v);
@@ -914,7 +914,7 @@ setTextValue(formatSliderAmount(parsed));
         <div>
             {inline ? (
                 <div className="relative flex items-center gap-4 mt-1 pr-36">
-                    {renderLabel()}
+                    {!hideLabel && renderLabel()}
                     <input
                         type="range"
                         id={id}
@@ -944,8 +944,8 @@ setTextValue(formatSliderAmount(parsed));
                 </div>
             ) : (
                 <>
-                    {renderLabel()}
-                    <div className="flex items-center gap-4 mt-1">
+                    {!hideLabel && renderLabel()}
+                    <div className={`flex items-center gap-4 ${hideLabel ? '' : 'mt-1'}`}>
                         <input
                             type="range"
                             id={id}
@@ -1523,7 +1523,7 @@ function TKontoDashboard() {
 // Kontantstrøm år for år hentes alltid fra T-konto (fasit) – identisk med «Årlig kontantstrøm» i T-konto.
 function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabIndex = 3 }) {
     const appState = MaalOgBehovState.appState || {};
-    const investmentYears = Math.max(0, Number(appState.investmentYears) || 10);
+    const investmentYears = Math.max(0, Number(appState.investmentYears ?? 10));
     const payoutYears = Math.max(0, Number(appState.payoutYears) || 0);
     const extraDisplayYear = payoutYears > 0 ? 1 : 0;
     const totalYears = investmentYears + payoutYears + extraDisplayYear;
@@ -1948,6 +1948,22 @@ function StrategiMalsetningerStrip({ goals }) {
 // TabBar component for browser-like tabs
 function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
     const titleText = String(panelTitleLabel || '').trim();
+    const tabBarRef = React.useRef(null);
+
+    useEffect(() => {
+        const el = tabBarRef.current;
+        if (!el) return;
+        const onWheel = (e) => {
+            if (el.scrollWidth <= el.clientWidth) return;
+            const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+            if (!delta) return;
+            e.preventDefault();
+            el.scrollLeft += delta;
+        };
+        el.addEventListener('wheel', onWheel, { passive: false });
+        return () => el.removeEventListener('wheel', onWheel);
+    }, []);
+
     return (
         <div className="tab-bar-header">
             <div className="tab-bar-brand" aria-hidden="true">
@@ -1959,10 +1975,8 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
                     height="34"
                 />
             </div>
-            <div className="tab-bar">
-                {tabs.map((tab, index) => {
-                    if (tab.name === 'Pensjon') return null;
-                    return (
+            <div className="tab-bar" ref={tabBarRef}>
+                {tabs.map((tab, index) => (
                     <div
                         key={index}
                         className={`tab ${activeTab === index ? 'active' : ''}`}
@@ -1971,8 +1985,7 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
                     >
                         <span>{tab.name}</span>
                     </div>
-                    );
-                })}
+                ))}
             </div>
             {titleText ? (
                 <div className="tab-bar-panel-title-slot">
@@ -2030,6 +2043,12 @@ function extractJsonObjectAfterMarker(text, marker) {
         }
     }
     return null;
+}
+
+/** Tom seksjon eller «ingen data» = alle felt på standardverdi. */
+function isIngenDataText(text) {
+    const t = String(text || '').replace(/^\uFEFF/, '').trim().toLowerCase();
+    return !t || t === 'ingen data';
 }
 
 /**
@@ -2099,9 +2118,60 @@ function splitStrategiExportIntoSections(fullRaw) {
     };
 }
 
+const DASHBOARD_ZOOM_STORAGE_KEY = 'dashboardManualZoom';
+const DASHBOARD_BASE_WIDTH = 1600;
+const DASHBOARD_ZOOM_MIN = 0.5;
+const DASHBOARD_ZOOM_MAX = 2;
+
+function clampDashboardZoom(value) {
+    const n = Number(value);
+    if (!Number.isFinite(n)) return 1;
+    return Math.min(DASHBOARD_ZOOM_MAX, Math.max(DASHBOARD_ZOOM_MIN, Math.round(n * 100) / 100));
+}
+
+function readStoredDashboardZoom() {
+    try {
+        return clampDashboardZoom(localStorage.getItem(DASHBOARD_ZOOM_STORAGE_KEY));
+    } catch (_) {
+        return 1;
+    }
+}
+
+function persistDashboardZoom(zoom) {
+    try {
+        localStorage.setItem(DASHBOARD_ZOOM_STORAGE_KEY, String(clampDashboardZoom(zoom)));
+    } catch (_) {}
+}
+
+function requestDashboardFullscreen(el) {
+    if (!el) return Promise.reject(new Error('no element'));
+    try {
+        let result;
+        if (typeof el.requestFullscreen === 'function') result = el.requestFullscreen();
+        else if (typeof el.webkitRequestFullscreen === 'function') result = el.webkitRequestFullscreen();
+        else if (typeof el.msRequestFullscreen === 'function') result = el.msRequestFullscreen();
+        else return Promise.reject(new Error('fullscreen unsupported'));
+        return result && typeof result.then === 'function' ? result : Promise.resolve(result);
+    } catch (err) {
+        return Promise.reject(err);
+    }
+}
+
+function exitDashboardFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+        if (typeof document.exitFullscreen === 'function') return document.exitFullscreen();
+        if (typeof document.webkitExitFullscreen === 'function') return document.webkitExitFullscreen();
+    }
+    return Promise.resolve();
+}
+
+function getDashboardFullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+}
+
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
-    // Fanerekkefolge: 0 malsetninger, 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Formuesskatt, 6 Strategi, 7 Pensjon
+    // Fanerekkefolge: 0 malsetninger, 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Formuesskatt, 6 Strategi
     const STRATEGI_TAB_INDEX = 6;
     const [activeTab, setActiveTab] = useState(1);
     const [showOutputModal, setShowOutputModal] = useState(false);
@@ -2110,11 +2180,14 @@ function TabContainer() {
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
+    const [isEdgeToEdge, setIsEdgeToEdge] = useState(false);
+    const [manualZoom, setManualZoom] = useState(readStoredDashboardZoom);
+    const edgeToEdgeRequestedFsRef = React.useRef(false);
+    const fsFallbackRef = React.useRef(false);
     const malsetningerIframeRef = React.useRef(null);
     /** Når bruker limer Input før Målsetninger-iframe har mountet API-et, lagres payload her og brukes ved onLoad / retry. */
     const pendingMalsetningerPayloadRef = React.useRef(null);
     const risikoIframeRef = React.useRef(null);
-    const pensjonsgapetIframeRef = React.useRef(null);
     const formuesskattIframeRef = React.useRef(null);
     const [strategiMalsetningerGoals, setStrategiMalsetningerGoals] = useState([]);
     const [panelTitle, setPanelTitle] = useState(getMaalPanelTitle);
@@ -2124,18 +2197,123 @@ function TabContainer() {
     }, [panelTitle]);
 
     useEffect(() => {
-        const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+        const onFsChange = () => {
+            const on = !!getDashboardFullscreenElement();
+            setIsFullscreen(on);
+            if (!on) {
+                fsFallbackRef.current = false;
+                edgeToEdgeRequestedFsRef.current = false;
+                document.documentElement.classList.remove('dashboard-fs-fallback');
+                setIsEdgeToEdge(false);
+            }
+        };
         document.addEventListener('fullscreenchange', onFsChange);
-        return () => document.removeEventListener('fullscreenchange', onFsChange);
+        document.addEventListener('webkitfullscreenchange', onFsChange);
+        return () => {
+            document.removeEventListener('fullscreenchange', onFsChange);
+            document.removeEventListener('webkitfullscreenchange', onFsChange);
+        };
     }, []);
 
+    useLayoutEffect(() => {
+        const html = document.documentElement;
+        const scale = isEdgeToEdge
+            ? Math.max(0.25, window.innerWidth / DASHBOARD_BASE_WIDTH)
+            : manualZoom;
+        html.style.setProperty('--dashboard-zoom', String(scale));
+        html.style.setProperty('--dashboard-base-width', DASHBOARD_BASE_WIDTH + 'px');
+        html.classList.toggle('dashboard-edge-to-edge', isEdgeToEdge);
+        window.dispatchEvent(new Event('resize'));
+    }, [isEdgeToEdge, manualZoom]);
+
+    useEffect(() => {
+        if (!isEdgeToEdge) return;
+        const onResize = () => {
+            const scale = Math.max(0.25, window.innerWidth / DASHBOARD_BASE_WIDTH);
+            document.documentElement.style.setProperty('--dashboard-zoom', String(scale));
+        };
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, [isEdgeToEdge]);
+
+    const setManualZoomAndPersist = useCallback((next) => {
+        const zoom = clampDashboardZoom(next);
+        setManualZoom(zoom);
+        persistDashboardZoom(zoom);
+    }, []);
+
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key === 'Escape' && (isEdgeToEdge || fsFallbackRef.current)) {
+                if (fsFallbackRef.current) {
+                    fsFallbackRef.current = false;
+                    document.documentElement.classList.remove('dashboard-fs-fallback');
+                    setIsEdgeToEdge(false);
+                }
+                return;
+            }
+            if (isEdgeToEdge) return;
+            if (!(e.ctrlKey || e.metaKey)) return;
+            if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+                e.preventDefault();
+                setManualZoomAndPersist(manualZoom + 0.05);
+            } else if (e.key === '-' || e.code === 'NumpadSubtract') {
+                e.preventDefault();
+                setManualZoomAndPersist(manualZoom - 0.05);
+            } else if (e.key === '0' || e.code === 'Numpad0') {
+                e.preventDefault();
+                setManualZoomAndPersist(1);
+            }
+        };
+        const onWheel = (e) => {
+            if (isEdgeToEdge) return;
+            if (!(e.ctrlKey || e.metaKey)) return;
+            e.preventDefault();
+            const step = e.deltaY < 0 ? 0.05 : -0.05;
+            setManualZoomAndPersist(manualZoom + step);
+        };
+        document.addEventListener('keydown', onKey);
+        document.addEventListener('wheel', onWheel, { passive: false });
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            document.removeEventListener('wheel', onWheel);
+        };
+    }, [isEdgeToEdge, manualZoom, setManualZoomAndPersist]);
+
     const toggleFullscreen = useCallback(() => {
-        if (!document.fullscreenElement) {
-            document.documentElement.requestFullscreen().catch(() => {});
+        if (!getDashboardFullscreenElement()) {
+            requestDashboardFullscreen(document.documentElement).catch(() => {});
         } else {
-            document.exitFullscreen().catch(() => {});
+            exitDashboardFullscreen().catch(() => {});
         }
     }, []);
+
+    const toggleEdgeToEdge = useCallback(async () => {
+        if (isEdgeToEdge) {
+            setIsEdgeToEdge(false);
+            document.documentElement.classList.remove('dashboard-fs-fallback');
+            if (fsFallbackRef.current) {
+                fsFallbackRef.current = false;
+            }
+            if (edgeToEdgeRequestedFsRef.current && getDashboardFullscreenElement()) {
+                edgeToEdgeRequestedFsRef.current = false;
+                try { await exitDashboardFullscreen(); } catch (_) {}
+            }
+            return;
+        }
+        setIsEdgeToEdge(true);
+        if (!getDashboardFullscreenElement()) {
+            try {
+                await requestDashboardFullscreen(document.documentElement);
+                if (!getDashboardFullscreenElement()) throw new Error('fullscreen not entered');
+                edgeToEdgeRequestedFsRef.current = true;
+            } catch (_) {
+                document.documentElement.classList.add('dashboard-fs-fallback');
+                fsFallbackRef.current = true;
+                edgeToEdgeRequestedFsRef.current = false;
+            }
+        }
+    }, [isEdgeToEdge]);
 
     const tryApplyPendingMalsetninger = React.useCallback(() => {
         const p = pendingMalsetningerPayloadRef.current;
@@ -2252,7 +2430,6 @@ function TabContainer() {
                 </div>
             ),
         },
-        { name: 'Pensjon', content: <div style={{ width: '100%', height: '100%', minHeight: 0 }}><iframe ref={pensjonsgapetIframeRef} src="pensjonsgapet%20index.html" title="Pensjon" style={{ width: '100%', height: '100%', border: 'none', display: 'block' }} /></div> },
     ];
 
     const INGEN_DATA = 'ingen data';
@@ -2282,14 +2459,6 @@ function TabContainer() {
                 }
             }
         } catch (_) {}
-        let pensjonsgapet = INGEN_DATA;
-        try {
-            const win = pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow;
-            if (win && typeof win.PensjonsgapetGetOutputText === 'function') {
-                const txt = win.PensjonsgapetGetOutputText();
-                pensjonsgapet = (txt && String(txt).trim()) ? txt : INGEN_DATA;
-            }
-        } catch (_) {}
         let formuesskatt = INGEN_DATA;
         try {
             const win = formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow;
@@ -2299,6 +2468,8 @@ function TabContainer() {
             }
         } catch (_) {}
         const fremtidigeVerdier = '1 : Merknad : Utledet fra Mål og behov + T-konto (ingen egen lagring i denne fanen).';
+        // Pensjonsfanen er fjernet: ikke skriv --- Pensjon --- / --- Pensjonsgapet ---.
+        // Input parserer fortsatt de seksjonene i gamle eksporter (ignoreres, uten feil).
         return [
             '--- Malsetninger ---',
             malsetninger,
@@ -2314,9 +2485,6 @@ function TabContainer() {
             '',
             '--- Risikosimulering ---',
             risiko,
-            '',
-            '--- Pensjon ---',
-            pensjonsgapet,
             '',
             '--- Formuesskatt ---',
             formuesskatt
@@ -2386,6 +2554,9 @@ function TabContainer() {
         const waitForTkontoParse = () => new Promise((resolve) => {
             const text = sections.tkonto;
             if (!text) {
+                if (split.hadDelimiter && typeof window.TKontoParseInputText === 'function') {
+                    try { window.TKontoParseInputText('ingen data'); } catch (_) {}
+                }
                 resolve();
                 return;
             }
@@ -2417,59 +2588,30 @@ function TabContainer() {
             tick();
         });
 
-        const waitForPensjonApply = () => new Promise((resolve) => {
-            const text = sections.pensjonsgapet;
-            if (!text || !String(text).trim()) {
-                resolve();
-                return;
-            }
-            let attempts = 0;
-            const maxAttempts = 50;
-            const tick = () => {
-                const win = pensjonsgapetIframeRef.current && pensjonsgapetIframeRef.current.contentWindow;
-                if (win && typeof win.PensjonsgapetApplyInputText === 'function') {
-                    try {
-                        win.PensjonsgapetApplyInputText(text);
-                    } catch (e) {
-                        console.error(e);
-                        warnings.push('Pensjon: feil ved import – ' + (e && e.message ? e.message : String(e)));
-                    }
-                    resolve();
-                    return;
-                }
-                attempts++;
-                if (attempts >= maxAttempts) {
-                    warnings.push('Pensjon: skript ikke ferdig lastet. Åpne Pensjon-fanen, vent litt, og trykk «Last inn» igjen.');
-                    resolve();
-                    return;
-                }
-                setTimeout(tick, 60);
-            };
-            tick();
-        });
-
         (async () => {
             try {
-                if (sections.malsetninger) {
-                    pendingMalsetningerPayloadRef.current = sections.malsetninger;
+                const malsetningerPayload = sections.malsetninger || (split.hadDelimiter ? 'ingen data' : '');
+                if (malsetningerPayload) {
+                    pendingMalsetningerPayloadRef.current = malsetningerPayload;
                     const mr = tryApplyPendingMalsetninger();
                     if (mr === 'retry') schedulePendingMalsetningerFlush();
                     if (mr === 'bad') {
                         warnings.push('Målsetninger: innlimingen ble ikke gjenkjent (sjekk nummererte linjer eller eldre «Malsetninger state (json):»).');
                     }
                 }
-                if (sections.maal) {
+                const maalPayload = sections.maal || (split.hadDelimiter ? 'ingen data' : '');
+                if (maalPayload) {
                     if (typeof MaalOgBehovState.applyInputText !== 'function') {
                         warnings.push('Mål og behov: intern import er ikke klar – oppdater siden og prøv igjen.');
                     } else {
-                        const maalOk = MaalOgBehovState.applyInputText(sections.maal);
+                        const maalOk = MaalOgBehovState.applyInputText(maalPayload);
                         if (!maalOk) {
                             warnings.push('Mål og behov: ingen felt ble oppdatert (ugyldig format eller tom seksjon — forvent linjer 1–37 eller eldre «Maal og behov state (json):»).');
                         }
                     }
                 }
                 await waitForTkontoParse();
-                if (sections.malsetninger && pendingMalsetningerPayloadRef.current) {
+                if (malsetningerPayload && pendingMalsetningerPayloadRef.current) {
                     const mr2 = tryApplyPendingMalsetninger();
                     if (mr2 === 'retry') {
                         warnings.push('Målsetninger: fanen svarer ikke ennå – vent litt, åpne Målsetninger-fanen og prøv «Last inn» igjen.');
@@ -2478,14 +2620,15 @@ function TabContainer() {
                         warnings.push('Målsetninger: innlimingen ble ikke gjenkjent (sjekk nummererte linjer eller eldre «Malsetninger state (json):»).');
                     }
                 }
-                if (sections.risiko && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
-                    try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: sections.risiko }, '*'); } catch (_) {}
+                const risikoPayload = sections.risiko || (split.hadDelimiter ? 'ingen data' : '');
+                if (risikoPayload && risikoIframeRef.current && risikoIframeRef.current.contentWindow) {
+                    try { risikoIframeRef.current.contentWindow.postMessage({ type: 'LOAD_INPUT', payload: risikoPayload }, '*'); } catch (_) {}
                 }
-                await waitForPensjonApply();
-                if (sections.formuesskatt && formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow) {
+                const formuesskattPayload = sections.formuesskatt || (split.hadDelimiter ? 'ingen data' : '');
+                if (formuesskattPayload && formuesskattIframeRef.current && formuesskattIframeRef.current.contentWindow) {
                     try {
                         const win = formuesskattIframeRef.current.contentWindow;
-                        if (typeof win.FormuesskattApplyInputText === 'function') win.FormuesskattApplyInputText(sections.formuesskatt);
+                        if (typeof win.FormuesskattApplyInputText === 'function') win.FormuesskattApplyInputText(formuesskattPayload);
                     } catch (_) {}
                 }
                 if (warnings.length) {
@@ -2521,12 +2664,16 @@ function TabContainer() {
                 onTabClick={setActiveTab}
                 panelTitleLabel={panelTitle}
             />
-            <div className="tab-content" style={{ position: 'relative' }}>
-                {tabs.map((tab, index) => (
-                    <div key={index} style={{ display: activeTab === index ? 'block' : 'none', width: '100%', height: '100%', minHeight: 0, overflow: 'auto' }}>
-                        {tab.content}
+            <div className="dashboard-zoom-viewport">
+                <div className="dashboard-zoom-inner">
+                    <div className="tab-content" style={{ position: 'relative' }}>
+                        {tabs.map((tab, index) => (
+                            <div key={index} style={{ display: activeTab === index ? 'block' : 'none', width: '100%', height: '100%', minHeight: 0, overflow: 'auto' }}>
+                                {tab.content}
+                            </div>
+                        ))}
                     </div>
-                ))}
+                </div>
             </div>
             {/* Felles Input/Output – synlige på alle faner */}
             <button
@@ -2546,6 +2693,29 @@ function TabContainer() {
                 aria-label="Output"
             >
                 Output
+            </button>
+            <button
+                type="button"
+                className="fixed top-3 z-[100] w-8 h-8 flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
+                style={{ right: '3.5rem' }}
+                onClick={toggleEdgeToEdge}
+                aria-label={isEdgeToEdge ? 'Avslutt kant-til-kant fullskjerm' : 'Kant-til-kant fullskjerm'}
+                title={isEdgeToEdge ? 'Avslutt kant-til-kant fullskjerm' : 'Kant-til-kant fullskjerm'}
+                aria-pressed={isEdgeToEdge}
+            >
+                {isEdgeToEdge ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="10 8 14 12 10 16" />
+                        <polyline points="14 8 10 12 14 16" />
+                    </svg>
+                ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="7 8 3 12 7 16" />
+                        <line x1="3" y1="12" x2="10" y2="12" />
+                        <polyline points="17 8 21 12 17 16" />
+                        <line x1="14" y1="12" x2="21" y2="12" />
+                    </svg>
+                )}
             </button>
             <button
                 type="button"
@@ -2649,7 +2819,7 @@ function App({ panelTitle, onPanelTitleChange }) {
     const [chartImageCopied, setChartImageCopied] = useState(false);
     const chartExportCanvasRef = React.useRef(null);
 
-    // Last t-konto-script tidlig slik at getTKontoDagensÅrslønn m.m. finnes for Pensjonsgapet/Formuesskatt
+    // Last t-konto-script tidlig slik at getTKontoDagensÅrslønn m.m. finnes for Formuesskatt
     useEffect(() => {
         if (document.querySelector('script[src*="t-konto"]')) return;
         if (typeof window.getTKontoDagensÅrslønn === 'function') return;
@@ -3952,112 +4122,56 @@ const lines = [];
 const INGEN_DATA_OUTPUT = 'ingen data';
 const orIngenData = (v) => (v === undefined || v === null || (typeof v === 'string' && !String(v).trim())) ? INGEN_DATA_OUTPUT : v;
 const formatCurrencyValue = (value) => formatNumberRaw(value ?? 0);
+const D = INITIAL_APP_STATE;
+const sameNum = (a, b) => Number(a) === Number(b);
+const pushIf = (changed, line) => { if (changed) lines.push(line); };
 
-lines.push(`1 Portefølje I : ${formatCurrencyValue(state.initialPortfolioSize)}`);
-lines.push(`2 Aksjeandel Portefølje I : ${formatNumberRaw(state.row1StockAllocation)}`);
-lines.push(`3 Portefølje II : ${formatCurrencyValue(state.pensionPortfolioSize)}`);
-lines.push(`4 Aksjeandel Portefølje II : ${formatNumberRaw(state.row2StockAllocation)}`);
-lines.push(`5 Bankinnskudd/Likviditetsfond : ${formatCurrencyValue(state.additionalPensionAmount)}`);
-lines.push(`6 Årlig sparing : ${formatCurrencyValue(state.annualSavings)}`);
-lines.push(`7 Innskutt kapital : ${formatCurrencyValue(state.investedCapital)}`);
-lines.push(`8 Antall år investeringsperiode : ${formatNumberRaw(state.investmentYears)}`);
-lines.push(`9 Antall år med utbetaling : ${formatNumberRaw(state.payoutYears)}`);
-lines.push(`10 Ønsket årlig uttak til Forbruk : ${formatCurrencyValue(state.desiredAnnualConsumptionPayout)}`);
-lines.push(`11 Ønsket årlig uttak til Formuesskatt : ${formatCurrencyValue(state.desiredAnnualWealthTaxPayout)}`);
-lines.push(`12 Forventet avkastning aksjeportefølje : ${state.stockReturnRate.toFixed(1)}`);
-lines.push(`13 Forventet avkastning renteportefølje : ${state.bondReturnRate.toFixed(1)}`);
-lines.push(`14 Forventet KPI : ${state.kpiRate.toFixed(1)}`);
-lines.push(`15 Rådgivningshonorar : ${state.advisoryFeeRate.toFixed(2)}`);
-lines.push(`16 Skjermingsrente : ${state.shieldingRate.toFixed(2)}`);
-lines.push(`17 Utbytteskatt : ${state.manualStockTaxRate.toFixed(2)}`);
-lines.push(`18 Kapitalskatt : ${state.manualBondTaxRate.toFixed(2)}`);
-if (state.events && state.events.length > 0 && state.events[0]) {
-    const e1 = state.events[0];
-    lines.push(`19 Hendelse 1 beløp : ${formatCurrencyValue(e1.belop || 0)}`);
-    lines.push(`19a Hendelse 1 startår : ${e1.startAar || START_YEAR}`);
-    lines.push(`19b Hendelse 1 sluttår : ${e1.sluttAar || START_YEAR}`);
-    lines.push(`19c Hendelse 1 påvirker innskutt kapital : ${e1.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`19d Hendelse 1 type : ${orIngenData(e1.type) || 'Hendelse'}`);
-} else {
-    lines.push(`19 Hendelse 1 beløp : 0`);
-    lines.push(`19a Hendelse 1 startår : ${START_YEAR}`);
-    lines.push(`19b Hendelse 1 sluttår : ${START_YEAR}`);
-    lines.push(`19c Hendelse 1 påvirker innskutt kapital : Ja`);
-    lines.push(`19d Hendelse 1 type : Hendelse`);
-}
-if (state.events && state.events.length > 1 && state.events[1]) {
-    const e2 = state.events[1];
-    lines.push(`20 Hendelse 2 beløp : ${formatCurrencyValue(e2.belop || 0)}`);
-    lines.push(`20a Hendelse 2 startår : ${e2.startAar || START_YEAR}`);
-    lines.push(`20b Hendelse 2 sluttår : ${e2.sluttAar || START_YEAR}`);
-    lines.push(`20c Hendelse 2 påvirker innskutt kapital : ${e2.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`20d Hendelse 2 type : ${orIngenData(e2.type) || 'Hendelse'}`);
-} else {
-    lines.push(`20 Hendelse 2 beløp : 0`);
-    lines.push(`20a Hendelse 2 startår : ${START_YEAR}`);
-    lines.push(`20b Hendelse 2 sluttår : ${START_YEAR}`);
-    lines.push(`20c Hendelse 2 påvirker innskutt kapital : Ja`);
-    lines.push(`20d Hendelse 2 type : Hendelse`);
-}
-if (state.events && state.events.length > 2 && state.events[2]) {
-    const e3 = state.events[2];
-    lines.push(`21 Hendelse 3 beløp : ${formatCurrencyValue(e3.belop || 0)}`);
-    lines.push(`21a Hendelse 3 startår : ${e3.startAar || START_YEAR}`);
-    lines.push(`21b Hendelse 3 sluttår : ${e3.sluttAar || START_YEAR}`);
-    lines.push(`21c Hendelse 3 påvirker innskutt kapital : ${e3.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`21d Hendelse 3 type : ${orIngenData(e3.type) || 'Hendelse'}`);
-} else {
-    lines.push(`21 Hendelse 3 beløp : 0`);
-    lines.push(`21a Hendelse 3 startår : ${START_YEAR}`);
-    lines.push(`21b Hendelse 3 sluttår : ${START_YEAR}`);
-    lines.push(`21c Hendelse 3 påvirker innskutt kapital : Ja`);
-    lines.push(`21d Hendelse 3 type : Hendelse`);
-}
-if (state.events && state.events.length > 3 && state.events[3]) {
-    const e4 = state.events[3];
-    lines.push(`22 Hendelse 4 beløp : ${formatCurrencyValue(e4.belop || 0)}`);
-    lines.push(`22a Hendelse 4 startår : ${e4.startAar || START_YEAR}`);
-    lines.push(`22b Hendelse 4 sluttår : ${e4.sluttAar || START_YEAR}`);
-    lines.push(`22c Hendelse 4 påvirker innskutt kapital : ${e4.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`22d Hendelse 4 type : ${orIngenData(e4.type) || 'Hendelse'}`);
-} else {
-    lines.push(`22 Hendelse 4 beløp : 0`);
-    lines.push(`22a Hendelse 4 startår : ${START_YEAR}`);
-    lines.push(`22b Hendelse 4 sluttår : ${START_YEAR}`);
-    lines.push(`22c Hendelse 4 påvirker innskutt kapital : Ja`);
-    lines.push(`22d Hendelse 4 type : Hendelse`);
-}
-if (state.events && state.events.length > 4 && state.events[4]) {
-    const e5 = state.events[4];
-    lines.push(`23 Hendelse 5 beløp : ${formatCurrencyValue(e5.belop || 0)}`);
-    lines.push(`23a Hendelse 5 startår : ${e5.startAar || START_YEAR}`);
-    lines.push(`23b Hendelse 5 sluttår : ${e5.sluttAar || START_YEAR}`);
-    lines.push(`23c Hendelse 5 påvirker innskutt kapital : ${e5.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
-    lines.push(`23d Hendelse 5 type : ${orIngenData(e5.type) || 'Hendelse'}`);
-} else {
-    lines.push(`23 Hendelse 5 beløp : 0`);
-    lines.push(`23a Hendelse 5 startår : ${START_YEAR}`);
-    lines.push(`23b Hendelse 5 sluttår : ${START_YEAR}`);
-    lines.push(`23c Hendelse 5 påvirker innskutt kapital : Ja`);
-    lines.push(`23d Hendelse 5 type : Hendelse`);
-}
-lines.push(`24 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSeekPayoutResult || 0)}`);
-lines.push(`25 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
-lines.push(`26 Investortype : ${orIngenData(state.investorType)}`);
-lines.push(`27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
-lines.push(`28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
-lines.push(`29 Overskrift : ${resolvedPanelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
-// Ekstra felt som tidligere lå bare i JSON-snapshot (ingen lang JSON-linje i Output).
-lines.push(`30 Aksjeandel likviditetsfond/rad 3 : ${formatNumberRaw(state.row3StockAllocation)}`);
-lines.push(`31 Standardavvik aksjer : ${state.stockStdDev.toFixed(1)}`);
-lines.push(`32 Standardavvik renter : ${state.bondStdDev.toFixed(1)}`);
-lines.push(`33 Ønsket årlig uttak etter skatt : ${formatCurrencyValue(state.desiredAnnualPayoutAfterTax)}`);
-lines.push(`34 Skattesats hoved (%) : ${state.taxRate.toFixed(2)}`);
-lines.push(`35 Forventet rente bankinnskudd (%) : ${state.bankDepositRate.toFixed(1)}`);
-lines.push(`36 Formuesskatt fra T-konto : ${state.wealthTaxFromTKonto ? 'Ja' : 'Nei'}`);
-lines.push(`37 Målsøk utbetaling tøm siste år : ${state.goalSeekPayoutDrainFinalYear ? 'Ja' : 'Nei'}`);
-lines.push(`38 Portefølje I navn : ${orIngenData(resolvePortfolio1Name(state.portfolio1Name))}`);
-lines.push(`39 Portefølje II navn : ${orIngenData(resolvePortfolio2Name(state.portfolio2Name))}`);
+pushIf(!sameNum(state.initialPortfolioSize, D.initialPortfolioSize), `1 Portefølje I : ${formatCurrencyValue(state.initialPortfolioSize)}`);
+pushIf(!sameNum(state.row1StockAllocation, D.row1StockAllocation), `2 Aksjeandel Portefølje I : ${formatNumberRaw(state.row1StockAllocation)}`);
+pushIf(!sameNum(state.pensionPortfolioSize, D.pensionPortfolioSize), `3 Portefølje II : ${formatCurrencyValue(state.pensionPortfolioSize)}`);
+pushIf(!sameNum(state.row2StockAllocation, D.row2StockAllocation), `4 Aksjeandel Portefølje II : ${formatNumberRaw(state.row2StockAllocation)}`);
+pushIf(!sameNum(state.additionalPensionAmount, D.additionalPensionAmount), `5 Bankinnskudd/Likviditetsfond : ${formatCurrencyValue(state.additionalPensionAmount)}`);
+pushIf(!sameNum(state.annualSavings, D.annualSavings), `6 Årlig sparing : ${formatCurrencyValue(state.annualSavings)}`);
+pushIf(!sameNum(state.investedCapital, D.investedCapital), `7 Innskutt kapital : ${formatCurrencyValue(state.investedCapital)}`);
+pushIf(!sameNum(state.investmentYears, D.investmentYears), `8 Antall år investeringsperiode : ${formatNumberRaw(state.investmentYears)}`);
+pushIf(!sameNum(state.payoutYears, D.payoutYears), `9 Antall år med utbetaling : ${formatNumberRaw(state.payoutYears)}`);
+pushIf(!sameNum(state.desiredAnnualConsumptionPayout, D.desiredAnnualConsumptionPayout), `10 Ønsket årlig uttak til Forbruk : ${formatCurrencyValue(state.desiredAnnualConsumptionPayout)}`);
+pushIf(!sameNum(state.desiredAnnualWealthTaxPayout, D.desiredAnnualWealthTaxPayout), `11 Ønsket årlig uttak til Formuesskatt : ${formatCurrencyValue(state.desiredAnnualWealthTaxPayout)}`);
+pushIf(!sameNum(state.stockReturnRate, D.stockReturnRate), `12 Forventet avkastning aksjeportefølje : ${Number(state.stockReturnRate).toFixed(1)}`);
+pushIf(!sameNum(state.bondReturnRate, D.bondReturnRate), `13 Forventet avkastning renteportefølje : ${Number(state.bondReturnRate).toFixed(1)}`);
+pushIf(!sameNum(state.kpiRate, D.kpiRate), `14 Forventet KPI : ${Number(state.kpiRate).toFixed(1)}`);
+pushIf(!sameNum(state.advisoryFeeRate, D.advisoryFeeRate), `15 Rådgivningshonorar : ${Number(state.advisoryFeeRate).toFixed(2)}`);
+pushIf(!sameNum(state.shieldingRate, D.shieldingRate), `16 Skjermingsrente : ${Number(state.shieldingRate).toFixed(2)}`);
+pushIf(!sameNum(state.manualStockTaxRate, D.manualStockTaxRate), `17 Utbytteskatt : ${Number(state.manualStockTaxRate).toFixed(2)}`);
+pushIf(!sameNum(state.manualBondTaxRate, D.manualBondTaxRate), `18 Kapitalskatt : ${Number(state.manualBondTaxRate).toFixed(2)}`);
+const eventsToExport = (state.events || []).filter((e) =>
+    e && e.id && (e.belop !== 0 || e.startAar !== START_YEAR || e.sluttAar !== START_YEAR || (e.type && e.type !== 'Hendelse'))
+);
+eventsToExport.forEach((ev, i) => {
+    const num = 19 + i;
+    const label = `Hendelse ${i + 1}`;
+    lines.push(`${num} ${label} beløp : ${formatCurrencyValue(ev.belop || 0)}`);
+    lines.push(`${num}a ${label} startår : ${ev.startAar || START_YEAR}`);
+    lines.push(`${num}b ${label} sluttår : ${ev.sluttAar || START_YEAR}`);
+    lines.push(`${num}c ${label} påvirker innskutt kapital : ${ev.addToInvestedCapital !== false ? 'Ja' : 'Nei'}`);
+    lines.push(`${num}d ${label} type : ${orIngenData(ev.type) || 'Hendelse'}`);
+});
+pushIf(!sameNum(state.goalSeekPayoutResult || 0, D.goalSeekPayoutResult || 0), `24 Målsøk utbetaling resultat : ${formatCurrencyValue(state.goalSeekPayoutResult || 0)}`);
+pushIf(!sameNum(state.goalSeekPortfolio1Result || 0, D.goalSeekPortfolio1Result || 0), `25 Målsøk Portefølje I resultat : ${formatCurrencyValue(state.goalSeekPortfolio1Result || 0)}`);
+pushIf(String(state.investorType || '') !== String(D.investorType || ''), `26 Investortype : ${orIngenData(state.investorType)}`);
+pushIf(!!state.deferredInterestTax !== !!D.deferredInterestTax, `27 utsatt skatt på renter : ${state.deferredInterestTax ? 'Ja' : 'Nei'}`);
+pushIf(!!state.taxCalculationEnabled !== !!D.taxCalculationEnabled, `28 Skatteberegning : ${state.taxCalculationEnabled ? 'På' : 'Av'}`);
+pushIf(String(resolvedPanelTitle || MAAL_PANEL_TITLE_DEFAULT) !== MAAL_PANEL_TITLE_DEFAULT, `29 Overskrift : ${resolvedPanelTitle || MAAL_PANEL_TITLE_DEFAULT}`);
+pushIf(!sameNum(state.row3StockAllocation, D.row3StockAllocation), `30 Aksjeandel likviditetsfond/rad 3 : ${formatNumberRaw(state.row3StockAllocation)}`);
+pushIf(!sameNum(state.stockStdDev, D.stockStdDev), `31 Standardavvik aksjer : ${Number(state.stockStdDev).toFixed(1)}`);
+pushIf(!sameNum(state.bondStdDev, D.bondStdDev), `32 Standardavvik renter : ${Number(state.bondStdDev).toFixed(1)}`);
+pushIf(!sameNum(state.desiredAnnualPayoutAfterTax, D.desiredAnnualPayoutAfterTax), `33 Ønsket årlig uttak etter skatt : ${formatCurrencyValue(state.desiredAnnualPayoutAfterTax)}`);
+pushIf(!sameNum(state.taxRate, D.taxRate), `34 Skattesats hoved (%) : ${Number(state.taxRate).toFixed(2)}`);
+pushIf(!sameNum(state.bankDepositRate, D.bankDepositRate), `35 Forventet rente bankinnskudd (%) : ${Number(state.bankDepositRate).toFixed(1)}`);
+pushIf(!!state.wealthTaxFromTKonto !== !!D.wealthTaxFromTKonto, `36 Formuesskatt fra T-konto : ${state.wealthTaxFromTKonto ? 'Ja' : 'Nei'}`);
+pushIf(!!state.goalSeekPayoutDrainFinalYear !== !!D.goalSeekPayoutDrainFinalYear, `37 Målsøk utbetaling tøm siste år : ${state.goalSeekPayoutDrainFinalYear ? 'Ja' : 'Nei'}`);
+pushIf(resolvePortfolio1Name(state.portfolio1Name) !== PORTFOLIO1_NAME_DEFAULT, `38 Portefølje I navn : ${orIngenData(resolvePortfolio1Name(state.portfolio1Name))}`);
+pushIf(resolvePortfolio2Name(state.portfolio2Name) !== PORTFOLIO2_NAME_DEFAULT, `39 Portefølje II navn : ${orIngenData(resolvePortfolio2Name(state.portfolio2Name))}`);
 return lines.join('\n');
 }, [state, prognosis, resolvedPanelTitle]);
 
@@ -4229,7 +4343,7 @@ if (num === 23 && suffix === '' && label.indexOf('Målsøk utbetaling') !== -1) 
 }
 const evtIdx = num - 19;
 if (!updates.events) {
-    updates.events = [...(state.events || [])];
+    updates.events = [];
 }
 const evtTs = updates._eventParseTs || (updates._eventParseTs = Date.now());
 while (updates.events.length <= evtIdx) {
@@ -4328,7 +4442,7 @@ updates.events = updates.events.filter(e =>
 }
 
 return updates;
-}, [state.events]);
+}, []);
 
 const applyMaalUiSnapshot = useCallback((ui) => {
 if (!ui || typeof ui !== 'object') return;
@@ -4361,6 +4475,34 @@ if (ui.portToolButtonMarked !== undefined) setPortToolButtonMarked(b(ui.portTool
 if (ui.advisoryInputValue != null && ui.advisoryInputValue !== undefined) setAdvisoryInputValue(String(ui.advisoryInputValue));
 }, []);
 
+const applyParsedMaalUpdates = useCallback((updates, text) => {
+const fromJson = updates.__fromFullJson;
+delete updates.__fromFullJson;
+const uiSnap = updates.__maalUi;
+delete updates.__maalUi;
+const hasFields = fromJson || Object.keys(updates).length > 0;
+if (!hasFields) {
+    if (!isIngenDataText(text)) return false;
+    setState({ ...INITIAL_APP_STATE, events: [] });
+    setPanelTitle(MAAL_PANEL_TITLE_DEFAULT);
+    setAdvisoryInputValue(INITIAL_APP_STATE.advisoryFeeRate.toFixed(2).replace('.', ','));
+    return true;
+}
+if (updates._panelTitle) {
+    setPanelTitle(updates._panelTitle);
+    delete updates._panelTitle;
+} else {
+    setPanelTitle(MAAL_PANEL_TITLE_DEFAULT);
+}
+const merged = { ...INITIAL_APP_STATE, ...updates, events: [...(updates.events || INITIAL_APP_STATE.events || [])] };
+merged.initialStockAllocation = computeInitialStockPct(merged);
+setState(merged);
+const fee = updates.advisoryFeeRate !== undefined ? updates.advisoryFeeRate : INITIAL_APP_STATE.advisoryFeeRate;
+setAdvisoryInputValue(Number(fee).toFixed(2).replace('.', ','));
+applyMaalUiSnapshot(uiSnap);
+return true;
+}, [applyMaalUiSnapshot, computeInitialStockPct]);
+
 const handleLoadInput = useCallback(() => {
 if (!inputText.trim()) {
 alert('Vennligst lim inn informasjon fra output.');
@@ -4369,31 +4511,17 @@ return;
 
 try {
 const updates = parseInputText(inputText);
-const fromJson = updates.__fromFullJson;
-delete updates.__fromFullJson;
-const uiSnap = updates.__maalUi;
-delete updates.__maalUi;
-if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
-if (fromJson) {
-setState({ ...INITIAL_APP_STATE, ...updates });
-} else {
-setState((prevState) => {
-const merged = { ...prevState, ...updates };
-merged.initialStockAllocation = computeInitialStockPct(merged);
-return merged;
-});
+if (!applyParsedMaalUpdates(updates, inputText)) {
+alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
+return;
 }
-if (updates.advisoryFeeRate !== undefined) {
-setAdvisoryInputValue(Number(updates.advisoryFeeRate).toFixed(2).replace('.', ','));
-}
-applyMaalUiSnapshot(uiSnap);
 setShowInputModal(false);
 setInputText('');
 } catch (error) {
 alert('Kunne ikke lese inn data. Sjekk at formatet er riktig.');
 console.error('Parse error:', error);
 }
-}, [inputText, parseInputText, applyMaalUiSnapshot, computeInitialStockPct]);
+}, [inputText, parseInputText, applyParsedMaalUpdates]);
 
 // Registrer for felles Input/Output på tvers av alle faner (TabContainer kaller disse).
 // useLayoutEffect: sikrar at applyInputText finst før brukar kan trykkje «Last inn» etter første teikning.
@@ -4402,26 +4530,7 @@ useLayoutEffect(() => {
     MaalOgBehovState.applyInputText = (text) => {
         try {
             const updates = parseInputText(text);
-            if (Object.keys(updates).length === 0) return false;
-            const fromJson = updates.__fromFullJson;
-            delete updates.__fromFullJson;
-            const uiSnap = updates.__maalUi;
-            delete updates.__maalUi;
-            if (updates._panelTitle) { setPanelTitle(updates._panelTitle); delete updates._panelTitle; }
-            if (fromJson) {
-                setState({ ...INITIAL_APP_STATE, ...updates });
-            } else {
-                setState((prev) => {
-                    const merged = { ...prev, ...updates };
-                    merged.initialStockAllocation = computeInitialStockPct(merged);
-                    return merged;
-                });
-            }
-            if (updates.advisoryFeeRate !== undefined) {
-                setAdvisoryInputValue(Number(updates.advisoryFeeRate).toFixed(2).replace('.', ','));
-            }
-            applyMaalUiSnapshot(uiSnap);
-            return true;
+            return applyParsedMaalUpdates(updates, text);
         } catch (e) {
             console.error('MaalOgBehovState.applyInputText:', e);
             return false;
@@ -4431,7 +4540,7 @@ useLayoutEffect(() => {
         delete MaalOgBehovState.getOutputText;
         delete MaalOgBehovState.applyInputText;
     };
-}, [generateOutputText, parseInputText, applyMaalUiSnapshot, computeInitialStockPct]);
+}, [generateOutputText, parseInputText, applyParsedMaalUpdates]);
 
 useEffect(() => {
 if (!showOutputModal) return;
@@ -5520,71 +5629,80 @@ return () => document.removeEventListener('keydown', onKey);
                 </div>
 
                 {/* Inputfelt for porteføljestørrelse, årlig sparing og aksjeandel */}
-                <div className="relative w-full">
+                <div className="relative w-full" style={{ marginTop: '-24px' }}>
                     <div className="absolute inset-0 z-0 bg-white border border-[#DDDDDD] rounded-xl pointer-events-none"></div>
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 relative z-10">
-<div className="p-6 flex flex-col relative" style={{ minHeight: '350px' }}>
+                    <div className="mbh-forvaltning-grid relative z-10">
+                        <div className="mbh-fv-head-l">
                             <h2 className="typo-h2 text-[#4A6D8C]">Samlet forvaltning</h2>
-                        <button
-                            onClick={() => setShowAssumptionsGraphic(true)}
-                            className="absolute top-4 right-4 bg-white hover:bg-gray-50 text-[#4A6D8C] rounded-xl p-2.5 shadow-sm border border-[#DDDDDD]"
-                            title="Vis grafikk"
-                            aria-label="Vis grafikk"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M4 4h6v6H4z"></path>
-                                <path d="M14 4h6v6h-6z"></path>
-                                <path d="M4 14h6v6H4z"></path>
-                                <path d="M14 14h6v6h-6z"></path>
-                            </svg>
-                        </button>
-                            <div className="flex flex-col gap-3 mt-8">
-                                <div className="h-20 flex items-center w-full">
-                                    <div className="w-full">
-                                        <SliderInput id="initialPortfolioSize" label="Portefølje I" editableLabel labelValue={state.portfolio1Name} onLabelChange={(v) => handleStateChange('portfolio1Name', v)} labelPlaceholder={PORTFOLIO1_NAME_DEFAULT} value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#0A5EDC" />
-                                    </div>
-                                </div>
-                                <div className="h-20 flex items-center w-full">
-                                    <div className="w-full">
-                                        <SliderInput id="pensionPortfolioSize" label="Portefølje II" editableLabel labelValue={state.portfolio2Name} onLabelChange={(v) => handleStateChange('portfolio2Name', v)} labelPlaceholder={PORTFOLIO2_NAME_DEFAULT} value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3B7EE3" />
-                                    </div>
-                                </div>
-                                <div className="h-20 flex items-center w-full">
-                                    <div className="w-full">
-                                        <SliderInput id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#99BEF5" />
-                                    </div>
-                                </div>
-                            </div>
-                    </div>
-                    <div className="p-6 flex flex-col gap-6 xl:col-span-2" style={{ minHeight: '250px' }}>
-                        <div>
-                            <h2 className="typo-h2 text-[#4A6D8C]">Aksjeandel</h2>
-                            <div className="flex flex-col gap-3 mt-8">
-                                {/* Rad 1 */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center">
-                                    {STOCK_ALLOCATION_OPTIONS.map(opt => (
-                                        <button key={`row1-${opt.value}`} onClick={() => handleStateChange('row1StockAllocation', opt.value)} className={`${state.row1StockAllocation === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                {/* Rad 2 */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center">
-                                    {STOCK_ALLOCATION_OPTIONS.map(opt => (
-                                        <button key={`row2-${opt.value}`} onClick={() => handleStateChange('row2StockAllocation', opt.value)} className={`${state.row2StockAllocation === opt.value ? 'bg-[#3388CC] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}>
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                                {/* Rad 3: Låst til 100% Renter */}
-                                <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center">
-                                    <button type="button" disabled className="bg-[#88CCEE] text-white shadow-lg h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium cursor-default">
-                                        100% Renter
+                            <button
+                                onClick={() => setShowAssumptionsGraphic(true)}
+                                className="absolute top-0 right-0 bg-white hover:bg-gray-50 text-[#4A6D8C] rounded-xl p-2.5 shadow-sm border border-[#DDDDDD]"
+                                title="Vis grafikk"
+                                aria-label="Vis grafikk"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M4 4h6v6H4z"></path>
+                                    <path d="M14 4h6v6h-6z"></path>
+                                    <path d="M4 14h6v6H4z"></path>
+                                    <path d="M14 14h6v6h-6z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <h2 className="mbh-fv-head-r typo-h2 text-[#4A6D8C]">Aksjeandel</h2>
+
+                        <input
+                            type="text"
+                            className="mbh-fv-lab1 typo-label text-[#333333]/80 bg-transparent border-none outline-none w-full p-0 m-0"
+                            value={state.portfolio1Name}
+                            onChange={(e) => handleStateChange('portfolio1Name', e.target.value)}
+                            placeholder={PORTFOLIO1_NAME_DEFAULT}
+                            aria-label={`Navn på ${PORTFOLIO1_NAME_DEFAULT}`}
+                        />
+                        <div className="mbh-fv-sld1">
+                            <SliderInput hideLabel id="initialPortfolioSize" label="Portefølje I" value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#0A5EDC" />
+                        </div>
+                        <div className="mbh-fv-btn1">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                                {STOCK_ALLOCATION_OPTIONS.map(opt => (
+                                    <button key={`row1-${opt.value}`} onClick={() => handleStateChange('row1StockAllocation', opt.value)} className={`${state.row1StockAllocation === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`} style={{ height: '41.76px' }}>
+                                        {opt.label}
                                     </button>
-                                </div>
+                                ))}
                             </div>
                         </div>
-                    </div>
+
+                        <input
+                            type="text"
+                            className="mbh-fv-lab2 typo-label text-[#333333]/80 bg-transparent border-none outline-none w-full p-0 m-0"
+                            value={state.portfolio2Name}
+                            onChange={(e) => handleStateChange('portfolio2Name', e.target.value)}
+                            placeholder={PORTFOLIO2_NAME_DEFAULT}
+                            aria-label={`Navn på ${PORTFOLIO2_NAME_DEFAULT}`}
+                        />
+                        <div className="mbh-fv-sld2">
+                            <SliderInput hideLabel id="pensionPortfolioSize" label="Portefølje II" value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3B7EE3" />
+                        </div>
+                        <div className="mbh-fv-btn2">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                                {STOCK_ALLOCATION_OPTIONS.map(opt => (
+                                    <button key={`row2-${opt.value}`} onClick={() => handleStateChange('row2StockAllocation', opt.value)} className={`${state.row2StockAllocation === opt.value ? 'bg-[#3388CC] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`} style={{ height: '41.76px' }}>
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <label htmlFor="additionalPensionAmount" className="mbh-fv-lab3 typo-label text-[#333333]/80">Bankinnskudd / Likviditetsfond</label>
+                        <div className="mbh-fv-sld3">
+                            <SliderInput hideLabel id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#99BEF5" />
+                        </div>
+                        <div className="mbh-fv-btn3">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                                <button type="button" disabled className="bg-[#88CCEE] text-white shadow-lg rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium cursor-default" style={{ height: '41.76px' }}>
+                                    100% Renter
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -6988,7 +7106,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
                         <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
-                        <SliderInput id="investmentYears" label="Tidshorisont" value={state.investmentYears} min={1} max={60} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                        <SliderInput id="investmentYears" label="Tidshorisont" value={state.investmentYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                         <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
                          
                          {/* Ønsket årlig utbetaling */}
