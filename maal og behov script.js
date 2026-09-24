@@ -219,7 +219,75 @@ const createGlowColor = (baseColor, opacity = 0.6) => {
 };
 
 // Maks antall hendelser som kan legges til
-const MAX_EVENTS = 5;
+const MAX_EVENTS = 10;
+
+function parseLoanAmount(raw) {
+    let s = String(raw || '').trim();
+    s = s.replace(/kr\.?/gi, '').replace(/nok/gi, '').trim();
+    s = s.replace(/,-\s*$/, '');
+    s = s.replace(/[\s\u00a0\u202f]/g, '');
+    s = s.replace(/\u2212/g, '-');
+    if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+        s = s.replace(/\./g, '').replace(',', '.');
+    } else if (s.includes(',')) {
+        s = s.replace(',', '.');
+    }
+    s = s.replace(/[^\d.\-]/g, '');
+    if (!s || s === '-' || s === '.') return NaN;
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : NaN;
+}
+
+// Linjer fra lånekalkulator: «2026  kr 1 041 526,-» eller «2027–2035  kr 730 296,-».
+// Ett år eller ett årsspenn blir én hendelse. Beløpet lagres negativt (uttak).
+function parseLoanCalculatorInput(text) {
+    const lines = String(text || '')
+        .replace(/\u00a0/g, ' ')
+        .replace(/\u202f/g, ' ')
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    if (lines.length === 0) return { events: [], error: '' };
+
+    const yearRe = /^(\d{4})\s*(?:[\u2010\u2011\u2012\u2013\u2014\u2212\-]\s*(\d{4}))?(?:\s+|[;:|]+)(.+)$/;
+    const events = [];
+    const bad = [];
+    lines.forEach((line) => {
+        const match = line.match(yearRe);
+        if (!match) {
+            bad.push(line);
+            return;
+        }
+        let startAar = parseInt(match[1], 10);
+        let sluttAar = match[2] ? parseInt(match[2], 10) : startAar;
+        if (sluttAar < startAar) {
+            const swap = startAar;
+            startAar = sluttAar;
+            sluttAar = swap;
+        }
+        const amount = parseLoanAmount(match[3]);
+        if (!Number.isFinite(amount)) {
+            bad.push(line);
+            return;
+        }
+        events.push({
+            startAar,
+            sluttAar,
+            belop: -Math.abs(Math.round(amount)),
+        });
+    });
+
+    if (bad.length) {
+        return { events: [], error: 'Kunne ikke lese: ' + bad.slice(0, 3).join(' · ') };
+    }
+    if (events.length > MAX_EVENTS) {
+        return {
+            events: [],
+            error: `Du kan importere maks ${MAX_EVENTS} hendelser. Innlimingen har ${events.length}. Slå sammen år med samme beløp, for eksempel 2027–2035.`,
+        };
+    }
+    return { events, error: '' };
+}
 
 const LEGEND_DATA = [
     { label: 'Hovedstol', color: CHART_COLORS.hovedstol },
@@ -2795,6 +2863,8 @@ function App({ panelTitle, onPanelTitleChange }) {
     const [copied, setCopied] = useState(MaalOgBehovState.copied);
     const [showInputModal, setShowInputModal] = useState(MaalOgBehovState.showInputModal);
     const [inputText, setInputText] = useState(MaalOgBehovState.inputText);
+    const [showLoanImportModal, setShowLoanImportModal] = useState(false);
+    const [loanImportText, setLoanImportText] = useState('');
     const [showAssumptionsGraphic, setShowAssumptionsGraphic] = useState(MaalOgBehovState.showAssumptionsGraphic);
     const [showSimulation, setShowSimulation] = useState(MaalOgBehovState.showSimulation);
     const [showAccumulatedReturn, setShowAccumulatedReturn] = useState(MaalOgBehovState.showAccumulatedReturn);
@@ -3061,6 +3131,25 @@ function App({ panelTitle, onPanelTitleChange }) {
     const handleRemoveEvent = useCallback((id) => {
         setState(s => ({ ...s, goalSeekPayoutDrainFinalYear: false, events: s.events.filter(e => e.id !== id) }));
     }, []);
+
+    const handleImportLoanEvents = useCallback(() => {
+        const parsed = parseLoanCalculatorInput(loanImportText);
+        if (parsed.error || parsed.events.length === 0) return;
+        const ts = Date.now();
+        setState(s => ({
+            ...s,
+            events: parsed.events.map((ev, i) => ({
+                id: `loan-${ts}-${i}`,
+                type: 'Lån',
+                belop: ev.belop,
+                startAar: ev.startAar,
+                sluttAar: ev.sluttAar,
+                addToInvestedCapital: true,
+            })),
+        }));
+        setShowLoanImportModal(false);
+        setLoanImportText('');
+    }, [loanImportText]);
 
     // Beregn simulerte årlige avkastninger basert på aksjeandel
     // Må beregnes før prognosis for å unngå sirkulær avhengighet
@@ -4147,8 +4236,8 @@ pushIf(!sameNum(state.manualBondTaxRate, D.manualBondTaxRate), `18 Kapitalskatt 
 const eventsToExport = (state.events || []).filter((e) =>
     e && e.id && (e.belop !== 0 || e.startAar !== START_YEAR || e.sluttAar !== START_YEAR || (e.type && e.type !== 'Hendelse'))
 );
-eventsToExport.forEach((ev, i) => {
-    const num = 19 + i;
+eventsToExport.slice(0, MAX_EVENTS).forEach((ev, i) => {
+    const num = i < 5 ? 19 + i : 40 + (i - 5);
     const label = `Hendelse ${i + 1}`;
     lines.push(`${num} ${label} beløp : ${formatCurrencyValue(ev.belop || 0)}`);
     lines.push(`${num}a ${label} startår : ${ev.startAar || START_YEAR}`);
@@ -4336,12 +4425,17 @@ case 19: // Hendelse 1
 case 20: // Hendelse 2
 case 21: // Hendelse 3
 case 22: // Hendelse 4
-case 23: { // Hendelse 5 (eller gammel 23 = Målsøk utbetaling ved bakoverkompatibilitet)
+case 23: // Hendelse 5 (eller gammel 23 = Målsøk utbetaling ved bakoverkompatibilitet)
+case 40: // Hendelse 6
+case 41: // Hendelse 7
+case 42: // Hendelse 8
+case 43: // Hendelse 9
+case 44: { // Hendelse 10
 if (num === 23 && suffix === '' && label.indexOf('Målsøk utbetaling') !== -1) {
     updates.goalSeekPayoutResult = parseNumber(value);
     break;
 }
-const evtIdx = num - 19;
+const evtIdx = num >= 40 ? 5 + (num - 40) : num - 19;
 if (!updates.events) {
     updates.events = [];
 }
@@ -4494,7 +4588,7 @@ if (updates._panelTitle) {
 } else {
     setPanelTitle(MAAL_PANEL_TITLE_DEFAULT);
 }
-const merged = { ...INITIAL_APP_STATE, ...updates, events: [...(updates.events || INITIAL_APP_STATE.events || [])] };
+const merged = { ...INITIAL_APP_STATE, ...updates, events: [...(updates.events || INITIAL_APP_STATE.events || [])].slice(0, MAX_EVENTS) };
 merged.initialStockAllocation = computeInitialStockPct(merged);
 setState(merged);
 const fee = updates.advisoryFeeRate !== undefined ? updates.advisoryFeeRate : INITIAL_APP_STATE.advisoryFeeRate;
@@ -5539,6 +5633,15 @@ return () => document.removeEventListener('keydown', onKey);
             { key: 'tot', label: 'Totalportefølje', stockPct: totalStock, color: CHART_COLORS.hovedstol, present: true },
         ];
     }, [state.initialPortfolioSize, state.pensionPortfolioSize, state.additionalPensionAmount, state.row1StockAllocation, state.row2StockAllocation, state.portfolio1Name, state.portfolio2Name]);
+
+    const loanImportParsed = parseLoanCalculatorInput(loanImportText);
+
+    useEffect(() => {
+        if (!showLoanImportModal) return;
+        const onKey = (e) => { if (e.key === 'Escape') setShowLoanImportModal(false); };
+        document.addEventListener('keydown', onKey);
+        return () => document.removeEventListener('keydown', onKey);
+    }, [showLoanImportModal]);
 
     return (
         <div className="maal-og-behov-tab font-sans min-h-full w-full box-border">
@@ -7143,6 +7246,9 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                          {formatCurrency(state.desiredAnnualConsumptionPayout + state.desiredAnnualWealthTaxPayout)}
                                      </div>
                                  </div>
+                                 <InvestorTypeToggle value={state.investorType} onChange={handleStateChange} />
+                                 <DeferredInterestTaxToggle value={state.deferredInterestTax} onChange={handleStateChange} investorType={state.investorType} />
+                                 <TaxCalculationToggle value={state.taxCalculationEnabled} onChange={handleStateChange} />
                                  <ResetAllButton onReset={handleResetAll} />
                              </div>
                          </div>
@@ -7283,7 +7389,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                         </div>
                     </div>
 
-                    {/* Events Panel - fixed 4-slot area with controls below */}
+                    {/* Events Panel */}
                     <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
                         <div className="flex justify-between items-start">
                             <h2 className="typo-h2 text-[#4A6D8C]">Hendelser</h2>
@@ -7305,16 +7411,50 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                                     </button>
                                 </div>
                             ))}
+                            <button type="button" onClick={() => setShowLoanImportModal(true)} className="w-full text-xs font-medium py-1.5 px-2.5 rounded-lg border border-[#DDDDDD] bg-white text-[#333333]">
+                                Importer hendelser fra lånekalkulator
+                            </button>
                         </div>
 
-                        <div className="pt-2 border-t border-[#EEEEEE] space-y-4">
-                            <InvestorTypeToggle value={state.investorType} onChange={handleStateChange} />
-                            <DeferredInterestTaxToggle value={state.deferredInterestTax} onChange={handleStateChange} investorType={state.investorType} />
-                            <TaxCalculationToggle value={state.taxCalculationEnabled} onChange={handleStateChange} />
-                        </div>
                     </div>
                 </div>
             </div>
+            {showLoanImportModal && ReactDOM.createPortal(
+                <div className="fixed inset-0 z-[200] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowLoanImportModal(false)}>
+                    <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full p-6 relative max-h-[85vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+                        <button type="button" aria-label="Lukk" onClick={() => setShowLoanImportModal(false)} className="absolute top-3 right-3 text-[#333333]/70 hover:text-[#333333]">✕</button>
+                        <h3 className="typo-h3 text-[#4A6D8C] mb-2">Importer hendelser fra lånekalkulator</h3>
+                        <p className="text-sm text-[#666] mb-3 whitespace-pre-line">Her limer du inn output fra dashboardet: Lånekalkulator
+Input her er begrenset til de 10 første årene av lånet.
+Det bruker skal betale årlig i renter og avdrag blir da lagt inn som en hendelse, med riktig år, og navnet: Lån
+Som default står det at denne hendelsen vil påvirke innskutt kapital</p>
+                        <textarea
+                            autoFocus
+                            value={loanImportText}
+                            onChange={(e) => setLoanImportText(e.target.value)}
+                            placeholder={'2026\tkr 1 041 526,-\n2027–2035\tkr 730 296,-'}
+                            className="w-full min-h-[12rem] bg-white border border-[#DDDDDD] rounded-md p-3 text-[#333333] whitespace-pre font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent"
+                        />
+                        {loanImportText.trim() && loanImportParsed.error && (
+                            <p className="text-sm text-[#CC0000] mt-2">{loanImportParsed.error}</p>
+                        )}
+                        {loanImportParsed.events.length > 0 && (
+                            <ul className="mt-3 space-y-1 text-sm text-[#333333] max-h-40 overflow-auto">
+                                {loanImportParsed.events.map((ev, i) => (
+                                    <li key={i}>
+                                        {ev.startAar === ev.sluttAar ? ev.startAar : `${ev.startAar}–${ev.sluttAar}`} · Lån · {formatCurrency(ev.belop)}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button type="button" onClick={() => setShowLoanImportModal(false)} className="px-4 py-2 rounded-lg border border-[#DDDDDD] bg-white text-[#333333] font-medium">Avbryt</button>
+                            <button type="button" onClick={handleImportLoanEvents} disabled={loanImportParsed.events.length === 0} className={`px-4 py-2 rounded-lg font-medium text-white ${loanImportParsed.events.length === 0 ? 'bg-gray-300 cursor-not-allowed' : 'bg-[#4A6D8C] hover:bg-[#3A5D7C]'}`}>Importer</button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
         </div>
     );
