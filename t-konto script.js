@@ -9130,6 +9130,191 @@ function calculateTotalAnnualInterest(debts) {
   return calculateTotalAnnualInterestForYear(debts, 2026);
 }
 
+function formatLoanOutputAmount(amount) {
+  const n = Number(amount) || 0;
+  if (Math.abs(n) >= 1000000) {
+    const millions = Math.round((n / 1000000) * 100) / 100;
+    const text = String(millions).replace(".", ",").replace(/,00$/, "").replace(/(\,\d)0$/, "$1");
+    return text + " mnok";
+  }
+  return formatNOK(n) + " nok";
+}
+
+function formatLoanOutputRate(rate) {
+  const pct = Math.round((Number(rate) || 0) * 10000) / 100;
+  const text = String(pct).replace(".", ",").replace(/,00$/, "").replace(/(\,\d)0$/, "$1");
+  return text + "%";
+}
+
+function buildLoanCalculatorOutput() {
+  const debts = AppState.debts || [];
+  if (!debts.length) return "Ingen lån er lagt inn.";
+  return debts.map((debt) => {
+    const params = debt.debtParams || AppState.debtParams || {};
+    const name = String(debt.name || "Lån").trim() || "Lån";
+    const type = String(params.type || "Annuitetslån");
+    const years = Math.max(1, Number(params.years) || 1);
+    return [
+      name + ": " + formatLoanOutputAmount(debt.amount),
+      "lånetype: " + type,
+      "Lånetid (år) : " + years + " år",
+      "rentekostnader: " + formatLoanOutputRate(params.rate)
+    ].join("\n");
+  }).join("\n\n");
+}
+
+function copyLoanOutputText(text) {
+  const fallback = () => new Promise((resolve, reject) => {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+    try {
+      document.execCommand("copy") ? resolve() : reject(new Error("copy"));
+    } catch (err) {
+      reject(err);
+    }
+    area.remove();
+  });
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(text).catch(() => fallback());
+  }
+  return fallback();
+}
+
+function openLoanCalculatorOutputWindow() {
+  const existing = document.getElementById("loan-output-modal");
+  if (existing) existing.remove();
+
+  const overlay = document.createElement("div");
+  overlay.id = "loan-output-modal";
+  overlay.className = "loan-output-modal";
+
+  const dialog = document.createElement("div");
+  dialog.className = "loan-output-dialog";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.type = "button";
+  closeBtn.className = "loan-output-close";
+  closeBtn.setAttribute("aria-label", "Lukk");
+  closeBtn.textContent = "✕";
+
+  const title = document.createElement("h3");
+  title.className = "loan-output-title";
+  title.textContent = "Output til Lånekalkulator";
+
+  const textWrap = document.createElement("div");
+  textWrap.className = "loan-output-textwrap";
+
+  const area = document.createElement("textarea");
+  area.readOnly = true;
+  area.className = "loan-output-textarea";
+  area.value = buildLoanCalculatorOutput();
+
+  const copyBtn = document.createElement("button");
+  copyBtn.type = "button";
+  copyBtn.className = "loan-output-copy";
+  copyBtn.textContent = "kopier";
+
+  const close = () => {
+    document.removeEventListener("keydown", onKey);
+    overlay.remove();
+  };
+  const onKey = (e) => {
+    if (e.key === "Escape") close();
+  };
+
+  overlay.addEventListener("click", close);
+  dialog.addEventListener("click", (e) => e.stopPropagation());
+  closeBtn.addEventListener("click", close);
+  copyBtn.addEventListener("click", () => {
+    const text = buildLoanCalculatorOutput();
+    area.value = text;
+    area.focus();
+    area.select();
+    let copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch (_) {
+      copied = false;
+    }
+    const showResult = (ok) => {
+      copyBtn.textContent = ok ? "kopiert" : "kunne ikke kopiere";
+      copyBtn.classList.toggle("is-copied", ok);
+      setTimeout(() => {
+        if (!copyBtn.isConnected) return;
+        copyBtn.textContent = "kopier";
+        copyBtn.classList.remove("is-copied");
+      }, 1600);
+    };
+    if (copied) {
+      showResult(true);
+      return;
+    }
+    copyLoanOutputText(text).then(() => showResult(true)).catch(() => showResult(false));
+  });
+
+  document.addEventListener("keydown", onKey);
+  textWrap.appendChild(area);
+  textWrap.appendChild(copyBtn);
+  dialog.appendChild(closeBtn);
+  dialog.appendChild(title);
+  dialog.appendChild(textWrap);
+  overlay.appendChild(dialog);
+  document.body.appendChild(overlay);
+}
+
+const LOAN_OUTPUT_HOVER_TEXT =
+  'Ved å bruke kopiere output her, kan du lime dette inn i dashboardet "Lånekalkulator". Der vil du kunne se en mye mer eksakt og pedagogisk beregning av lånet';
+
+function hideLoanOutputHover(btn) {
+  if (btn && btn._loanHoverPlace) {
+    window.removeEventListener("scroll", btn._loanHoverPlace, true);
+    btn._loanHoverPlace = null;
+  }
+  const existing = document.getElementById("loan-output-hover");
+  if (existing) existing.remove();
+}
+
+function bindLoanOutputHover(btn) {
+  const show = () => {
+    if (document.getElementById("loan-output-hover")) return;
+    const tip = document.createElement("div");
+    tip.id = "loan-output-hover";
+    tip.className = "loan-output-hover";
+    tip.setAttribute("role", "tooltip");
+    tip.textContent = LOAN_OUTPUT_HOVER_TEXT;
+    document.body.appendChild(tip);
+    const place = () => {
+      if (!tip.isConnected || !btn.isConnected) {
+        hideLoanOutputHover(btn);
+        return;
+      }
+      const rect = btn.getBoundingClientRect();
+      const tipRect = tip.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - tipRect.width / 2;
+      left = Math.max(12, Math.min(left, window.innerWidth - tipRect.width - 12));
+      let top = rect.top - tipRect.height - 8;
+      if (top < 8) top = rect.bottom + 8;
+      tip.style.left = `${Math.round(left)}px`;
+      tip.style.top = `${Math.round(top)}px`;
+    };
+    btn._loanHoverPlace = place;
+    place();
+    window.addEventListener("scroll", place, true);
+  };
+  const hide = () => hideLoanOutputHover(btn);
+  btn.addEventListener("mouseenter", show);
+  btn.addEventListener("mouseleave", hide);
+  btn.addEventListener("focus", show);
+  btn.addEventListener("blur", hide);
+  btn.addEventListener("click", hide);
+}
+
 // --- Gjeld modul ---
 function createDebtRow(debt) {
   // Sørg for at gjeldsposten har debtParams
@@ -9164,16 +9349,16 @@ function createDebtRow(debt) {
     "Avdragsfrihet",
     "Avdragsfrihet 3 år",
     "Avdragsfrihet 5 år",
-    "Avdragsfrihet 10 år",
-    "Ballonglån 3 år",
-    "Ballonglån 5 år",
-    "Ballonglån 10 år"
+    "Avdragsfrihet 10 år"
   ].forEach((t) => {
     const opt = document.createElement("option");
     opt.value = t;
     opt.textContent = t.toUpperCase();
     select.appendChild(opt);
   });
+  if (/Ballonglån/i.test(String(debt.debtParams.type || ""))) {
+    debt.debtParams.type = "Annuitetslån";
+  }
   select.value = debt.debtParams.type;
   select.addEventListener("change", () => {
     debt.debtParams.type = select.value;
@@ -9314,6 +9499,19 @@ function renderDebtModule(root) {
   panel.appendChild(list);
 
   AppState.debts.forEach((item) => list.appendChild(createDebtRow(item)));
+
+  const loanOutWrap = document.createElement("div");
+  loanOutWrap.className = "loan-output-wrap";
+
+  const loanOutBtn = document.createElement("button");
+  loanOutBtn.type = "button";
+  loanOutBtn.className = "btn-loan-output";
+  loanOutBtn.textContent = "output til Lånekalkulator";
+  loanOutBtn.addEventListener("click", openLoanCalculatorOutputWindow);
+  bindLoanOutputHover(loanOutBtn);
+
+  loanOutWrap.appendChild(loanOutBtn);
+  panel.appendChild(loanOutWrap);
 
   const addBtn = document.createElement("button");
   addBtn.className = "btn-add";
@@ -10591,13 +10789,11 @@ function normalizeDebtLanetypeFromInput(raw) {
     "Avdragsfrihet",
     "Avdragsfrihet 3 år",
     "Avdragsfrihet 5 år",
-    "Avdragsfrihet 10 år",
-    "Ballonglån 3 år",
-    "Ballonglån 5 år",
-    "Ballonglån 10 år"
+    "Avdragsfrihet 10 år"
   ];
   const lower = t.toLowerCase();
   const hit = canon.find((c) => c.toLowerCase() === lower);
+  if (/ballonglån/i.test(t)) return "Annuitetslån";
   return hit || t;
 }
 
