@@ -2187,7 +2187,6 @@ function splitStrategiExportIntoSections(fullRaw) {
 }
 
 const DASHBOARD_ZOOM_STORAGE_KEY = 'dashboardManualZoom';
-const DASHBOARD_BASE_WIDTH = 1600;
 const DASHBOARD_ZOOM_MIN = 0.5;
 const DASHBOARD_ZOOM_MAX = 2;
 
@@ -2248,10 +2247,7 @@ function TabContainer() {
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
-    const [isEdgeToEdge, setIsEdgeToEdge] = useState(false);
     const [manualZoom, setManualZoom] = useState(readStoredDashboardZoom);
-    const edgeToEdgeRequestedFsRef = React.useRef(false);
-    const fsFallbackRef = React.useRef(false);
     const malsetningerIframeRef = React.useRef(null);
     /** Når bruker limer Input før Målsetninger-iframe har mountet API-et, lagres payload her og brukes ved onLoad / retry. */
     const pendingMalsetningerPayloadRef = React.useRef(null);
@@ -2266,14 +2262,7 @@ function TabContainer() {
 
     useEffect(() => {
         const onFsChange = () => {
-            const on = !!getDashboardFullscreenElement();
-            setIsFullscreen(on);
-            if (!on) {
-                fsFallbackRef.current = false;
-                edgeToEdgeRequestedFsRef.current = false;
-                document.documentElement.classList.remove('dashboard-fs-fallback');
-                setIsEdgeToEdge(false);
-            }
+            setIsFullscreen(!!getDashboardFullscreenElement());
         };
         document.addEventListener('fullscreenchange', onFsChange);
         document.addEventListener('webkitfullscreenchange', onFsChange);
@@ -2284,25 +2273,9 @@ function TabContainer() {
     }, []);
 
     useLayoutEffect(() => {
-        const html = document.documentElement;
-        const scale = isEdgeToEdge
-            ? Math.max(0.25, window.innerWidth / DASHBOARD_BASE_WIDTH)
-            : manualZoom;
-        html.style.setProperty('--dashboard-zoom', String(scale));
-        html.style.setProperty('--dashboard-base-width', DASHBOARD_BASE_WIDTH + 'px');
-        html.classList.toggle('dashboard-edge-to-edge', isEdgeToEdge);
+        document.documentElement.style.setProperty('--dashboard-zoom', String(manualZoom));
         window.dispatchEvent(new Event('resize'));
-    }, [isEdgeToEdge, manualZoom]);
-
-    useEffect(() => {
-        if (!isEdgeToEdge) return;
-        const onResize = () => {
-            const scale = Math.max(0.25, window.innerWidth / DASHBOARD_BASE_WIDTH);
-            document.documentElement.style.setProperty('--dashboard-zoom', String(scale));
-        };
-        window.addEventListener('resize', onResize);
-        return () => window.removeEventListener('resize', onResize);
-    }, [isEdgeToEdge]);
+    }, [manualZoom]);
 
     const setManualZoomAndPersist = useCallback((next) => {
         const zoom = clampDashboardZoom(next);
@@ -2312,15 +2285,6 @@ function TabContainer() {
 
     useEffect(() => {
         const onKey = (e) => {
-            if (e.key === 'Escape' && (isEdgeToEdge || fsFallbackRef.current)) {
-                if (fsFallbackRef.current) {
-                    fsFallbackRef.current = false;
-                    document.documentElement.classList.remove('dashboard-fs-fallback');
-                    setIsEdgeToEdge(false);
-                }
-                return;
-            }
-            if (isEdgeToEdge) return;
             if (!(e.ctrlKey || e.metaKey)) return;
             if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
                 e.preventDefault();
@@ -2334,7 +2298,6 @@ function TabContainer() {
             }
         };
         const onWheel = (e) => {
-            if (isEdgeToEdge) return;
             if (!(e.ctrlKey || e.metaKey)) return;
             e.preventDefault();
             const step = e.deltaY < 0 ? 0.05 : -0.05;
@@ -2346,7 +2309,7 @@ function TabContainer() {
             document.removeEventListener('keydown', onKey);
             document.removeEventListener('wheel', onWheel);
         };
-    }, [isEdgeToEdge, manualZoom, setManualZoomAndPersist]);
+    }, [manualZoom, setManualZoomAndPersist]);
 
     const toggleFullscreen = useCallback(() => {
         if (!getDashboardFullscreenElement()) {
@@ -2355,33 +2318,6 @@ function TabContainer() {
             exitDashboardFullscreen().catch(() => {});
         }
     }, []);
-
-    const toggleEdgeToEdge = useCallback(async () => {
-        if (isEdgeToEdge) {
-            setIsEdgeToEdge(false);
-            document.documentElement.classList.remove('dashboard-fs-fallback');
-            if (fsFallbackRef.current) {
-                fsFallbackRef.current = false;
-            }
-            if (edgeToEdgeRequestedFsRef.current && getDashboardFullscreenElement()) {
-                edgeToEdgeRequestedFsRef.current = false;
-                try { await exitDashboardFullscreen(); } catch (_) {}
-            }
-            return;
-        }
-        setIsEdgeToEdge(true);
-        if (!getDashboardFullscreenElement()) {
-            try {
-                await requestDashboardFullscreen(document.documentElement);
-                if (!getDashboardFullscreenElement()) throw new Error('fullscreen not entered');
-                edgeToEdgeRequestedFsRef.current = true;
-            } catch (_) {
-                document.documentElement.classList.add('dashboard-fs-fallback');
-                fsFallbackRef.current = true;
-                edgeToEdgeRequestedFsRef.current = false;
-            }
-        }
-    }, [isEdgeToEdge]);
 
     const tryApplyPendingMalsetninger = React.useCallback(() => {
         const p = pendingMalsetningerPayloadRef.current;
@@ -2726,14 +2662,14 @@ function TabContainer() {
 
     return (
         <div className="tab-container">
-            <TabBar
-                tabs={tabs}
-                activeTab={activeTab}
-                onTabClick={setActiveTab}
-                panelTitleLabel={panelTitle}
-            />
             <div className="dashboard-zoom-viewport">
                 <div className="dashboard-zoom-inner">
+                    <TabBar
+                        tabs={tabs}
+                        activeTab={activeTab}
+                        onTabClick={setActiveTab}
+                        panelTitleLabel={panelTitle}
+                    />
                     <div className="tab-content" style={{ position: 'relative' }}>
                         {tabs.map((tab, index) => (
                             <div key={index} style={{ display: activeTab === index ? 'block' : 'none', width: '100%', height: '100%', minHeight: 0, overflow: 'auto' }}>
@@ -2764,31 +2700,7 @@ function TabContainer() {
             </button>
             <button
                 type="button"
-                className="fixed top-3 z-[100] w-8 h-8 flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
-                style={{ right: '3.5rem' }}
-                onClick={toggleEdgeToEdge}
-                aria-label={isEdgeToEdge ? 'Avslutt kant-til-kant fullskjerm' : 'Kant-til-kant fullskjerm'}
-                title={isEdgeToEdge ? 'Avslutt kant-til-kant fullskjerm' : 'Kant-til-kant fullskjerm'}
-                aria-pressed={isEdgeToEdge}
-            >
-                {isEdgeToEdge ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="10 8 14 12 10 16" />
-                        <polyline points="14 8 10 12 14 16" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="7 8 3 12 7 16" />
-                        <line x1="3" y1="12" x2="10" y2="12" />
-                        <polyline points="17 8 21 12 17 16" />
-                        <line x1="14" y1="12" x2="21" y2="12" />
-                    </svg>
-                )}
-            </button>
-            <button
-                type="button"
-                className="fixed top-3 z-[100] w-8 h-8 flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
-                style={{ right: '1rem' }}
+                className="dashboard-chrome-fullscreen fixed z-[100] flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
                 onClick={toggleFullscreen}
                 aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
                 title={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
@@ -5765,7 +5677,7 @@ return () => document.removeEventListener('keydown', onKey);
                             <SliderInput hideLabel id="initialPortfolioSize" label="Portefølje I" value={state.initialPortfolioSize} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#0A5EDC" />
                         </div>
                         <div className="mbh-fv-btn1">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                            <div className="mbh-fv-btn-row">
                                 {STOCK_ALLOCATION_OPTIONS.map(opt => (
                                     <button key={`row1-${opt.value}`} onClick={() => handleStateChange('row1StockAllocation', opt.value)} className={`${state.row1StockAllocation === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`} style={{ height: '41.76px' }}>
                                         {opt.label}
@@ -5786,7 +5698,7 @@ return () => document.removeEventListener('keydown', onKey);
                             <SliderInput hideLabel id="pensionPortfolioSize" label="Portefølje II" value={state.pensionPortfolioSize} min={0} max={1000000000} step={500000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#3B7EE3" />
                         </div>
                         <div className="mbh-fv-btn2">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                            <div className="mbh-fv-btn-row">
                                 {STOCK_ALLOCATION_OPTIONS.map(opt => (
                                     <button key={`row2-${opt.value}`} onClick={() => handleStateChange('row2StockAllocation', opt.value)} className={`${state.row2StockAllocation === opt.value ? 'bg-[#3388CC] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'} rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`} style={{ height: '41.76px' }}>
                                         {opt.label}
@@ -5800,7 +5712,7 @@ return () => document.removeEventListener('keydown', onKey);
                             <SliderInput hideLabel id="additionalPensionAmount" label="Bankinnskudd / Likviditetsfond" value={state.additionalPensionAmount} min={0} max={1000000000} step={250000} onChange={handleStateChange} isCurrency noKrSuffix allowDirectInput thumbColor="#99BEF5" />
                         </div>
                         <div className="mbh-fv-btn3">
-                            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 items-center w-full">
+                            <div className="mbh-fv-btn-row">
                                 <button type="button" disabled className="bg-[#88CCEE] text-white shadow-lg rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium cursor-default" style={{ height: '41.76px' }}>
                                     100% Renter
                                 </button>

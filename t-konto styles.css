@@ -986,6 +986,39 @@ p { /* Avsnitt */
   overflow: visible;
 }
 
+/* Samme flate som dokument-fullskjerm: hele viewporten, uten zoom-transformen rundt. */
+.panel-struktur:fullscreen,
+.panel-struktur:-webkit-full-screen,
+.panel-struktur.is-struktur-fullscreen {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #EEF2F7;
+  box-sizing: border-box;
+}
+
+.panel-struktur:fullscreen > iframe,
+.panel-struktur:-webkit-full-screen > iframe,
+.panel-struktur.is-struktur-fullscreen > iframe {
+  flex: 1 1 auto;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
 .struktur-grid {
   display: flex;
   flex-direction: column;

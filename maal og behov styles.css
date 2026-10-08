@@ -522,14 +522,14 @@
         justify-content: center;
         flex: 0 1 auto;
         min-width: 0;
-        max-width: min(360px, 28vw);
+        max-width: min(360px, 28%);
         padding: 0 var(--space-2);
     }
 
-    /* Speiler faste toppknapper (kant-til-kant + fullskjerm: 32+8+32, right: 1rem) */
+    /* Speiler fast fullskjermknapp (32px, right: 1rem) */
     .tab-bar-header-end-spacer {
-        flex: 0 0 calc(1rem + 72px);
-        width: calc(1rem + 72px);
+        flex: 0 0 calc(1rem + 32px);
+        width: calc(1rem + 32px);
         height: 1px;
     }
 
@@ -769,6 +769,8 @@
     }
 
     .dashboard-zoom-inner {
+        display: flex;
+        flex-direction: column;
         transform: scale(var(--dashboard-zoom, 1));
         transform-origin: top left;
         width: calc(100% / var(--dashboard-zoom, 1));
@@ -776,42 +778,26 @@
         min-height: calc(100% / var(--dashboard-zoom, 1));
     }
 
+    .dashboard-zoom-inner .tab-bar-header {
+        flex: 0 0 auto;
+    }
+
     .dashboard-zoom-inner .tab-content {
-        height: 100%;
-        min-height: 100%;
+        flex: 1 1 auto;
+        height: auto;
+        min-height: 0;
     }
 
-    html.dashboard-edge-to-edge .dashboard-zoom-inner {
-        width: var(--dashboard-base-width, 1600px);
-        max-width: none;
+    .dashboard-chrome-fullscreen {
+        top: calc(0.75rem * var(--dashboard-zoom, 1));
+        right: calc(1rem * var(--dashboard-zoom, 1));
+        width: calc(2rem * var(--dashboard-zoom, 1));
+        height: calc(2rem * var(--dashboard-zoom, 1));
     }
 
-    html.dashboard-edge-to-edge .maal-og-behov-tab,
-    html.dashboard-edge-to-edge .fremtidige-verdier-tab {
-        padding-left: 0.75rem !important;
-        padding-right: 0.75rem !important;
-    }
-
-    html.dashboard-edge-to-edge .max-w-\[1600px\] {
-        max-width: none !important;
-        margin-left: 0 !important;
-        margin-right: 0 !important;
-        padding-right: 0 !important;
-    }
-
-    html.dashboard-fs-fallback,
-    html.dashboard-fs-fallback body,
-    html.dashboard-fs-fallback #root,
-    html.dashboard-fs-fallback .tab-container {
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        max-width: none !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        z-index: 9999;
-        overflow: hidden;
+    .dashboard-chrome-fullscreen svg {
+        width: calc(16px * var(--dashboard-zoom, 1));
+        height: calc(16px * var(--dashboard-zoom, 1));
     }
 
 /* ============================================================================
@@ -992,29 +978,26 @@
     z-index: 2;
 }
 
-/* Samlet forvaltning + Aksjeandel: slider-spor og knapper i samme rad */
+/* Samlet forvaltning + Aksjeandel: slider-spor til venstre, knapper på én rad til høyre. */
 .mbh-forvaltning-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-rows: auto auto 41.76px auto 41.76px auto 41.76px;
     grid-template-areas:
-        "head-l"
-        "lab1"
-        "sld1"
-        "lab2"
-        "sld2"
-        "lab3"
-        "sld3"
-        "head-r"
-        "btn1"
-        "btn2"
-        "btn3";
+        "head-l head-r"
+        "lab1   ."
+        "sld1   btn1"
+        "lab2   ."
+        "sld2   btn2"
+        "lab3   ."
+        "sld3   btn3";
     column-gap: 0.76765625rem;
     row-gap: 0.12rem;
     padding: 0.783rem;
     align-items: center;
 }
-.mbh-fv-head-l { grid-area: head-l; position: relative; padding-right: 2.75rem; margin-bottom: 0.35rem; }
-.mbh-fv-head-r { grid-area: head-r; margin-top: 0.75rem; margin-bottom: 0.35rem; }
+.mbh-fv-head-l { grid-area: head-l; position: relative; padding-right: 2.75rem; margin-top: 0; margin-bottom: 0.25rem; align-self: end; }
+.mbh-fv-head-r { grid-area: head-r; margin-top: 0; margin-bottom: 0.25rem; align-self: end; }
 .mbh-fv-lab1 { grid-area: lab1; }
 .mbh-fv-lab2 { grid-area: lab2; }
 .mbh-fv-lab3 { grid-area: lab3; }
@@ -1052,26 +1035,15 @@
     line-height: 1.2;
     align-self: end;
 }
-@media (min-width: 1280px) {
-    .mbh-forvaltning-grid {
-        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
-        grid-template-rows: auto auto 41.76px auto 41.76px auto 41.76px;
-        grid-template-areas:
-            "head-l head-r"
-            "lab1   ."
-            "sld1   btn1"
-            "lab2   ."
-            "sld2   btn2"
-            "lab3   ."
-            "sld3   btn3";
-        row-gap: 0.12rem;
-        align-items: center;
-    }
-    .mbh-fv-head-l,
-    .mbh-fv-head-r {
-        margin-top: 0;
-        margin-bottom: 0.25rem;
-        align-self: end;
-    }
+.mbh-fv-btn-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+}
+.mbh-fv-btn-row > button {
+    white-space: nowrap;
+    min-width: 0;
 }
 

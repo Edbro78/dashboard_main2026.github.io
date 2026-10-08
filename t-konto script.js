@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
 // Sikrar éin global AppState: elles lastar React både TKontoDashboard og App inn same skript,
 // og IIFE køyrer to gonger — då peikar Output (window.TKontoGenerateOutputText) på «nytt» tomt state
 // medan slideren framleis oppdaterer det første.
@@ -1619,6 +1619,8 @@ function renderStrukturModule(root) {
   fullscreenBtn.style.cursor = "pointer";
   fullscreenBtn.style.transition = "background-color 150ms ease";
 
+  let panelHome = null;
+
   function isPanelFullscreen() {
     return document.fullscreenElement === panel || document.webkitFullscreenElement === panel;
   }
@@ -1629,13 +1631,45 @@ function renderStrukturModule(root) {
     fullscreenBtn.title = isFullscreen ? "Avslutt fullskjerm" : "Fullskjerm";
   }
 
+  function placePanelForFullscreen() {
+    if (panel.parentNode === document.body) return;
+    panelHome = { parent: panel.parentNode, next: panel.nextSibling };
+    document.body.appendChild(panel);
+  }
+
+  function restorePanelHome() {
+    panel.classList.remove("is-struktur-fullscreen");
+    if (!panelHome || !panelHome.parent || !panelHome.parent.isConnected) {
+      panelHome = null;
+      return;
+    }
+    const parent = panelHome.parent;
+    const next = panelHome.next;
+    if (next && next.parentNode === parent) parent.insertBefore(panel, next);
+    else parent.appendChild(panel);
+    panelHome = null;
+  }
+
+  function pingStrukturIframeResize() {
+    try {
+      const win = iframe.contentWindow;
+      if (win) win.dispatchEvent(new Event("resize"));
+    } catch (_) {}
+  }
+
   const onFullscreenChange = function () {
     if (!panel.isConnected) {
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("webkitfullscreenchange", onFullscreenChange);
       return;
     }
+    if (isPanelFullscreen()) {
+      panel.classList.add("is-struktur-fullscreen");
+    } else {
+      restorePanelHome();
+    }
     updateFullscreenBtnLabel();
+    pingStrukturIframeResize();
   };
   document.addEventListener("fullscreenchange", onFullscreenChange);
   document.addEventListener("webkitfullscreenchange", onFullscreenChange);
@@ -1643,10 +1677,14 @@ function renderStrukturModule(root) {
   fullscreenBtn.addEventListener("click", async function () {
     try {
       if (!isPanelFullscreen()) {
+        placePanelForFullscreen();
+        panel.classList.add("is-struktur-fullscreen");
         if (panel.requestFullscreen) {
           await panel.requestFullscreen();
         } else if (panel.webkitRequestFullscreen) {
           panel.webkitRequestFullscreen();
+        } else {
+          throw new Error("fullscreen unsupported");
         }
       } else if (document.exitFullscreen) {
         await document.exitFullscreen();
@@ -1654,6 +1692,7 @@ function renderStrukturModule(root) {
         document.webkitExitFullscreen();
       }
     } catch (err) {
+      restorePanelHome();
       console.warn("Kunne ikke bytte fullskjerm for strukturpanel:", err);
     } finally {
       updateFullscreenBtnLabel();
