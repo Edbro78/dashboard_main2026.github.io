@@ -5434,6 +5434,13 @@ function getTKontoSelectedYear() {
   return Number.isFinite(y) ? y : 2025;
 }
 
+/** Synlig årstall på tidsserier. «start» beholdes. Første år etter start vises som 2027. */
+function tkontoSeriesLabel(year) {
+  const y = Number(year);
+  if (!Number.isFinite(y)) return String(year);
+  return String(y + 1);
+}
+
 function setTKontoSelectedYear(year) {
   const y = parseInt(year, 10);
   if (!Number.isFinite(y)) return;
@@ -5452,17 +5459,11 @@ function setTKontoSelectedYear(year) {
 /** Lysere grafikkpalett for øvrige utgifter (renter, avdrag, kostnader) */
 var WF_EXPENSE_PALETTE = ["#0A5EDC", "#3B7EE3", "#6096E8", "#84AEED", "#B5CFF5", "#EEF5FF"];
 
-/** Skattesøyler: ulike nyanser behagelig rødt */
-var WF_TAX_RED_PALETTE = ["#FFEAEA", "#FFD6D4", "#FAC5C3", "#F5B0AE", "#EF9B99", "#E88684"];
+/** Alle kostnader i kontantstrøm: ulike, behagelige rødtoner */
+var WF_COST_RED_PALETTE = ["#FDECEA", "#F8D0CB", "#F3B7B1", "#EC9E97", "#E38882", "#F6E0DC"];
 
 /** Inntekter i waterfall: grønne toner */
 var WF_INCOME_COLORS = { top: "#B5ECD0", mid: "#34C185", base: "#0C8F4A" };
-
-function isWaterfallTaxCostKey(key) {
-  const k = String(key || "").normalize("NFC").toUpperCase();
-  if (/SKATTEFRIE\s*INNTEKTER/.test(k)) return false;
-  return /SKATT/.test(k);
-}
 
 function wfBarLabelTextColor(hex) {
   const h = String(hex || "").replace("#", "");
@@ -5565,9 +5566,9 @@ function renderWaterfallModule(root) {
     const yBtn = document.createElement("button");
     yBtn.type = "button";
     yBtn.className = "t-konto-year-btn";
-    yBtn.textContent = String(y);
+    yBtn.textContent = tkontoSeriesLabel(y);
     yBtn.setAttribute("data-year", String(y));
-    yBtn.setAttribute("aria-label", "Velg år " + y);
+    yBtn.setAttribute("aria-label", "Velg år " + tkontoSeriesLabel(y));
     if (getTKontoSelectedYear() === y) yBtn.classList.add("is-active");
     yearInner.appendChild(yBtn);
   }
@@ -5656,7 +5657,6 @@ function renderWaterfallModule(root) {
     let cursorX = padX;
     let running = 0;
     let downBarIndex = 0;
-    let taxBarIndex = 0;
     steps.forEach((s, idx) => {
       if (!s || !isFinite(s.value)) return; // hopp over nulltrinn, men behold 0 for Avdrag
       let h, y, fill, stroke, valueColor;
@@ -5677,16 +5677,9 @@ function renderWaterfallModule(root) {
         const geom = barGeom(from, to);
         h = geom.h; y = geom.yTop;
         running = to;
-        let barColor;
-        if (isWaterfallTaxCostKey(s.key)) {
-          barColor = WF_TAX_RED_PALETTE[taxBarIndex % WF_TAX_RED_PALETTE.length];
-          taxBarIndex += 1;
-          stroke = "rgba(180, 70, 70, 0.22)";
-        } else {
-          barColor = WF_EXPENSE_PALETTE[downBarIndex % WF_EXPENSE_PALETTE.length];
-          downBarIndex += 1;
-          stroke = "rgba(0, 35, 89, 0.18)";
-        }
+        const barColor = WF_COST_RED_PALETTE[downBarIndex % WF_COST_RED_PALETTE.length];
+        downBarIndex += 1;
+        stroke = "rgba(176, 84, 80, 0.28)";
         fill = barColor;
         valueColor = wfBarLabelTextColor(barColor);
         labelText = formatNOK(Math.round(s.value)); // vis alltid minus for kostnader
@@ -6052,7 +6045,8 @@ function projectDebtYear(debt, yearIndex) {
     const match = /(\d+)\s*år/i.exec(type);
     const graceYears = match ? Number(match[1]) : years;
     const interestOnlyYears = type === "Avdragsfrihet" ? years : Math.min(graceYears, years);
-    const amortYears = type === "Avdragsfrihet" ? 0 : years;
+    // Lånetid er når gjelden er borte, også når den er avdragsfri underveis.
+    const amortYears = type === "Avdragsfrihet" ? 0 : Math.max(0, years - interestOnlyYears);
     const totalDuration = interestOnlyYears + amortYears;
 
     if (idx > totalDuration) {
@@ -6065,7 +6059,8 @@ function projectDebtYear(debt, yearIndex) {
     }
 
     if (amortYears <= 0) {
-      return { interest: 0, principal: 0, payment: 0, remaining: amount };
+      const interest = amount * rate;
+      return { interest, principal: amount, payment: interest + amount, remaining: 0 };
     }
 
     const n = idx - interestOnlyYears;
@@ -6375,7 +6370,7 @@ function buildCashflowForecastSVG(startYear, yearsCount) {
     yearLabel.setAttribute("x", String(cursorX + barWidth / 2));
     yearLabel.setAttribute("y", String(padT + plotH + 32));
     yearLabel.setAttribute("text-anchor", "middle");
-    yearLabel.textContent = String(entry.year);
+    yearLabel.textContent = tkontoSeriesLabel(entry.year);
     svg.appendChild(yearLabel);
 
     cursorX += barWidth + barGap;
@@ -6826,9 +6821,9 @@ function renderFutureModule(root) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "t-konto-year-btn";
-      btn.textContent = String(year);
+      btn.textContent = tkontoSeriesLabel(year);
       btn.setAttribute("data-year", String(year));
-      btn.setAttribute("aria-label", "Velg år " + year);
+      btn.setAttribute("aria-label", "Velg år " + tkontoSeriesLabel(year));
       if (getTKontoSelectedYear() === year) btn.classList.add("is-active");
       yearInner.appendChild(btn);
     }
@@ -7105,9 +7100,9 @@ function renderFutureModule(root) {
     for (let year = 2026; year <= 2040; year++) {
       const yearBtn = document.createElement("button");
       yearBtn.className = "year-button";
-      yearBtn.textContent = String(year);
+      yearBtn.textContent = tkontoSeriesLabel(year);
       yearBtn.setAttribute("data-year", String(year));
-      yearBtn.setAttribute("aria-label", `Velg år ${year}`);
+      yearBtn.setAttribute("aria-label", `Velg år ${tkontoSeriesLabel(year)}`);
       
       // Marker valgt år
       if (year === getTKontoSelectedYear()) {
@@ -7505,7 +7500,7 @@ function buildAssetsGrowthSVG(startYear, yearsCount) {
     xl.setAttribute("text-anchor", "middle");
     xl.setAttribute("fill", "#677788");
     xl.setAttribute("font-size", "16");
-    xl.textContent = String(years[i]);
+    xl.textContent = tkontoSeriesLabel(years[i]);
     svg.appendChild(xl);
   });
 
@@ -7696,7 +7691,7 @@ function buildEquityReturnSVG(startYear, yearsCount) {
     yearLabel.setAttribute("font-size", "14");
     yearLabel.setAttribute("fill", "#334155");
     yearLabel.setAttribute("font-family", "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif");
-    yearLabel.textContent = String(year);
+    yearLabel.textContent = tkontoSeriesLabel(year);
     svg.appendChild(yearLabel);
 
     attachTooltip(svg, rect, `År ${year}`, equity, formatPercent(ret), {
@@ -7855,7 +7850,7 @@ function buildTotalCapitalReturnSVG(startYear, yearsCount) {
     yearLabel.setAttribute("font-size", "14");
     yearLabel.setAttribute("fill", "#334155");
     yearLabel.setAttribute("font-family", "Inter, Segoe UI, Roboto, Helvetica, Arial, sans-serif");
-    yearLabel.textContent = String(year);
+    yearLabel.textContent = tkontoSeriesLabel(year);
     svg.appendChild(yearLabel);
 
     attachTooltip(svg, rect, `År ${year}`, totalAssets, formatPercent(ret), {
@@ -8091,7 +8086,7 @@ function buildFinancingGrowthSVG(startYear, yearsCount) {
     xl.setAttribute("text-anchor", "middle");
     xl.setAttribute("fill", "#677788");
     xl.setAttribute("font-size", "16");
-    xl.textContent = String(years[i]);
+    xl.textContent = tkontoSeriesLabel(years[i]);
     svg.appendChild(xl);
   });
 
@@ -9043,11 +9038,11 @@ function remainingBalanceAfterYears(debt, elapsedYears) {
   if (/Avdragsfrihet/.test(type)) {
     const match = /(\d+)\s*år/i.exec(type);
     const interestOnlyYears = type === "Avdragsfrihet" ? years : Math.min(match ? Number(match[1]) : years, years);
-    const amortYears = type === "Avdragsfrihet" ? 0 : years;
+    const amortYears = type === "Avdragsfrihet" ? 0 : Math.max(0, years - interestOnlyYears);
     const totalDuration = interestOnlyYears + amortYears;
     const clampedT = Math.min(t, totalDuration);
+    if (amortYears <= 0) return t >= years ? 0 : amount;
     if (clampedT <= interestOnlyYears) return amount;
-    if (amortYears <= 0) return amount;
     const n = Math.min(amortYears, clampedT - interestOnlyYears);
     if (rate === 0) {
       const principal = amount / amortYears;

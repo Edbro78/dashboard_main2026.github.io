@@ -1068,10 +1068,11 @@ body {
     background: var(--secondary);
     border-radius: var(--radius-md);
     padding: var(--space-sm);
-    padding-bottom: 2px;
+    padding-bottom: 20px;
     border: 1px solid var(--border);
     position: relative;
     margin-bottom: 0;
+    overflow: hidden;
 }
 
 .chart-wrapper.large {
@@ -2508,7 +2509,6 @@ body {
 }
 
 .pyramid-box:hover {
-    transform: scale(1.5);
     z-index: 10;
     box-shadow: var(--shadow-lg);
 }

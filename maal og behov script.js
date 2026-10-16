@@ -310,7 +310,7 @@ const INITIAL_APP_STATE = {
     payoutYears: 0,
     desiredAnnualPayoutAfterTax: 0,
     initialStockAllocation: 0,
-    stockReturnRate: 8.0,
+    stockReturnRate: 9,
     bondReturnRate: 5.0,
     bankDepositRate: 3.0, // Forventet rente bankinnskudd (UI; ikke brukt i beregninger ennå)
     shieldingRate: 3.9,
@@ -499,7 +499,7 @@ const calculatePrognosis = (state, simButtonActive = false, simulatedReturns = n
 
     for (let i = 0; i < totalSimulatedYears; i++) {
         const year = START_YEAR + i;
-        labels.push(year.toString());
+        labels.push(String(year + 1));
 
         const startOfYearPortfolioValue = currentPortfolioValue;
         const isLastPayoutYear = i === (state.investmentYears + state.payoutYears - 1);
@@ -1597,10 +1597,10 @@ function OppsummeringsrapportContent({ activeTab = 0, oppsummeringsrapportTabInd
     const totalYears = investmentYears + payoutYears + extraDisplayYear;
     // T-konto sin tidslogikk:
     // - "start" skal være 1.jan 2026 (tilsvarer yearVal=2025 i T-konto beregninger)
-    // - "2026" skal være ett år etter (yearVal=2026 i T-konto beregninger)
-    const numericYearLabels = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
-    const yearLabels = ["start", ...numericYearLabels];
-    const yearVals = [START_YEAR - 1, ...numericYearLabels];
+    // - første årstall på aksen er 2027 (yearVal=2026 i T-konto beregninger)
+    const numericYearVals = Array.from({ length: totalYears }, (_, i) => START_YEAR + i);
+    const yearLabels = ["start", ...numericYearVals.map((y) => String(y + 1))];
+    const yearVals = [START_YEAR - 1, ...numericYearVals];
 
     const [tkontoLoaded, setTkontoLoaded] = useState(!!(typeof window !== 'undefined' && window.getTKontoAssetSegments));
     const [tkontoDataRefreshKey, setTkontoDataRefreshKey] = useState(0);
@@ -2068,7 +2068,6 @@ function TabBar({ tabs, activeTab, onTabClick, panelTitleLabel }) {
             ) : (
                 <div className="tab-bar-panel-title-slot" aria-hidden="true" />
             )}
-            <div className="tab-bar-header-end-spacer" aria-hidden="true" />
         </div>
     );
 }
@@ -2210,32 +2209,6 @@ function persistDashboardZoom(zoom) {
     } catch (_) {}
 }
 
-function requestDashboardFullscreen(el) {
-    if (!el) return Promise.reject(new Error('no element'));
-    try {
-        let result;
-        if (typeof el.requestFullscreen === 'function') result = el.requestFullscreen();
-        else if (typeof el.webkitRequestFullscreen === 'function') result = el.webkitRequestFullscreen();
-        else if (typeof el.msRequestFullscreen === 'function') result = el.msRequestFullscreen();
-        else return Promise.reject(new Error('fullscreen unsupported'));
-        return result && typeof result.then === 'function' ? result : Promise.resolve(result);
-    } catch (err) {
-        return Promise.reject(err);
-    }
-}
-
-function exitDashboardFullscreen() {
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
-        if (typeof document.exitFullscreen === 'function') return document.exitFullscreen();
-        if (typeof document.webkitExitFullscreen === 'function') return document.webkitExitFullscreen();
-    }
-    return Promise.resolve();
-}
-
-function getDashboardFullscreenElement() {
-    return document.fullscreenElement || document.webkitFullscreenElement || null;
-}
-
 // TabContainer component that manages tabs and content – felles Input/Output for alle faner
 function TabContainer() {
     // Fanerekkefolge: 0 malsetninger, 1 T-konto, 2 Maal og behov, 3 Fremtidige verdier, 4 Risikoprofil, 5 Formuesskatt, 6 Strategi
@@ -2246,7 +2219,6 @@ function TabContainer() {
     const [showInputModal, setShowInputModal] = useState(false);
     const [inputText, setInputText] = useState('');
     const [copied, setCopied] = useState(false);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [manualZoom, setManualZoom] = useState(readStoredDashboardZoom);
     const malsetningerIframeRef = React.useRef(null);
     /** Når bruker limer Input før Målsetninger-iframe har mountet API-et, lagres payload her og brukes ved onLoad / retry. */
@@ -2259,18 +2231,6 @@ function TabContainer() {
     useEffect(() => {
         notifyMaalPanelTitleChanged(panelTitle);
     }, [panelTitle]);
-
-    useEffect(() => {
-        const onFsChange = () => {
-            setIsFullscreen(!!getDashboardFullscreenElement());
-        };
-        document.addEventListener('fullscreenchange', onFsChange);
-        document.addEventListener('webkitfullscreenchange', onFsChange);
-        return () => {
-            document.removeEventListener('fullscreenchange', onFsChange);
-            document.removeEventListener('webkitfullscreenchange', onFsChange);
-        };
-    }, []);
 
     useLayoutEffect(() => {
         document.documentElement.style.setProperty('--dashboard-zoom', String(manualZoom));
@@ -2310,14 +2270,6 @@ function TabContainer() {
             document.removeEventListener('wheel', onWheel);
         };
     }, [manualZoom, setManualZoomAndPersist]);
-
-    const toggleFullscreen = useCallback(() => {
-        if (!getDashboardFullscreenElement()) {
-            requestDashboardFullscreen(document.documentElement).catch(() => {});
-        } else {
-            exitDashboardFullscreen().catch(() => {});
-        }
-    }, []);
 
     const tryApplyPendingMalsetninger = React.useCallback(() => {
         const p = pendingMalsetningerPayloadRef.current;
@@ -2698,23 +2650,6 @@ function TabContainer() {
             >
                 Output
             </button>
-            <button
-                type="button"
-                className="dashboard-chrome-fullscreen fixed z-[100] flex items-center justify-center rounded-md bg-slate-700/70 hover:bg-slate-700 text-slate-200 border border-slate-600/70 shadow-sm transition-colors"
-                onClick={toggleFullscreen}
-                aria-label={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
-                title={isFullscreen ? 'Avslutt fullskjerm' : 'Fullskjerm'}
-            >
-                {isFullscreen ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="4 14 10 14 10 20" /><polyline points="20 10 14 10 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" />
-                    </svg>
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
-                    </svg>
-                )}
-            </button>
             {showInputModal && (
                 <div className="fixed inset-0 z-[101] bg-black/60 flex items-center justify-center p-4" onClick={() => setShowInputModal(false)}>
                     <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 relative max-h-[80vh] overflow-auto" onClick={e => e.stopPropagation()}>
@@ -3093,7 +3028,7 @@ function App({ panelTitle, onPanelTitleChange }) {
         const bondReturns = [];
         const stockStdDev = state.stockStdDev; // Standardavvik for aksjer fra slider
         const bondStdDev = state.bondStdDev; // Standardavvik for renter fra slider
-        const stockMean = state.stockReturnRate || 8.0; // Forventet avkastning aksjer
+        const stockMean = state.stockReturnRate || 9; // Forventet avkastning aksjer
         const bondMean = state.bondReturnRate || 5.0; // Forventet avkastning renter
         
         // Simuler for nøyaktig totalYears antall år (inkl. ekstra visningsår)
@@ -3294,7 +3229,7 @@ function App({ panelTitle, onPanelTitleChange }) {
         
         const stockStdDev = state.stockStdDev; // Standardavvik for aksjer fra slider
         const bondStdDev = state.bondStdDev; // Standardavvik for renter fra slider
-        const stockMean = state.stockReturnRate || 8.0;
+        const stockMean = state.stockReturnRate || 9;
         const bondMean = state.bondReturnRate || 5.0;
         
         const results = [];
@@ -3602,7 +3537,7 @@ function App({ panelTitle, onPanelTitleChange }) {
         
         const stockStdDev = state.stockStdDev; // Standardavvik for aksjer fra slider
         const bondStdDev = state.bondStdDev; // Standardavvik for renter fra slider
-        const stockMean = state.stockReturnRate || 8.0;
+        const stockMean = state.stockReturnRate || 9;
         const bondMean = state.bondReturnRate || 5.0;
         
         const results = [];
@@ -3667,7 +3602,7 @@ function App({ panelTitle, onPanelTitleChange }) {
         
         const stockStdDev = state.stockStdDev; // Standardavvik for aksjer fra slider
         const bondStdDev = state.bondStdDev; // Standardavvik for renter fra slider
-        const stockMean = state.stockReturnRate || 8.0;
+        const stockMean = state.stockReturnRate || 9;
         const bondMean = state.bondReturnRate || 5.0;
         
         const stockAllocations = [0, 20, 45, 55, 65, 85, 100]; // 0%, 20%, 45%, 55%, 65%, 85%, 100%
@@ -5256,7 +5191,7 @@ return () => document.removeEventListener('keydown', onKey);
 
         const extraDisplayYear = (state.payoutYears > 0) ? 1 : 0;
         const totalYears = state.investmentYears + state.payoutYears + extraDisplayYear;
-        const labels = ['start', ...Array.from({ length: totalYears }, (_, i) => START_YEAR + i)];
+        const labels = ['start', ...Array.from({ length: totalYears }, (_, i) => String(START_YEAR + 1 + i))];
         const indexValues = [];
         const percentValues = [];
         const krValues = [];
@@ -6265,7 +6200,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                             <div className="chart-container">
                                 <Bar 
                                     data={{
-                                        labels: Array.from({ length: (state.investmentYears || 0) + (state.payoutYears || 0) + ((state.payoutYears || 0) > 0 ? 1 : 0) }, (_, i) => START_YEAR + i),
+                                        labels: Array.from({ length: (state.investmentYears || 0) + (state.payoutYears || 0) + ((state.payoutYears || 0) > 0 ? 1 : 0) }, (_, i) => String(START_YEAR + 1 + i)),
                                         datasets: [
                                             {
                                                 label: 'Aksjer (Std.avv 12%)',

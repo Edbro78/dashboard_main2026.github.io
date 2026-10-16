@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const primaryResidenceFixedThreshold = this.primaryResidenceValuationThresholdNok;
 
             // Bestemmer skattefritt beløp basert på personantall
-            const taxFreeAllowance = this.state.personCount === 1 ? 1900000 : 3800000;
+            const taxFreeAllowance = this.state.personCount === 1 ? 1990000 : 3980000;
             // Bestemmer terskel for høy sats basert på personantall
             const highRateThreshold = this.state.personCount === 1 ? 20000000 : 40000000;
             // Summerer alle eiendelsverdier for å få bruttoformue

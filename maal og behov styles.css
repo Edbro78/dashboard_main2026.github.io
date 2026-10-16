@@ -526,13 +526,6 @@
         padding: 0 var(--space-2);
     }
 
-    /* Speiler fast fullskjermknapp (32px, right: 1rem) */
-    .tab-bar-header-end-spacer {
-        flex: 0 0 calc(1rem + 32px);
-        width: calc(1rem + 32px);
-        height: 1px;
-    }
-
     .tab.tab-bar-panel-title {
         display: inline-flex;
         align-items: center;
@@ -786,18 +779,6 @@
         flex: 1 1 auto;
         height: auto;
         min-height: 0;
-    }
-
-    .dashboard-chrome-fullscreen {
-        top: calc(0.75rem * var(--dashboard-zoom, 1));
-        right: calc(1rem * var(--dashboard-zoom, 1));
-        width: calc(2rem * var(--dashboard-zoom, 1));
-        height: calc(2rem * var(--dashboard-zoom, 1));
-    }
-
-    .dashboard-chrome-fullscreen svg {
-        width: calc(16px * var(--dashboard-zoom, 1));
-        height: calc(16px * var(--dashboard-zoom, 1));
     }
 
 /* ============================================================================

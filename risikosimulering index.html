@@ -506,20 +506,10 @@
                     <div class="rebalancing-selector">
                         <button class="selector-btn active" data-rebalancing="false" id="rebalancing-btn-no">Uten rebalansering</button>
                         <button class="selector-btn" data-rebalancing="true" id="rebalancing-btn-yes">Med rebalansering</button>
-                        <button class="selector-btn" data-view="bubble" id="bubble-chart-btn">Boblediagram</button>
                     </div>
                 </div>
                 <div class="chart-wrapper" style="position: relative;">
                     <canvas id="allocation-chart"></canvas>
-                    <canvas id="bubble-chart" style="display: none;"></canvas>
-                    <div id="bubble-chart-controls" style="display: none; position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--card); padding: 12px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <button id="bubble-play-pause" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); cursor: pointer;">▶ Play</button>
-                            <button id="bubble-reset" style="padding: 8px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--background); cursor: pointer;">Reset</button>
-                            <input type="range" id="bubble-year-slider" min="0" max="24" value="0" style="width: 200px;">
-                            <span id="bubble-year-display" style="min-width: 60px; text-align: center; font-family: 'JetBrains Mono', monospace;">År 0</span>
-                        </div>
-                    </div>
                 </div>
             </section>
 
