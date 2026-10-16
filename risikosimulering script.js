@@ -5386,8 +5386,31 @@ function updateKPIInfoCards(yearlyData, startYear) {
     }
 }
 
+function assetHeatStyle(value) {
+    const t = Math.max(-1, Math.min(1, value / 25));
+    const mix = (from, to, u) => Math.round(from + (to - from) * u);
+    let r;
+    let g;
+    let b;
+    if (t < 0) {
+        const u = -t;
+        r = mix(242, 180, u);
+        g = mix(244, 35, u);
+        b = mix(247, 24, u);
+    } else {
+        r = mix(242, 5, t);
+        g = mix(244, 96, t);
+        b = mix(247, 58, t);
+    }
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    const color = luminance > 0.62 ? '#1D2939' : '#FFFFFF';
+    return `background-color: rgb(${r}, ${g}, ${b}); color: ${color};`;
+}
+
 function createAssetsGrid() {
     const container = document.getElementById('assets-grid');
+    const insightEl = document.getElementById('assets-insight');
+    const detailEl = document.getElementById('assets-detail');
     const filteredData = getFilteredData();
     
     // Debug: Log data range
@@ -5413,111 +5436,83 @@ function createAssetsGrid() {
         lastYear: years[years.length - 1]
     });
     
-    const numYears = years.length;
-    
-    // Get the actual container width (more accurate than viewport)
-    const containerRect = container.getBoundingClientRect();
-    const containerWidth = containerRect.width || container.offsetWidth || window.innerWidth - 200;
-    
-    // Calculate gap size (var(--space-xs) is typically 8px)
-    const gapSize = 8;
-    const totalGaps = (numYears - 1) * gapSize;
-    const availableWidth = containerWidth - totalGaps;
-    
-    let gridTemplateColumns;
-    
-    if (state.selectedPeriod === 'max') {
-        // For "max" period: Fit all years without scrolling but fill width and height
-        // Use minmax with lower minimum width to ensure all years fit while still filling space
-        const minColumnWidth = 25; // Lower minimum for max period (reduced from 40 to fit more years)
-        const calculatedWidth = Math.floor(availableWidth / numYears);
-        const optimalColumnWidth = Math.max(minColumnWidth, calculatedWidth);
-        gridTemplateColumns = `repeat(${numYears}, minmax(${optimalColumnWidth}px, 1fr))`;
-        
-        // Add class to container for max period styling
-        container.classList.add('max-period');
-    } else {
-        container.classList.remove('max-period');
-        // For other periods (like "10y"): Fill screen with flexible larger columns
-        const minColumnWidth = 65;
-        const maxColumnWidth = 250;
-        const optimalColumnWidth = Math.max(
-            minColumnWidth,
-            Math.min(
-                maxColumnWidth,
-                Math.floor(availableWidth / numYears)
-            )
-        );
-        gridTemplateColumns = `repeat(${numYears}, minmax(${optimalColumnWidth}px, 1fr))`;
+    const classes = [
+        { key: 'kpi', label: 'KPI', shortLabel: 'KPI', className: 'kpi' },
+        { key: 'renterIG', label: 'Renter IG', shortLabel: 'IG', className: 'renter-ig' },
+        { key: 'highYield', label: 'High Yield', shortLabel: 'HY', className: 'renter-hy' },
+        { key: 'aksjerNorske', label: 'Norske aksjer', shortLabel: 'Norge', className: 'aksjer-norge' },
+        { key: 'aksjerNordiske', label: 'Nordiske aksjer', shortLabel: 'Norden', className: 'aksjer-norden' },
+        { key: 'aksjerFremvoksende', label: 'Vekstmarkeder', shortLabel: 'Vekst', className: 'aksjer-emerging' },
+        { key: 'stocks', label: 'Globale aksjer', shortLabel: 'Global', className: 'aksjer-global' },
+        { key: 'nordicStocks', label: 'Alternative strategier', shortLabel: 'Alt.', className: 'nordicstocks' },
+        { key: 'emergingMarkets', label: 'Annet', shortLabel: 'Annet', className: 'emergingmarkets' }
+    ];
+
+    const series = classes.map(asset => {
+        const values = years.map(year => {
+            const value = yearlyReturns[year][asset.key];
+            return Number.isFinite(value) ? value : 0;
+        });
+        const avg = values.reduce((sum, value) => sum + value, 0) / Math.max(1, values.length);
+        return { ...asset, avg };
+    }).sort((a, b) => b.avg - a.avg);
+
+    const columns = years.map(year => {
+        const ranked = classes.map(asset => {
+            const raw = yearlyReturns[year][asset.key];
+            const value = Number.isFinite(raw) ? raw : 0;
+            return { ...asset, value };
+        }).sort((a, b) => b.value - a.value);
+        return { year, ranked };
+    });
+
+    const containerWidth = container.getBoundingClientRect().width || container.offsetWidth || 1200;
+    const narrow = years.length > 0 && containerWidth / years.length < 72;
+    const best = series[0];
+    const worst = series[series.length - 1];
+    if (insightEl && best && worst) {
+        insightEl.textContent = `${best.label} har høyest snitt, ${formatPercent(best.avg, 1)}. Lavest snitt har ${worst.label}, ${formatPercent(worst.avg, 1)}.`;
     }
-    
-    // Set dynamic grid template columns
-    container.style.gridTemplateColumns = gridTemplateColumns;
-    
-    container.innerHTML = years.map(year => {
-        const returns = yearlyReturns[year];
-        const assets = [
-            { label: 'KPI', return: returns.kpi ?? 0, class: 'kpi' },
-            { label: 'IG', return: returns.renterIG ?? 0, class: 'renter-ig' },
-            { label: 'High Yield', return: returns.highYield ?? 0, class: 'renter-hy' },
-            { label: 'A Norge', return: returns.aksjerNorske ?? 0, class: 'aksjer-norge' },
-            { label: 'A Norden', return: returns.aksjerNordiske ?? 0, class: 'aksjer-norden' },
-            { label: 'Vekst m.', return: returns.aksjerFremvoksende ?? 0, class: 'aksjer-emerging' },
-            { label: 'A Global', return: returns.stocks ?? 0, class: 'aksjer-global' },
-            { label: 'Alt Strat.', return: returns.nordicStocks ?? 0, class: 'nordicstocks' },
-            { label: 'Annet', return: returns.emergingMarkets ?? 0, class: 'emergingmarkets' }
-        ].sort((a, b) => b.return - a.return);
-        
-        return `
-            <div class="asset-column animate-in">
-                <div class="year-label">${year}</div>
-                ${assets.map(asset => `
-                    <div class="asset-cell ${asset.class} ${asset.return < 0 ? 'negative' : ''} ${state.selectedAssetClass === asset.class ? 'marked' : ''}" 
-                         data-asset-class="${asset.class}">
-                        <div class="asset-cell-inner">
-                            <span class="asset-name">${asset.label}</span>
-                            <span class="asset-return">${formatPercent(asset.return, 0)}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-    }).join('');
-    
-    // Add click event listeners to asset cells
-    const assetCells = container.querySelectorAll('.asset-cell');
-    const assetsGrid = container;
-    
-    assetCells.forEach(cell => {
+
+    container.className = 'assets-grid assets-matrix' + (state.selectedAssetClass ? ' is-filtered' : '');
+    container.style.setProperty('--asset-years', String(Math.max(1, years.length)));
+    container.innerHTML = columns.map(column => `
+        <div class="assets-rank-col">
+            <div class="assets-year" title="${column.year}">${narrow ? String(column.year).slice(-2) : column.year}</div>
+            ${column.ranked.map((asset, index) => {
+                const rank = index + 1;
+                const rankText = rank === 1 ? 'beste dette året' : (rank === column.ranked.length ? 'svakeste dette året' : `${rank}. beste av ${column.ranked.length}`);
+                const shown = narrow ? String(Math.round(asset.value)) : formatPercent(asset.value, 0);
+                const marked = state.selectedAssetClass === asset.className ? ' is-marked' : '';
+                return `<div class="assets-heat-cell${narrow ? ' is-narrow' : ''}${marked}" style="${assetHeatStyle(asset.value)}" data-asset-class="${asset.className}" data-asset-label="${asset.label}" data-year="${column.year}" data-return="${formatPercent(asset.value, 1)}" data-rank="${rankText}"><span class="assets-heat-name">${narrow ? asset.shortLabel : asset.label}</span><span class="assets-heat-value">${shown}</span></div>`;
+            }).join('')}
+        </div>
+    `).join('');
+
+    const defaultDetail = 'Hold over et felt for år, rangering og avkastning.';
+    if (detailEl) detailEl.textContent = defaultDetail;
+
+    function paintSelection() {
+        container.classList.toggle('is-filtered', !!state.selectedAssetClass);
+        container.querySelectorAll('.assets-heat-cell').forEach(cell => {
+            cell.classList.toggle('is-marked', state.selectedAssetClass === cell.dataset.assetClass);
+        });
+    }
+
+    container.querySelectorAll('.assets-heat-cell').forEach(cell => {
         cell.addEventListener('click', () => {
             const assetClass = cell.dataset.assetClass;
-            
-            // If clicking the same asset class, deselect it
-            if (state.selectedAssetClass === assetClass) {
-                state.selectedAssetClass = null;
-                assetsGrid.classList.remove('filtered');
-                assetCells.forEach(c => c.classList.remove('marked'));
-            } else {
-                // Select new asset class
-                state.selectedAssetClass = assetClass;
-                assetsGrid.classList.add('filtered');
-                
-                // Mark all cells with the same asset class
-                assetCells.forEach(c => {
-                    if (c.dataset.assetClass === assetClass) {
-                        c.classList.add('marked');
-                    } else {
-                        c.classList.remove('marked');
-                    }
-                });
-            }
+            state.selectedAssetClass = state.selectedAssetClass === assetClass ? null : assetClass;
+            paintSelection();
+        });
+        cell.addEventListener('mouseenter', () => {
+            if (!detailEl) return;
+            detailEl.textContent = `${cell.dataset.year} · ${cell.dataset.assetLabel} · ${cell.dataset.return} · ${cell.dataset.rank}`;
+        });
+        cell.addEventListener('mouseleave', () => {
+            if (detailEl) detailEl.textContent = defaultDetail;
         });
     });
-    
-    // Apply current filter state if one exists
-    if (state.selectedAssetClass) {
-        assetsGrid.classList.add('filtered');
-    }
 }
 
 // ========================================
