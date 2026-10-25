@@ -182,17 +182,208 @@
         box-shadow: none;
     }
 
-    /* Grid layout */
-    .grid-3-cols {
+    /* Grid layout — alltid tre kolonner i dashboard */
+    .grid-3-cols,
+    .dashboard-zoom-inner .grid-3-cols {
         display: grid;
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 24px;
     }
 
-    @media (min-width: 1280px) {
-        .grid-3-cols {
-            grid-template-columns: repeat(3, 1fr);
-        }
+    /* Avstand under «Samlet forvaltning» — 70 % mindre enn gap-6 (30 % av 1.5rem) */
+    .maal-og-behov-tab {
+        --mbh-section-gap: calc(1.5rem * 0.3);
+    }
+
+    .maal-og-behov-tab .mbh-forvaltning-follow,
+    .maal-og-behov-tab .mbh-graphic-sections-follow {
+        display: flex;
+        flex-direction: column;
+        gap: var(--mbh-section-gap);
+        margin-top: var(--mbh-section-gap);
+    }
+
+    /* Grafikk-knapper midt mellom forvaltning og panel-raden */
+    .mbh-graphic-toggles-bridge {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.5rem 0;
+        margin: 0;
+    }
+
+    .mbh-graphic-toggles-bar {
+        width: auto;
+        max-width: min(100%, 52rem);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        padding: 0.65rem 1rem 0.75rem;
+        border-radius: var(--radius-lg);
+        border: 1px dashed var(--gray-300);
+        background: linear-gradient(180deg, var(--white) 0%, var(--gray-50) 100%);
+    }
+
+    .maal-og-behov-tab .mbh-forvaltning-wrap + .mbh-graphic-toggles-bridge {
+        margin-top: calc(var(--mbh-section-gap) - 1.5rem);
+    }
+
+    .maal-og-behov-tab .mbh-graphic-toggles-bridge + .mbh-panels-grid {
+        margin-top: calc(var(--mbh-section-gap) - 1.5rem);
+    }
+
+    .mbh-graphic-toggles-heading {
+        margin: 0 0 0.5rem;
+        font-family: var(--font-display);
+        font-size: var(--text-sm-size);
+        font-weight: var(--fw-semibold);
+        color: var(--sp-navy);
+        letter-spacing: 0.02em;
+    }
+
+    .mbh-graphic-toggles-row {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem 0.625rem;
+        width: 100%;
+    }
+
+    .mbh-graphic-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        min-width: 6.75rem;
+        max-width: 11rem;
+        height: 2.125rem;
+        padding: 0 0.5rem 0 0.4rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--gray-300);
+        box-shadow: var(--shadow-xs);
+        cursor: pointer;
+        transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+        color: var(--sp-navy);
+        font-family: inherit;
+        font-size: inherit;
+        appearance: none;
+        -webkit-appearance: none;
+    }
+
+    .mbh-graphic-toggle:hover {
+        border-color: var(--blue-200);
+        box-shadow: var(--shadow-sm);
+        transform: translateY(-1px);
+    }
+
+    .mbh-graphic-toggle--on {
+        background: var(--white);
+        border-color: var(--blue-main);
+        box-shadow: 0 0 0 2px rgba(10, 94, 220, 0.12);
+    }
+
+    .mbh-graphic-toggle--off {
+        background: var(--gray-50);
+        border-color: var(--gray-300);
+        opacity: 0.92;
+    }
+
+    .mbh-graphic-toggle--off .mbh-graphic-toggle-label {
+        color: var(--gray-600);
+    }
+
+    .mbh-graphic-toggle-icon {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--blue-main);
+    }
+
+    .mbh-graphic-toggle--off .mbh-graphic-toggle-icon {
+        color: var(--gray-500);
+    }
+
+    .mbh-graphic-toggle-label {
+        flex: 1 1 auto;
+        min-width: 0;
+        font-size: 0.6875rem;
+        font-weight: var(--fw-medium);
+        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .mbh-graphic-toggle-state {
+        flex-shrink: 0;
+        font-size: 0.5625rem;
+        font-weight: var(--fw-semibold);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.125rem 0.35rem;
+        border-radius: 999px;
+        line-height: 1.2;
+        user-select: none;
+        pointer-events: none;
+    }
+
+    .mbh-graphic-section {
+        scroll-margin-top: 0.75rem;
+    }
+
+    .mbh-graphic-toggle--on .mbh-graphic-toggle-state {
+        background: rgba(10, 94, 220, 0.12);
+        color: var(--blue-main);
+    }
+
+    .mbh-graphic-toggle--off .mbh-graphic-toggle-state {
+        background: var(--gray-200);
+        color: var(--gray-600);
+    }
+
+    /* Forutsetninger | parametere | hendelser — alltid tre kolonner, fast rekkefølge (aldri stack ved zoom) */
+    .mbh-panels-grid,
+    .dashboard-zoom-inner .mbh-panels-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-areas: "forutsetninger parametere hendelser";
+        grid-auto-flow: row;
+        gap: 1.5rem;
+        margin-top: 0;
+    }
+
+    .mbh-panel-forutsetninger {
+        grid-area: forutsetninger;
+        min-width: 0;
+    }
+
+    .mbh-panel-parametere {
+        grid-area: parametere;
+        min-width: 0;
+    }
+
+    .mbh-panel-hendelser {
+        grid-area: hendelser;
+        min-width: 0;
+    }
+
+    /* Målsøk: alltid desktop-rad (unngår bytte mellom mobil/desktop-layout ved zoom) */
+    .mbh-maalsoek-header-wide,
+    .mbh-maalsoek-row-wide {
+        display: flex;
+    }
+
+    .mbh-maalsoek-header-narrow,
+    .mbh-maalsoek-mobile-sparing,
+    .mbh-maalsoek-mobile-sparing-slider {
+        display: none !important;
     }
 
     /* Form input — SPWM */
@@ -748,6 +939,7 @@
         flex: 1;
         overflow: auto;
         background: var(--gray-50);
+        scrollbar-gutter: stable;
     }
 
     .tab-content.hidden {
@@ -759,6 +951,9 @@
         min-height: 0;
         overflow: hidden;
         position: relative;
+        container-type: inline-size;
+        container-name: dashboard;
+        scrollbar-gutter: stable;
     }
 
     .dashboard-zoom-inner {

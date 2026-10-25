@@ -1260,31 +1260,51 @@ const CustomLegend = ({ items }) => (
     </div>
 );
 
-// Eye icon toggle for show/hide panels
-const EyeToggle = ({ visible, onToggle, className, title }) => (
-    <button
-        onClick={onToggle}
-        title={title || (visible ? 'Skjul' : 'Vis')}
-        className={`absolute -top-4 -left-4 bg-white border border-[#DDDDDD] rounded-full p-1.5 shadow hover:bg-gray-50 text-[#002359] ${className || ''}`}
-        aria-label={visible ? 'Skjul' : 'Vis'}
-    >
-        {visible ? (
-            // Open eye
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"></path>
-                <circle cx="12" cy="12" r="3"></circle>
-            </svg>
-        ) : (
-            // Slashed eye
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a21.8 21.8 0 0 1 5.06-5.94"></path>
-                <path d="M1 1l22 22"></path>
-                <path d="M10.58 10.58a3 3 0 0 0 4.24 4.24"></path>
-                <path d="M9.88 5.09A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a21.8 21.8 0 0 1-3.06 4.02"></path>
-            </svg>
-        )}
-    </button>
+const GraphicPanelChartIcon = ({ active }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 20V10" opacity={active ? 1 : 0.45} />
+        <path d="M10 20V4" opacity={active ? 1 : 0.45} />
+        <path d="M16 20v-8" opacity={active ? 1 : 0.45} />
+        <path d="M22 20V14" opacity={active ? 1 : 0.45} />
+        {!active && <path d="M3 3l18 18" strokeWidth="1.75" />}
+    </svg>
 );
+
+function scrollMbhGraphicSectionIntoView(sectionId) {
+    if (!sectionId) return;
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const el = document.getElementById(sectionId);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+}
+
+// Fast knapp: vis/skjul grafikk og scroll til seksjonen
+const GraphicPanelToggle = ({ visible, onToggle, scrollTargetId, label, title }) => {
+    const handleClick = () => {
+        const willShow = !visible;
+        onToggle();
+        if (willShow) scrollMbhGraphicSectionIntoView(scrollTargetId);
+    };
+
+    return (
+        <button
+            type="button"
+            title={title || (visible ? 'Grafikk vises — klikk for å skjule og gå til grafikken' : 'Klikk for å vise grafikken')}
+            onClick={handleClick}
+            className={`mbh-graphic-toggle ${visible ? 'mbh-graphic-toggle--on' : 'mbh-graphic-toggle--off'}`}
+            aria-pressed={visible}
+            aria-label={title || label || 'Vis/skjul grafikk'}
+        >
+            <span className="mbh-graphic-toggle-icon">
+                <GraphicPanelChartIcon active={visible} />
+            </span>
+            <span className="mbh-graphic-toggle-label">{label}</span>
+            <span className="mbh-graphic-toggle-state" aria-hidden="true">{visible ? 'På' : 'Av'}</span>
+        </button>
+    );
+};
 
 // --- MAIN APP COMPONENT --- //
 // TKontoDashboard component - wraps the standalone t-konto dashboard
@@ -5579,7 +5599,7 @@ return () => document.removeEventListener('keydown', onKey);
                 </div>
 
                 {/* Inputfelt for porteføljestørrelse, årlig sparing og aksjeandel */}
-                <div className="relative w-full" style={{ marginTop: '-24px' }}>
+                <div className="relative w-full mbh-forvaltning-wrap" style={{ marginTop: '-24px' }}>
                     <div className="absolute inset-0 z-0 bg-white border border-[#DDDDDD] rounded-xl pointer-events-none"></div>
                     <div className="mbh-forvaltning-grid relative z-10">
                         <div className="mbh-fv-head-l">
@@ -5656,12 +5676,264 @@ return () => document.removeEventListener('keydown', onKey);
                     </div>
                 </div>
 
+                <div className="mbh-graphic-toggles-bridge" aria-hidden="false">
+                    <div className="mbh-graphic-toggles-bar" aria-label="Vis/skjul grafikk">
+                        <p className="mbh-graphic-toggles-heading">Vis / skjul grafikk</p>
+                        <div className="mbh-graphic-toggles-row">
+                            <GraphicPanelToggle
+                                visible={showGoalSeek}
+                                onToggle={() => setShowGoalSeek(v => !v)}
+                                scrollTargetId="mbh-graphic-section-maalsoek"
+                                label="Målsøk"
+                                title="Målsøk-grafikk"
+                            />
+                            <GraphicPanelToggle
+                                visible={showDistributionGraphic}
+                                onToggle={() => setShowDistributionGraphic(v => !v)}
+                                scrollTargetId="mbh-graphic-section-fordeling"
+                                label="Fordeling"
+                                title="Fordelingsgraf"
+                            />
+                            <GraphicPanelToggle
+                                visible={showStockPortionGraphic}
+                                onToggle={() => setShowStockPortionGraphic(v => !v)}
+                                scrollTargetId="mbh-graphic-section-aksjeandel"
+                                label="Aksjeandel"
+                                title="Aksjeandelsgraf"
+                            />
+                            <GraphicPanelToggle
+                                visible={showInvestedCapitalGraphic}
+                                onToggle={() => setShowInvestedCapitalGraphic(v => !v)}
+                                scrollTargetId="mbh-graphic-section-innskutt-kapital"
+                                label="Innskutt kapital"
+                                title="Innskutt kapital"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mbh-panels-grid">
+                    {/* Assumptions Panel */}
+                    <div className="mbh-panel-forutsetninger bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
+                        <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
+                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
+                        <SliderInput id="investmentYears" label="Tidshorisont" value={state.investmentYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                        <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
+                         
+                         {/* Ønsket årlig utbetaling */}
+                         <div>
+                             <h3 className="typo-h2 text-[#4A6D8C] mb-4">Ønsket årlig utbetaling</h3>
+                             <div className="mt-4 space-y-4">
+                                 <SliderInput
+                                     id="desiredAnnualConsumptionPayout"
+                                     label="Ønsket årlig uttak til forbruk (NOK)"
+                                     value={state.desiredAnnualConsumptionPayout}
+                                     min={0}
+                                     max={10000000}
+                                     step={100000}
+                                     onChange={handleStateChange}
+                                     isCurrency
+                                     allowDirectInput
+                                     thumbColor="#4A6D8C"
+                                 />
+                                <SliderInput
+                                    id="desiredAnnualWealthTaxPayout"
+                                    label="Ønsket årlig uttak til formuesskatt (NOK)"
+                                    value={state.desiredAnnualWealthTaxPayout}
+                                    min={0}
+                                    max={7000000}
+                                    step={50000}
+                                    onChange={handleStateChange}
+                                    isCurrency
+                                    allowDirectInput
+                                    thumbColor="#4A6D8C"
+                                />
+                                 <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
+                                     <div className="typo-label text-[#333333]/70 mb-1">Sum ønsket årlig utbetaling (etter skatt):</div>
+                                     <div className="text-lg font-semibold text-[#4A6D8C]">
+                                         {formatCurrency(state.desiredAnnualConsumptionPayout + state.desiredAnnualWealthTaxPayout)}
+                                     </div>
+                                 </div>
+                                 <InvestorTypeToggle value={state.investorType} onChange={handleStateChange} />
+                                 <DeferredInterestTaxToggle value={state.deferredInterestTax} onChange={handleStateChange} investorType={state.investorType} />
+                                 <TaxCalculationToggle value={state.taxCalculationEnabled} onChange={handleStateChange} />
+                                 <ResetAllButton onReset={handleResetAll} />
+                             </div>
+                         </div>
+                    </div>
+
+                    {/* Parameters Panel */}
+                    <div className="mbh-panel-parametere bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
+                       
+                       
+
+                       
+
+                        <div>
+                            <h3 className="typo-h2 text-[#4A6D8C] mb-4">Forventet avkastning</h3>
+                            <SliderInput
+                                id="stockReturnRate"
+                                label="Forventet avkastning aksjeportefølje"
+                                value={state.stockReturnRate}
+                                min={5}
+                                max={10}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.stockReturnRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="bondReturnRate"
+                                label="Forventet avkastning renteportefølje"
+                                value={state.bondReturnRate}
+                                min={3}
+                                max={9}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.bondReturnRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="bankDepositRate"
+                                label="Forventet rente Bankinnskudd"
+                                value={state.bankDepositRate}
+                                min={3}
+                                max={9}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.bankDepositRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+                            <SliderInput
+                                id="kpiRate"
+                                label="Forventet KPI"
+                                value={state.kpiRate}
+                                min={0}
+                                max={5}
+                                step={0.1}
+                                onChange={handleStateChange}
+                                displayValue={`${state.kpiRate.toFixed(1)}%`}
+                                thumbColor="#4A6D8C"
+                            />
+
+                            {/* Rådgivningshonorar knapper */}
+                            <div className="mt-4">
+                                <div className="typo-label text-[#333333]/80 mb-2">Rådgivningshonorar</div>
+                                <div className="grid grid-cols-6 gap-2 items-center">
+                                    {/* Fritekstfelt (venstre) */}
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={advisoryInputValue}
+                                            onChange={(e) => {
+                                                const raw = (e.target.value || '').replace(/\s/g, '').replace(',', '.');
+                                                if (raw === '') { setAdvisoryInputValue(''); return; }
+                                                if (/^\d*\.?\d{0,2}$/.test(raw)) {
+                                                    setAdvisoryInputValue(raw.replace('.', ','));
+                                                }
+                                            }}
+                                            onBlur={(e) => {
+                                                const raw = (e.target.value || '').replace(/\s/g, '').replace(',', '.');
+                                                let num = parseFloat(raw);
+                                                if (isNaN(num)) num = 0;
+                                                if (num < 0) num = 0;
+                                                if (num > 5) num = 5;
+                                                handleStateChange('advisoryFeeRate', num);
+                                                setAdvisoryInputValue(num.toFixed(2).replace('.', ','));
+                                            }}
+                                            className="w-full h-12 bg-white border border-[#DDDDDD] rounded-lg text-center text-base text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-8"
+                                        />
+                                        <span className="absolute inset-y-0 right-2 flex items-center text-[#333333]/80">%</span>
+                                    </div>
+                                    {/* Forhåndsvalg */}
+                                    {[
+                                        { label: '1,37%', value: 1.37 },
+                                        { label: '0,93%', value: 0.93 },
+                                        { label: '0,81%', value: 0.81 },
+                                        { label: '0,69%', value: 0.69 },
+                                        { label: '0,57%', value: 0.57 },
+                                    ].map(opt => (
+                                        <button
+                                            key={opt.label}
+                                            onClick={() => {
+                                                handleStateChange('advisoryFeeRate', opt.value);
+                                                setAdvisoryInputValue((v) => v); // behold brukerens manuelle verdi i feltet
+                                            }}
+                                            className={`${state.advisoryFeeRate === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-12 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Forventet avkastning felt */}
+                            <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3 mt-4">
+                                <div className="typo-label text-[#333333]/70 mb-1">Forventet avkastning:</div>
+                                <div className="text-lg font-semibold text-[#4A6D8C]">
+                                    {(() => {
+                                        const stockAllocation = state.initialStockAllocation / 100;
+                                        const bondAllocation = (100 - state.initialStockAllocation) / 100;
+                                        const netStock = (state.stockReturnRate - state.kpiRate - state.advisoryFeeRate) * stockAllocation;
+                                        const netBond = (state.bondReturnRate - state.kpiRate - state.advisoryFeeRate) * bondAllocation;
+                                        const weightedReturn = netStock + netBond;
+                                        return `${weightedReturn.toFixed(1)}%`;
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+                       
+                        {/* Skatt seksjon */}
+                        <div className="mt-4">
+                            <h3 className="typo-h2 text-[#4A6D8C] mb-4">Skatt</h3>
+                            <div className="space-y-4">
+                                <SliderInput id="shieldingRate" label="Skjermingsrente" value={state.shieldingRate} min={2} max={7} step={0.01} onChange={handleStateChange} displayValue={`${state.shieldingRate.toFixed(2)}%`} thumbColor="#4A6D8C" />
+                                <ManualTaxInput id="manualStockTaxRate" label="Utbytteskatt / skatt aksjer (%)" value={state.manualStockTaxRate} onChange={handleStateChange} />
+                                <ManualTaxInput id="manualBondTaxRate" label="Kapitalskatt (%)" value={state.manualBondTaxRate} onChange={handleStateChange} />
+                                <SliderInput id="stockStdDev" label="Standardavvik aksjer" value={state.stockStdDev} min={5} max={20} step={0.1} onChange={handleStateChange} displayValue={`${state.stockStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
+                                <SliderInput id="bondStdDev" label="Standardavvik renter" value={state.bondStdDev} min={1} max={8} step={0.1} onChange={handleStateChange} displayValue={`${state.bondStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Events Panel */}
+                    <div className="mbh-panel-hendelser bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
+                        <div className="flex justify-between items-start">
+                            <h2 className="typo-h2 text-[#4A6D8C]">Hendelser</h2>
+                            <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`flex items-center gap-2 font-medium py-2 px-4 rounded-lg transition-all transform hover:-translate-y-0.5 shadow-md ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-300 text-white cursor-not-allowed' : 'bg-[#4A6D8C] hover:bg-[#3A5D7C] text-white'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
+                                <span>Legg til hendelse</span>
+                            </button>
+                        </div>
+                       
+                        <div className="space-y-3 mt-4">
+                            {(state.events.slice(0, MAX_EVENTS)).map(event => (
+                                <EventRow key={event.id} event={event} onUpdate={handleUpdateEvent} onRemove={handleRemoveEvent} maxYear={maxEventYear} />
+                            ))}
+                            {Array.from({ length: Math.max(0, MAX_EVENTS - (state.events?.length || 0)) }).map((_, idx) => (
+                                <div key={`placeholder-${idx}`} className="bg-white border border-dashed border-[#DDDDDD] rounded-lg p-4 flex items-center justify-between">
+                                    <div className="text-[#333333]/60">Tom plass for hendelse</div>
+                                    <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`px-3 py-1 rounded-md text-sm font-medium ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#4A6D8C] text-white hover:bg-[#3A5D7C]'}`}>
+                                        Legg til
+                                    </button>
+                                </div>
+                            ))}
+                            <button type="button" onClick={() => setShowLoanImportModal(true)} className="w-full text-xs font-medium py-1.5 px-2.5 rounded-lg border border-[#DDDDDD] bg-white text-[#333333]">
+                                Importer hendelser fra lånekalkulator
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div className="mbh-forvaltning-follow mbh-graphic-sections-follow">
                 {/* Målsøk seksjon - utenfor den ytre rammen */}
-                <div className="relative" style={{ marginTop: '0.445875rem' }}>
-                    <EyeToggle visible={showGoalSeek} onToggle={() => setShowGoalSeek(v => !v)} title="Skjul/vis Målsøk" />
+                    <div id="mbh-graphic-section-maalsoek" className="mbh-graphic-section">
                     {showGoalSeek && (
+                        <div className="relative">
                         <div className="bg-white border border-[#DDDDDD] rounded-lg" style={{ paddingTop: '1.5rem', paddingRight: '1rem', paddingBottom: '1rem', paddingLeft: '1.5rem' }}>
-                            <div className="hidden xl:flex items-center gap-3 w-full mb-4">
+                            <div className="mbh-maalsoek-header-wide items-center gap-3 w-full mb-4">
                                 <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px' }}>Målsøk</h2>
                                 <div style={{ width: '25%', flex: '0 0 auto' }}></div>
                                 <div style={{ width: '112px', flex: '0 0 auto' }}></div>
@@ -5670,17 +5942,17 @@ return () => document.removeEventListener('keydown', onKey);
                                 <div style={{ minWidth: '98px', flex: '0 0 auto' }}></div>
                                 <h2 className="typo-h2 text-[#4A6D8C] flex-shrink-0" style={{ width: '112px', marginLeft: '10px' }}>Simuleringer/grafikk</h2>
                             </div>
-                            <h2 className="xl:hidden typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
+                            <h2 className="mbh-maalsoek-header-narrow typo-h2 text-[#4A6D8C] mb-4">Målsøk</h2>
                     <button
                         type="button"
                         onClick={toggleGoalSeekAnnualSavings}
                         title="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
                         aria-label="Ved å trykke på denne vil modellen automatisk beregne hvilken årlig sparing du trenger for at porteføljen ikke skal gå i minus det siste året av perioden. Om mål og behov ikke går i minus, vil denne knappen ikke ha en funksjon."
-                        className={`xl:hidden h-20 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 ${spToolButtonMarked ? 'bg-[#888888] text-white border border-[#888888] mbh-side-tool-active shadow-md' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'}`}
+                        className={`mbh-maalsoek-mobile-sparing h-20 rounded-lg items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5 ${spToolButtonMarked ? 'bg-[#888888] text-white border border-[#888888] mbh-side-tool-active shadow-md' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100 shadow-md'}`}
                     >
                         Målsøk sparing
                     </button>
-                    <div className="hidden xl:flex items-center gap-3 w-full">
+                    <div className="mbh-maalsoek-row-wide items-center gap-3 w-full">
                     <button
                         type="button"
                         onClick={toggleGoalSeekAnnualSavings}
@@ -5819,18 +6091,19 @@ return () => document.removeEventListener('keydown', onKey);
                     </button>
                     </div>
                     {/* Fallback for mindre skjermer: plasser slider under */}
-                    <div className="xl:hidden mt-2">
+                    <div className="mbh-maalsoek-mobile-sparing-slider mt-2">
                         <div className="w-[740px] max-w-full mx-auto">
                             <SliderInput id="annualSavings" label="Sparing" value={state.annualSavings} min={0} max={5000000} step={10000} onChange={handleStateChange} isCurrency allowDirectInput inline />
                         </div>
                     </div>
                         </div>
+                        </div>
                     )}
-                </div>
+                    </div>
 
-                <div className="relative">
-                    <EyeToggle visible={showDistributionGraphic} onToggle={() => setShowDistributionGraphic(v => !v)} />
+                    <div id="mbh-graphic-section-fordeling" className="mbh-graphic-section">
                     {showDistributionGraphic && (
+                        <div className="relative">
                         <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col w-full">
                             <h2 className="typo-h2 text-center text-[#4A6D8C] mb-4">Fordeling mellom aksjer og renter</h2>
                             <div className={`relative h-[260px]`}>
@@ -5846,19 +6119,21 @@ return () => document.removeEventListener('keydown', onKey);
                                 </div>
                             )}
                         </div>
+                        </div>
                     )}
-                </div>
+                    </div>
 
-                <div className="relative">
-                    <EyeToggle visible={showStockPortionGraphic} onToggle={() => setShowStockPortionGraphic(v => !v)} />
+                    <div id="mbh-graphic-section-aksjeandel" className="mbh-graphic-section">
                     {showStockPortionGraphic && (
+                        <div className="relative">
                         <div className="bg-white border border-[#DDDDDD] rounded-xl p-4 flex flex-col w-full">
                             <div className="relative h-[280px]">
                                 <Line options={stockPortionChartOptions} data={stockPortionChartData} />
                             </div>
                         </div>
+                        </div>
                     )}
-                </div>
+                    </div>
 
                 {showChartImageModal && (
                     <div
@@ -7039,231 +7314,19 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     </div>
                 )}
 
-                <div className="relative">
-                    <EyeToggle visible={showInvestedCapitalGraphic} onToggle={() => setShowInvestedCapitalGraphic(v => !v)} />
+                    <div id="mbh-graphic-section-innskutt-kapital" className="mbh-graphic-section">
                     {showInvestedCapitalGraphic && (
+                        <div className="relative">
                         <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col w-full">
                             <h2 className="typo-h2 text-center text-[#4A6D8C] mb-4">Innskutt kapital over tid</h2>
                             <div className="relative h-[300px]">
                                 <Bar options={capitalChartOptions} data={investedCapitalChartData} />
                             </div>
                         </div>
+                        </div>
                     )}
-                </div>
-
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    {/* Assumptions Panel */}
-                    <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
-                        <h2 className="typo-h2 text-[#4A6D8C]">Forutsetninger</h2>
-                        <SliderInput id="investedCapital" label="Innskutt kapital (skattefri) (NOK)" value={state.investedCapital} min={0} max={state.initialPortfolioSize + state.pensionPortfolioSize + state.additionalPensionAmount} step={100000} onChange={handleStateChange} isCurrency allowDirectInput thumbColor="#4A6D8C" />
-                        <SliderInput id="investmentYears" label="Tidshorisont" value={state.investmentYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
-                        <SliderInput id="payoutYears" label="Antall år med utbetaling" value={state.payoutYears} min={0} max={30} step={1} onChange={handleStateChange} unit="år" thumbColor="#4A6D8C" />
-                         
-                         {/* Ønsket årlig utbetaling */}
-                         <div>
-                             <h3 className="typo-h2 text-[#4A6D8C] mb-4">Ønsket årlig utbetaling</h3>
-                             <div className="mt-4 space-y-4">
-                                 <SliderInput
-                                     id="desiredAnnualConsumptionPayout"
-                                     label="Ønsket årlig uttak til forbruk (NOK)"
-                                     value={state.desiredAnnualConsumptionPayout}
-                                     min={0}
-                                     max={10000000}
-                                     step={100000}
-                                     onChange={handleStateChange}
-                                     isCurrency
-                                     allowDirectInput
-                                     thumbColor="#4A6D8C"
-                                 />
-                                <SliderInput
-                                    id="desiredAnnualWealthTaxPayout"
-                                    label="Ønsket årlig uttak til formuesskatt (NOK)"
-                                    value={state.desiredAnnualWealthTaxPayout}
-                                    min={0}
-                                    max={7000000}
-                                    step={50000}
-                                    onChange={handleStateChange}
-                                    isCurrency
-                                    allowDirectInput
-                                    thumbColor="#4A6D8C"
-                                />
-                                 <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
-                                     <div className="typo-label text-[#333333]/70 mb-1">Sum ønsket årlig utbetaling (etter skatt):</div>
-                                     <div className="text-lg font-semibold text-[#4A6D8C]">
-                                         {formatCurrency(state.desiredAnnualConsumptionPayout + state.desiredAnnualWealthTaxPayout)}
-                                     </div>
-                                 </div>
-                                 <InvestorTypeToggle value={state.investorType} onChange={handleStateChange} />
-                                 <DeferredInterestTaxToggle value={state.deferredInterestTax} onChange={handleStateChange} investorType={state.investorType} />
-                                 <TaxCalculationToggle value={state.taxCalculationEnabled} onChange={handleStateChange} />
-                                 <ResetAllButton onReset={handleResetAll} />
-                             </div>
-                         </div>
                     </div>
 
-                    {/* Parameters Panel */}
-                    <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
-                       
-                       
-
-                       
-
-                        <div>
-                            <h3 className="typo-h2 text-[#4A6D8C] mb-4">Forventet avkastning</h3>
-                            <SliderInput
-                                id="stockReturnRate"
-                                label="Forventet avkastning aksjeportefølje"
-                                value={state.stockReturnRate}
-                                min={5}
-                                max={10}
-                                step={0.1}
-                                onChange={handleStateChange}
-                                displayValue={`${state.stockReturnRate.toFixed(1)}%`}
-                                thumbColor="#4A6D8C"
-                            />
-                            <SliderInput
-                                id="bondReturnRate"
-                                label="Forventet avkastning renteportefølje"
-                                value={state.bondReturnRate}
-                                min={3}
-                                max={9}
-                                step={0.1}
-                                onChange={handleStateChange}
-                                displayValue={`${state.bondReturnRate.toFixed(1)}%`}
-                                thumbColor="#4A6D8C"
-                            />
-                            <SliderInput
-                                id="bankDepositRate"
-                                label="Forventet rente Bankinnskudd"
-                                value={state.bankDepositRate}
-                                min={3}
-                                max={9}
-                                step={0.1}
-                                onChange={handleStateChange}
-                                displayValue={`${state.bankDepositRate.toFixed(1)}%`}
-                                thumbColor="#4A6D8C"
-                            />
-                            <SliderInput
-                                id="kpiRate"
-                                label="Forventet KPI"
-                                value={state.kpiRate}
-                                min={0}
-                                max={5}
-                                step={0.1}
-                                onChange={handleStateChange}
-                                displayValue={`${state.kpiRate.toFixed(1)}%`}
-                                thumbColor="#4A6D8C"
-                            />
-
-                            {/* Rådgivningshonorar knapper */}
-                            <div className="mt-4">
-                                <div className="typo-label text-[#333333]/80 mb-2">Rådgivningshonorar</div>
-                                <div className="grid grid-cols-6 gap-2 items-center">
-                                    {/* Fritekstfelt (venstre) */}
-                                    <div className="relative">
-                                        <input
-                                            type="text"
-                                            inputMode="decimal"
-                                            value={advisoryInputValue}
-                                            onChange={(e) => {
-                                                const raw = (e.target.value || '').replace(/\s/g, '').replace(',', '.');
-                                                if (raw === '') { setAdvisoryInputValue(''); return; }
-                                                if (/^\d*\.?\d{0,2}$/.test(raw)) {
-                                                    setAdvisoryInputValue(raw.replace('.', ','));
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const raw = (e.target.value || '').replace(/\s/g, '').replace(',', '.');
-                                                let num = parseFloat(raw);
-                                                if (isNaN(num)) num = 0;
-                                                if (num < 0) num = 0;
-                                                if (num > 5) num = 5;
-                                                handleStateChange('advisoryFeeRate', num);
-                                                setAdvisoryInputValue(num.toFixed(2).replace('.', ','));
-                                            }}
-                                            className="w-full h-12 bg-white border border-[#DDDDDD] rounded-lg text-center text-base text-[#333333] focus:outline-none focus:ring-2 focus:ring-[#66CCDD] focus:border-transparent pr-8"
-                                        />
-                                        <span className="absolute inset-y-0 right-2 flex items-center text-[#333333]/80">%</span>
-                                    </div>
-                                    {/* Forhåndsvalg */}
-                                    {[
-                                        { label: '1,37%', value: 1.37 },
-                                        { label: '0,93%', value: 0.93 },
-                                        { label: '0,81%', value: 0.81 },
-                                        { label: '0,69%', value: 0.69 },
-                                        { label: '0,57%', value: 0.57 },
-                                    ].map(opt => (
-                                        <button
-                                            key={opt.label}
-                                            onClick={() => {
-                                                handleStateChange('advisoryFeeRate', opt.value);
-                                                setAdvisoryInputValue((v) => v); // behold brukerens manuelle verdi i feltet
-                                            }}
-                                            className={`${state.advisoryFeeRate === opt.value ? 'bg-[#4A6D8C] text-white shadow-lg' : 'bg-white border border-[#DDDDDD] text-[#333333] hover:bg-gray-100'} h-12 rounded-lg flex items-center justify-center text-center p-1 text-sm font-medium transition-all hover:-translate-y-0.5`}
-                                        >
-                                            {opt.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Forventet avkastning felt */}
-                            <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3 mt-4">
-                                <div className="typo-label text-[#333333]/70 mb-1">Forventet avkastning:</div>
-                                <div className="text-lg font-semibold text-[#4A6D8C]">
-                                    {(() => {
-                                        const stockAllocation = state.initialStockAllocation / 100;
-                                        const bondAllocation = (100 - state.initialStockAllocation) / 100;
-                                        const netStock = (state.stockReturnRate - state.kpiRate - state.advisoryFeeRate) * stockAllocation;
-                                        const netBond = (state.bondReturnRate - state.kpiRate - state.advisoryFeeRate) * bondAllocation;
-                                        const weightedReturn = netStock + netBond;
-                                        return `${weightedReturn.toFixed(1)}%`;
-                                    })()}
-                                </div>
-                            </div>
-                        </div>
-                       
-                        {/* Skatt seksjon */}
-                        <div className="mt-4">
-                            <h3 className="typo-h2 text-[#4A6D8C] mb-4">Skatt</h3>
-                            <div className="space-y-4">
-                                <SliderInput id="shieldingRate" label="Skjermingsrente" value={state.shieldingRate} min={2} max={7} step={0.01} onChange={handleStateChange} displayValue={`${state.shieldingRate.toFixed(2)}%`} thumbColor="#4A6D8C" />
-                                <ManualTaxInput id="manualStockTaxRate" label="Utbytteskatt / skatt aksjer (%)" value={state.manualStockTaxRate} onChange={handleStateChange} />
-                                <ManualTaxInput id="manualBondTaxRate" label="Kapitalskatt (%)" value={state.manualBondTaxRate} onChange={handleStateChange} />
-                                <SliderInput id="stockStdDev" label="Standardavvik aksjer" value={state.stockStdDev} min={5} max={20} step={0.1} onChange={handleStateChange} displayValue={`${state.stockStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
-                                <SliderInput id="bondStdDev" label="Standardavvik renter" value={state.bondStdDev} min={1} max={8} step={0.1} onChange={handleStateChange} displayValue={`${state.bondStdDev.toFixed(1)}%`} thumbColor="#4A6D8C" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Events Panel */}
-                    <div className="bg-white border border-[#DDDDDD] rounded-xl p-6 flex flex-col gap-6">
-                        <div className="flex justify-between items-start">
-                            <h2 className="typo-h2 text-[#4A6D8C]">Hendelser</h2>
-                            <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`flex items-center gap-2 font-medium py-2 px-4 rounded-lg transition-all transform hover:-translate-y-0.5 shadow-md ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-300 text-white cursor-not-allowed' : 'bg-[#4A6D8C] hover:bg-[#3A5D7C] text-white'}`}>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" /></svg>
-                                <span>Legg til hendelse</span>
-                            </button>
-                        </div>
-                       
-                        <div className="space-y-3 mt-4">
-                            {(state.events.slice(0, MAX_EVENTS)).map(event => (
-                                <EventRow key={event.id} event={event} onUpdate={handleUpdateEvent} onRemove={handleRemoveEvent} maxYear={maxEventYear} />
-                            ))}
-                            {Array.from({ length: Math.max(0, MAX_EVENTS - (state.events?.length || 0)) }).map((_, idx) => (
-                                <div key={`placeholder-${idx}`} className="bg-white border border-dashed border-[#DDDDDD] rounded-lg p-4 flex items-center justify-between">
-                                    <div className="text-[#333333]/60">Tom plass for hendelse</div>
-                                    <button onClick={handleAddEvent} disabled={(state.events?.length || 0) >= MAX_EVENTS} className={`px-3 py-1 rounded-md text-sm font-medium ${((state.events?.length || 0) >= MAX_EVENTS) ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-[#4A6D8C] text-white hover:bg-[#3A5D7C]'}`}>
-                                        Legg til
-                                    </button>
-                                </div>
-                            ))}
-                            <button type="button" onClick={() => setShowLoanImportModal(true)} className="w-full text-xs font-medium py-1.5 px-2.5 rounded-lg border border-[#DDDDDD] bg-white text-[#333333]">
-                                Importer hendelser fra lånekalkulator
-                            </button>
-                        </div>
-
-                    </div>
                 </div>
             </div>
             {showLoanImportModal && ReactDOM.createPortal(

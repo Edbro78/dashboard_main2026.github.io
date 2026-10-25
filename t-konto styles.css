@@ -762,11 +762,23 @@ p { /* Avsnitt */
   text-align: center;
 }
 
-.forside-grid {
+/* Forside-kort: alltid 2×2 (Eiendeler | Gjeld / Egenkapital | Kontantstrøm) — aldri én kolonne ved zoom */
+.forside-grid,
+.dashboard-zoom-inner .forside-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    "assets debt"
+    "equity cashflow";
+  grid-auto-flow: row;
   gap: calc(20px * 1.21 * 1.1);
 }
+
+.forside-card-assets { grid-area: assets; }
+.forside-card-debt { grid-area: debt; }
+.forside-card-equity { grid-area: equity; }
+.forside-card-cashflow { grid-area: cashflow; }
 
 .forside-card {
   border-radius: var(--radius-lg);
@@ -926,12 +938,6 @@ p { /* Avsnitt */
 .forside-card-tbe .forside-card-text.status-high { color: var(--white); }
 .forside-card-tbe .forside-card-text.status-mid { color: var(--blue-200); }
 .forside-card-tbe .forside-card-text.status-low { color: rgba(255, 255, 255, 0.85); }
-
-@media (max-width: 900px) {
-  .forside-grid {
-    grid-template-columns: 1fr;
-  }
-}
 
 .forside-cta-wrap {
   margin-top: calc(28px * 1.21 * 1.1);

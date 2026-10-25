@@ -295,7 +295,7 @@ const ExperienceRow = ({ title, data, updateFn }) => (
       </div>
     </div>
 
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-[0.75287475rem]">
+    <div className="grid grid-cols-3 gap-[0.75287475rem]">
       <div className="space-y-[0.25095825rem]">
         <label className="text-[11px] font-medium uppercase tracking-[0.1em] opacity-40 flex items-center gap-1">
           <Layers size={10} /> Transaksjonstype
@@ -624,7 +624,7 @@ function App() {
           <h3 className="text-lg font-bold tracking-tight mbh-heading mb-[0.3387936375rem]">
             {'Målsetninger'}
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-[0.45172485rem] mt-[0.677587275rem]">
+          <div className="grid grid-cols-8 gap-[0.45172485rem] mt-[0.677587275rem]">
             {goalOptions.map((goal) => {
               const importance = selectedGoals[goal.id] || 0;
 
@@ -652,7 +652,7 @@ function App() {
             })}
           </div>
         </Card>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.61965rem]">
+        <div className="grid grid-cols-2 gap-[0.61965rem]">
 
           <Card className="!px-[1.549125rem] !pb-[1.25479125rem] !pt-[0.627395625rem]">
             <div className="mb-[1.003833rem] border-b mbh-divider pb-[0.5019165rem]">
@@ -729,9 +729,9 @@ function App() {
           </div>
         </div>
         <div className="mbh-summary-panel">
-          <div className="py-[0.629558294625rem] md:py-[0.88161633225rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-1 lg:grid-cols-12 lg:items-start gap-x-[1.9683rem] gap-y-[0.774840978rem]">
+          <div className="py-[0.629558294625rem] md:py-[0.88161633225rem] px-[2.25rem] md:px-[3.15rem] relative z-10 grid grid-cols-12 items-start gap-x-[1.9683rem] gap-y-[0.774840978rem]">
 
-            <div className="lg:col-span-4 flex flex-col gap-[0.4428675rem] lg:self-start">
+            <div className="col-span-4 flex flex-col gap-[0.4428675rem] lg:self-start">
               <SectionLabel light className="!mb-0 leading-tight">{'Målsetninger'}</SectionLabel>
               <div className="flex flex-col gap-[0.1937102445rem]">
                 {totals.sortedGoals.map((goal, i) => (
@@ -760,7 +760,7 @@ function App() {
                 {totals.sortedGoals.length === 0 && <span className="text-[11px] font-normal opacity-30 italic">{'Ingen mål valgt'}</span>}
               </div>
             </div>
-            <div className="lg:col-span-5 border-y lg:border-y-0 lg:border-x mbh-summary-mid-col py-[0.629558294625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.4428675rem] justify-start lg:self-start">
+            <div className="col-span-5 border-y lg:border-y-0 lg:border-x mbh-summary-mid-col py-[0.629558294625rem] lg:py-0 lg:px-[1.77147rem] flex flex-col gap-[0.4428675rem] justify-start lg:self-start">
               <div className="grid grid-cols-2 gap-x-[1.9683rem]">
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Erfaring</SectionLabel>
                 <SectionLabel light className="!mb-0 whitespace-nowrap leading-tight">Kunnskap</SectionLabel>
@@ -786,7 +786,7 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="lg:col-span-3 flex flex-col justify-start items-center text-center mbh-summary-score-box px-[1.3122rem] pb-[0.774840978rem] pt-0 rounded-md lg:self-start w-full">
+            <div className="col-span-3 flex flex-col justify-start items-center text-center mbh-summary-score-box px-[1.3122rem] pb-[0.774840978rem] pt-0 rounded-md lg:self-start w-full">
               <SectionLabel light className="!mb-0 leading-tight w-full">Samlet Score</SectionLabel>
               <div className="relative inline-flex items-center justify-center mt-[0.4428675rem]">
                 <svg className="w-[4.0291730856rem] h-[4.0291730856rem] transform -rotate-90" viewBox="0 0 128 128" aria-hidden="true">

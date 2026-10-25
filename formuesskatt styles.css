@@ -638,3 +638,5 @@ header.text-center.mb-1.relative {
     background-color: var(--primary-btn-hover) !important;
     transform: none;
 }
+
+.formuesskatt-grid { grid-template-columns: 1fr 1fr; }
