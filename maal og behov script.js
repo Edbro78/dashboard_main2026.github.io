@@ -150,6 +150,8 @@ const Doughnut = ({ data, options, type = 'pie' }) => {
 
 // --- From constants.ts ---
 const START_YEAR = 2026;
+// Grafens første årstall er START_YEAR + 1 (2027). Hendelsesslideren viser samme årstall.
+const EVENT_YEAR_DISPLAY_OFFSET = 1;
 
 // Farger for Forutsetning «Vis grafikk» — SPWM blåskala
 const FORUTSETNING_AKSJE_P1 = '#405A82';
@@ -1165,8 +1167,13 @@ const EventRow = ({ event, onUpdate, onRemove, maxYear }) => {
         onUpdate(event.id, 'belop', num);
     };
 
+    const minDisplayYear = START_YEAR + EVENT_YEAR_DISPLAY_OFFSET;
+    const maxDisplayYear = maxYear + EVENT_YEAR_DISPLAY_OFFSET;
+    const displayStart = (Number(event.startAar) || START_YEAR) + EVENT_YEAR_DISPLAY_OFFSET;
+    const displayEnd = (Number(event.sluttAar) || Number(event.startAar) || START_YEAR) + EVENT_YEAR_DISPLAY_OFFSET;
+
     const handleStartChange = (e) => {
-        const newStart = parseInt(e.target.value, 10);
+        const newStart = parseInt(e.target.value, 10) - EVENT_YEAR_DISPLAY_OFFSET;
         onUpdate(event.id, 'startAar', newStart);
         if (newStart > event.sluttAar) {
             onUpdate(event.id, 'sluttAar', newStart);
@@ -1174,16 +1181,16 @@ const EventRow = ({ event, onUpdate, onRemove, maxYear }) => {
     };
 
     const handleEndChange = (e) => {
-        const newEnd = parseInt(e.target.value, 10);
+        const newEnd = parseInt(e.target.value, 10) - EVENT_YEAR_DISPLAY_OFFSET;
         onUpdate(event.id, 'sluttAar', newEnd);
         if (newEnd < event.startAar) {
             onUpdate(event.id, 'startAar', newEnd);
         }
     };
 
-    const range = maxYear - START_YEAR;
-    const leftPercent = range > 0 ? ((event.startAar - START_YEAR) / range) * 100 : 0;
-    const widthPercent = range > 0 ? ((event.sluttAar - event.startAar) / range) * 100 : 0;
+    const range = maxDisplayYear - minDisplayYear;
+    const leftPercent = range > 0 ? ((displayStart - minDisplayYear) / range) * 100 : 0;
+    const widthPercent = range > 0 ? ((displayEnd - displayStart) / range) * 100 : 0;
 
     return (
         <div className="bg-gray-50 border border-[#DDDDDD] rounded-lg p-3">
@@ -1199,19 +1206,19 @@ const EventRow = ({ event, onUpdate, onRemove, maxYear }) => {
                     <div className="absolute h-1.5 bg-[#66CCDD] rounded-full top-1/2 -translate-y-1/2" style={{ left: `${leftPercent}%`, width: `${Math.max(0, widthPercent)}%` }}></div>
                    
                                          {/* Start Year Label */}
-                     <span className="absolute text-sm text-gray-500 -bottom-8" style={{ left: `${leftPercent}%`, transform: 'translateX(-50%)' }}>{event.startAar}</span>
+                     <span className="absolute text-sm text-gray-500 -bottom-8" style={{ left: `${leftPercent}%`, transform: 'translateX(-50%)' }}>{displayStart}</span>
                      {/* End Year Label */}
-                     <span className="absolute text-sm text-gray-500 -bottom-8" style={{ left: `${leftPercent + widthPercent}%`, transform: 'translateX(-50%)' }}>{event.sluttAar}</span>
+                     <span className="absolute text-sm text-gray-500 -bottom-8" style={{ left: `${leftPercent + widthPercent}%`, transform: 'translateX(-50%)' }}>{displayEnd}</span>
 
                     {/* Start slider (bottom layer) */}
                     <input
-                        type="range" min={START_YEAR} max={maxYear} value={event.startAar} onChange={handleStartChange}
+                        type="range" min={minDisplayYear} max={maxDisplayYear} value={displayStart} onChange={handleStartChange}
                         className="absolute w-full h-1.5 appearance-none bg-transparent m-0 z-10 top-1/2 -translate-y-1/2 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[#66CCDD] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none"
                     />
                    
                     {/* End slider (top layer, track is non-interactive) */}
                     <input
-                        type="range" min={START_YEAR} max={maxYear} value={event.sluttAar} onChange={handleEndChange}
+                        type="range" min={minDisplayYear} max={maxDisplayYear} value={displayEnd} onChange={handleEndChange}
                         className="absolute w-full h-1.5 appearance-none bg-transparent m-0 z-20 pointer-events-none top-1/2 -translate-y-1/2 [&::-webkit-slider-thumb]:pointer-events-auto [&::-moz-range-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[#66CCDD] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none"
                     />
                 </div>
