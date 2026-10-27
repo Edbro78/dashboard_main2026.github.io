@@ -345,7 +345,6 @@ const INITIAL_APP_STATE = {
 const MaalOgBehovState = {
     appState: null, // Lagrer hovedstate
     showDistributionGraphic: false,
-    showStockPortionGraphic: false,
     showInvestedCapitalGraphic: false,
     showGoalSeek: false,
     showOutputModal: false,
@@ -1277,41 +1276,27 @@ const GraphicPanelChartIcon = ({ active }) => (
     </svg>
 );
 
-function scrollMbhGraphicSectionIntoView(sectionId) {
-    if (!sectionId) return;
-    requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-            const el = document.getElementById(sectionId);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    });
+function MbhGraphicPortal({ slot, children }) {
+    if (!slot) return null;
+    return ReactDOM.createPortal(children, slot);
 }
 
-// Fast knapp: vis/skjul grafikk og scroll til seksjonen
-const GraphicPanelToggle = ({ visible, onToggle, scrollTargetId, label, title }) => {
-    const handleClick = () => {
-        const willShow = !visible;
-        onToggle();
-        if (willShow) scrollMbhGraphicSectionIntoView(scrollTargetId);
-    };
-
-    return (
-        <button
-            type="button"
-            title={title || (visible ? 'Grafikk vises — klikk for å skjule og gå til grafikken' : 'Klikk for å vise grafikken')}
-            onClick={handleClick}
-            className={`mbh-graphic-toggle ${visible ? 'mbh-graphic-toggle--on' : 'mbh-graphic-toggle--off'}`}
-            aria-pressed={visible}
-            aria-label={title || label || 'Vis/skjul grafikk'}
-        >
-            <span className="mbh-graphic-toggle-icon">
-                <GraphicPanelChartIcon active={visible} />
-            </span>
-            <span className="mbh-graphic-toggle-label">{label}</span>
-            <span className="mbh-graphic-toggle-state" aria-hidden="true">{visible ? 'På' : 'Av'}</span>
-        </button>
-    );
-};
+const GraphicPanelToggle = ({ visible, onToggle, label, title }) => (
+    <button
+        type="button"
+        title={title || (visible ? 'Grafikk vises — klikk for å skjule' : 'Klikk for å vise grafikken')}
+        onClick={onToggle}
+        className={`mbh-graphic-toggle ${visible ? 'mbh-graphic-toggle--on' : 'mbh-graphic-toggle--off'}`}
+        aria-pressed={visible}
+        aria-label={title || label || 'Vis/skjul grafikk'}
+    >
+        <span className="mbh-graphic-toggle-icon">
+            <GraphicPanelChartIcon active={visible} />
+        </span>
+        <span className="mbh-graphic-toggle-label">{label}</span>
+        <span className="mbh-graphic-toggle-state" aria-hidden="true">{visible ? 'På' : 'Av'}</span>
+    </button>
+);
 
 // --- MAIN APP COMPONENT --- //
 // TKontoDashboard component - wraps the standalone t-konto dashboard
@@ -2724,9 +2709,9 @@ function App({ panelTitle, onPanelTitleChange }) {
         return MaalOgBehovState.appState ? { ...INITIAL_APP_STATE, ...MaalOgBehovState.appState } : INITIAL_APP_STATE;
     });
     const [showDistributionGraphic, setShowDistributionGraphic] = useState(MaalOgBehovState.showDistributionGraphic);
-    const [showStockPortionGraphic, setShowStockPortionGraphic] = useState(MaalOgBehovState.showStockPortionGraphic);
     const [showInvestedCapitalGraphic, setShowInvestedCapitalGraphic] = useState(MaalOgBehovState.showInvestedCapitalGraphic);
     const [showGoalSeek, setShowGoalSeek] = useState(MaalOgBehovState.showGoalSeek);
+    const [graphicSlotEl, setGraphicSlotEl] = useState(null);
     // Disclaimer er fjernet fra UI. Vi holder den alltid av for å hindre modal-rendering.
     const [showDisclaimer, setShowDisclaimer] = useState(false);
     const [editingTitle, setEditingTitle] = useState(false);
@@ -2788,10 +2773,6 @@ function App({ panelTitle, onPanelTitleChange }) {
     useEffect(() => {
         MaalOgBehovState.showDistributionGraphic = showDistributionGraphic;
     }, [showDistributionGraphic]);
-
-    useEffect(() => {
-        MaalOgBehovState.showStockPortionGraphic = showStockPortionGraphic;
-    }, [showStockPortionGraphic]);
 
     useEffect(() => {
         MaalOgBehovState.showInvestedCapitalGraphic = showInvestedCapitalGraphic;
@@ -4416,7 +4397,6 @@ const applyMaalUiSnapshot = useCallback((ui) => {
 if (!ui || typeof ui !== 'object') return;
 const b = (x) => x === true || x === 'true' || x === 1;
 if (ui.showDistributionGraphic !== undefined) setShowDistributionGraphic(b(ui.showDistributionGraphic));
-if (ui.showStockPortionGraphic !== undefined) setShowStockPortionGraphic(b(ui.showStockPortionGraphic));
 if (ui.showInvestedCapitalGraphic !== undefined) setShowInvestedCapitalGraphic(b(ui.showInvestedCapitalGraphic));
 if (ui.showGoalSeek !== undefined) setShowGoalSeek(b(ui.showGoalSeek));
 if (ui.showAssumptionsGraphic !== undefined) setShowAssumptionsGraphic(b(ui.showAssumptionsGraphic));
@@ -5297,166 +5277,6 @@ return () => document.removeEventListener('keydown', onKey);
         return { year: yearStr, sumMaal, sumFordeling, aksjerPlusAvk, match: Math.abs(sumMaal - sumFordeling) < 1 };
     }, [prognosis.labels, prognosis.data, principalStockSeries, stockReturnSeries, principalBondSeries, bondReturnSeries]);
 
-    // Calculate stock portion percentage year by year
-    const stockPortionPercentageData = useMemo(() => {
-        const len = principalStockSeries.length;
-        const percentages = [];
-        
-        for (let i = 0; i < len; i++) {
-            const stockTotal = principalStockSeries[i] + stockReturnSeries[i];
-            const bondTotal = principalBondSeries[i] + bondReturnSeries[i];
-            const totalPortfolio = stockTotal + bondTotal;
-            
-            if (totalPortfolio > 0) {
-                percentages.push(Math.round((stockTotal / totalPortfolio) * 100));
-            } else {
-                percentages.push(0);
-            }
-        }
-        
-        return percentages;
-    }, [principalStockSeries, stockReturnSeries, principalBondSeries, bondReturnSeries]);
-
-    const stockPortionChartData = useMemo(() => ({
-        labels: labelsAllYears,
-        datasets: [{
-            label: 'Aksjeandel',
-            data: stockPortionPercentageData,
-            borderColor: CHART_COLORS.aksjer_principal,
-            backgroundColor: CHART_COLORS.aksjer_principal,
-            borderWidth: 3,
-            fill: true,
-            gradientFill: true,
-            tension: 0.5,
-            pointRadius: 0,
-            pointHoverRadius: 7,
-            pointBackgroundColor: '#ffffff',
-            pointBorderColor: CHART_COLORS.aksjer_principal,
-            pointBorderWidth: 3,
-            pointHoverBackgroundColor: '#ffffff',
-            pointHoverBorderColor: CHART_COLORS.aksjer_principal,
-            pointHoverBorderWidth: 3,
-            cubicInterpolationMode: 'monotone',
-            shadowOffsetX: 0,
-            shadowOffsetY: 2,
-            shadowBlur: 8,
-            shadowColor: 'rgba(102, 204, 221, 0.3)',
-        }],
-    }), [labelsAllYears, stockPortionPercentageData]);
-
-    const stockPortionChartOptions = useMemo(() => ({
-        ...chartOptions,
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: {
-            duration: 1500,
-            easing: 'easeInOutQuart',
-        },
-        interaction: {
-            mode: 'index',
-            intersect: false,
-        },
-        plugins: {
-            ...chartOptions.plugins,
-            title: {
-                display: true,
-                text: 'Aksjeandel av totalportefølje',
-                color: '#4A6D8C',
-                font: {
-                    size: 18,
-                    weight: '900',
-                    family: 'Whitney, sans-serif'
-                },
-                padding: {
-                    top: 8,
-                    bottom: 16
-                },
-                position: 'top'
-            },
-            legend: { 
-                display: true, 
-                labels: { 
-                    color: SPWM_INK,
-                    font: {
-                        size: 13,
-                        weight: '500'
-                    },
-                    padding: 10,
-                    usePointStyle: true,
-                    pointStyle: 'circle'
-                } 
-            },
-            tooltip: {
-                ...chartOptions.plugins.tooltip,
-                backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                titleColor: '#4A6D8C',
-                bodyColor: '#333333',
-                borderColor: '#DDDDDD',
-                borderWidth: 1,
-                padding: 12,
-                displayColors: true,
-                callbacks: {
-                    title: (items) => `År ${items[0].label}`,
-                    label: (context) => `Aksjeandel: ${context.raw}%`,
-                    labelColor: () => ({
-                        borderColor: CHART_COLORS.aksjer_principal,
-                        backgroundColor: CHART_COLORS.aksjer_principal,
-                    }),
-                }
-            }
-        },
-        scales: {
-            x: { 
-                ...chartOptions.scales.x,
-                stacked: false,
-                offset: true,
-                ticks: {
-                    ...chartOptions.scales.x.ticks,
-                    align: 'center',
-                    maxRotation: 0,
-                    minRotation: 0
-                }
-            },
-            y: {
-                ...chartOptions.scales.y,
-                stacked: false,
-                min: 0,
-                max: 100,
-                grid: {
-                    display: true,
-                    color: 'rgba(221, 221, 221, 0.3)',
-                    drawBorder: false,
-                },
-                ticks: {
-                    ...chartOptions.scales.y.ticks,
-                    color: '#666666',
-                    font: {
-                        size: 11
-                    },
-                    callback: (value) => `${value}%`,
-                    stepSize: 20,
-                },
-                padding: {
-                    top: 0,
-                    bottom: 0
-                }
-            },
-        },
-        elements: {
-            line: {
-                borderCapStyle: 'round',
-                borderJoinStyle: 'round',
-                shadowColor: 'rgba(102, 204, 221, 0.4)',
-                shadowBlur: 6,
-                shadowOffsetY: 2,
-            },
-            point: {
-                hoverRadius: 8,
-                hoverBorderWidth: 3,
-            }
-        },
-    }), [chartOptions]);
-   
     const totalYears = state.investmentYears + state.payoutYears;
     const maxEventYear = START_YEAR + totalYears - 1;
 
@@ -5690,33 +5510,24 @@ return () => document.removeEventListener('keydown', onKey);
                             <GraphicPanelToggle
                                 visible={showGoalSeek}
                                 onToggle={() => setShowGoalSeek(v => !v)}
-                                scrollTargetId="mbh-graphic-section-maalsoek"
                                 label="Målsøk"
                                 title="Målsøk-grafikk"
                             />
                             <GraphicPanelToggle
                                 visible={showDistributionGraphic}
                                 onToggle={() => setShowDistributionGraphic(v => !v)}
-                                scrollTargetId="mbh-graphic-section-fordeling"
                                 label="Fordeling"
                                 title="Fordelingsgraf"
                             />
                             <GraphicPanelToggle
-                                visible={showStockPortionGraphic}
-                                onToggle={() => setShowStockPortionGraphic(v => !v)}
-                                scrollTargetId="mbh-graphic-section-aksjeandel"
-                                label="Aksjeandel"
-                                title="Aksjeandelsgraf"
-                            />
-                            <GraphicPanelToggle
                                 visible={showInvestedCapitalGraphic}
                                 onToggle={() => setShowInvestedCapitalGraphic(v => !v)}
-                                scrollTargetId="mbh-graphic-section-innskutt-kapital"
                                 label="Innskutt kapital"
                                 title="Innskutt kapital"
                             />
                         </div>
                     </div>
+                    <div ref={setGraphicSlotEl} className="mbh-graphic-sections-inline" />
                 </div>
 
                 <div className="mbh-panels-grid">
@@ -5934,8 +5745,9 @@ return () => document.removeEventListener('keydown', onKey);
                     </div>
                 </div>
 
-                <div className="mbh-forvaltning-follow mbh-graphic-sections-follow">
-                {/* Målsøk seksjon - utenfor den ytre rammen */}
+                <div className="mbh-graphic-modals">
+                {/* Målsøk seksjon vises i mbh-graphic-sections-inline mellom forvaltning og paneler */}
+                    <MbhGraphicPortal slot={graphicSlotEl}>
                     <div id="mbh-graphic-section-maalsoek" className="mbh-graphic-section">
                     {showGoalSeek && (
                         <div className="relative">
@@ -6107,7 +5919,9 @@ return () => document.removeEventListener('keydown', onKey);
                         </div>
                     )}
                     </div>
+                    </MbhGraphicPortal>
 
+                    <MbhGraphicPortal slot={graphicSlotEl}>
                     <div id="mbh-graphic-section-fordeling" className="mbh-graphic-section">
                     {showDistributionGraphic && (
                         <div className="relative">
@@ -6129,18 +5943,7 @@ return () => document.removeEventListener('keydown', onKey);
                         </div>
                     )}
                     </div>
-
-                    <div id="mbh-graphic-section-aksjeandel" className="mbh-graphic-section">
-                    {showStockPortionGraphic && (
-                        <div className="relative">
-                        <div className="bg-white border border-[#DDDDDD] rounded-xl p-4 flex flex-col w-full">
-                            <div className="relative h-[280px]">
-                                <Line options={stockPortionChartOptions} data={stockPortionChartData} />
-                            </div>
-                        </div>
-                        </div>
-                    )}
-                    </div>
+                    </MbhGraphicPortal>
 
                 {showChartImageModal && (
                     <div
@@ -7321,6 +7124,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                     </div>
                 )}
 
+                    <MbhGraphicPortal slot={graphicSlotEl}>
                     <div id="mbh-graphic-section-innskutt-kapital" className="mbh-graphic-section">
                     {showInvestedCapitalGraphic && (
                         <div className="relative">
@@ -7333,6 +7137,7 @@ Alle uttak fra et as vil i modellen ansees som et utbytte. Om det er innskutt ka
                         </div>
                     )}
                     </div>
+                    </MbhGraphicPortal>
 
                 </div>
             </div>

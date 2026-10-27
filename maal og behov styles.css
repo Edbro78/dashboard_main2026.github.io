@@ -195,8 +195,7 @@
         --mbh-section-gap: calc(1.5rem * 0.3);
     }
 
-    .maal-og-behov-tab .mbh-forvaltning-follow,
-    .maal-og-behov-tab .mbh-graphic-sections-follow {
+    .maal-og-behov-tab .mbh-forvaltning-follow {
         display: flex;
         flex-direction: column;
         gap: var(--mbh-section-gap);
@@ -206,8 +205,9 @@
     /* Grafikk-knapper midt mellom forvaltning og panel-raden */
     .mbh-graphic-toggles-bridge {
         display: flex;
-        justify-content: center;
-        align-items: center;
+        flex-direction: column;
+        justify-content: flex-start;
+        align-items: stretch;
         width: 100%;
         box-sizing: border-box;
         padding: 0.5rem 0;
@@ -217,6 +217,7 @@
     .mbh-graphic-toggles-bar {
         width: auto;
         max-width: min(100%, 52rem);
+        align-self: center;
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -225,6 +226,34 @@
         border-radius: var(--radius-lg);
         border: 1px dashed var(--gray-300);
         background: linear-gradient(180deg, var(--white) 0%, var(--gray-50) 100%);
+    }
+
+    .mbh-graphic-sections-inline {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        width: 100%;
+        box-sizing: border-box;
+        align-self: stretch;
+    }
+
+    .mbh-graphic-sections-inline:not(:has(.mbh-graphic-section > *)) {
+        display: none;
+        margin: 0;
+        padding: 0;
+        gap: 0;
+    }
+
+    .mbh-graphic-sections-inline:has(.mbh-graphic-section > *) {
+        margin-top: 0.75rem;
+    }
+
+    .mbh-graphic-section:not(:has(*)) {
+        display: none;
+    }
+
+    .mbh-graphic-modals {
+        display: contents;
     }
 
     .maal-og-behov-tab .mbh-forvaltning-wrap + .mbh-graphic-toggles-bridge {
